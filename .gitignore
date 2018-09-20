@@ -1,0 +1,13 @@
+# See http://help.github.com/ignore-files/ for more about ignoring files.
+.DS_Store
+
+# Files created by the scripts from; https://github.com/BCDevOps/openshift-project-tools
+*_DeploymentConfig.json
+*_BuildConfig.json
+*.local.*
+
+# Visual Studio Code
+.vscode
+
+# Local config
+.env
