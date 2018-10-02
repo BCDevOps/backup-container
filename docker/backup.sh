@@ -187,7 +187,7 @@ generateFilename(){
 export BACKUP_FILE_EXTENSION=".sql.gz"
 export IN_PROGRESS_BACKUP_FILE_EXTENSION=".sql.gz.in_progress"
 
-export DEFAULT_PORT=${POSTGRESQL_PORT:-5432}
+export DEFAULT_PORT=${POSTGRESQL_PORT_NUM:-5432}
 export NUM_BACKUPS=${NUM_BACKUPS:-31}
 export BACKUP_PERIOD=${BACKUP_PERIOD:-1d}
 export BACKUP_CONF=${BACKUP_CONF:-backup.conf}
