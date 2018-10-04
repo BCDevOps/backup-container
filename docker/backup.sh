@@ -97,7 +97,9 @@ readConf(){
       # Read in the config minus any comments ...
       echo "Reading backup config from ${BACKUP_CONF} ..." >&2
       _value=$(sed '/^[[:blank:]]*#/d;s/#.*//' ${BACKUP_CONF})
-    else
+    fi
+
+    if [ -z "${_value}" ]; then
       # Backward compatibility
       echo "Reading backup config from environment variables ..." >&2
       _value="${DATABASE_SERVICE_NAME}:${DEFAULT_PORT}/${POSTGRESQL_DATABASE}"
@@ -312,6 +314,7 @@ dailyStrategy(){
 listSettings(){
   (
     _backupDir=${1}
+    _databases=${2}
     echo -e \\n"Settings:"
     if rollingStrategy; then
       echo "- Backup strategy: rolling"
@@ -327,6 +330,10 @@ listSettings(){
     fi
     echo "- Number of each backup to retain: $(getNumBackupsToRetain)"
     echo "- Backup folder: ${_backupDir}"
+    echo "- Databases:"
+    for _database in ${_databases}; do
+      echo "  - ${_database}"
+    done
   )
 }
 # ======================================================================================
@@ -337,6 +344,8 @@ listSettings(){
 export BACKUP_FILE_EXTENSION=".sql.gz"
 export IN_PROGRESS_BACKUP_FILE_EXTENSION=".sql.gz.in_progress"
 export DEFAULT_PORT=${POSTGRESQL_PORT_NUM:-5432}
+export DATABASE_SERVICE_NAME=${DATABASE_SERVICE_NAME:-postgresql}
+export POSTGRESQL_DATABASE=${POSTGRESQL_DATABASE:-my_postgres_db}
 
 # Supports:
 # - daily
@@ -367,7 +376,7 @@ while true; do
   echoBlue "\nStarting backup process ..."
   databases=$(readConf)
   backupDir=$(createBackupFolder)
-  listSettings "${backupDir}"
+  listSettings "${backupDir}" "${databases}"
 
   for database in ${databases}; do
     filename=$(generateFilename "${backupDir}" "${database}")
