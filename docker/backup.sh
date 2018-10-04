@@ -249,13 +249,13 @@ backupDatabase(){
     export PGPASSWORD=${_password}
     SECONDS=0
     touch "${_fileName}${IN_PROGRESS_BACKUP_FILE_EXTENSION}"
-    if pg_dump -Fp -h "${_hostname}" -p "${_port}" -U "${_username}" "${_database}" | gzip > ${_fileName}${IN_PROGRESS_BACKUP_FILE_EXTENSION}; then
-      return 0
-    else
-      return 1
-    fi
+
+    pg_dump -Fp -h "${_hostname}" -p "${_port}" -U "${_username}" "${_database}" | gzip > ${_fileName}${IN_PROGRESS_BACKUP_FILE_EXTENSION}
+    _rtnCd=$?
+
     duration=$SECONDS
     echo "Elapsed time: $(($duration / 3600))h:$(($duration / 60))m:$(($duration % 60))s"
+    return ${_rtnCd}
   )
 }
 
