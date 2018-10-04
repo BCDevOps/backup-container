@@ -11,3 +11,5 @@
 
 # Local config
 .env
+backups
+docker/backup.conf
