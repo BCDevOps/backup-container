@@ -1,10 +1,52 @@
 #!/bin/bash
-# Postgresql automated backup script
-# See README.md for documentation on this script
 
-# ======================================================================================
+# =================================================================================================================
+# Usage:
+# -----------------------------------------------------------------------------------------------------------------
+usage () {
+  cat <<-EOF
+
+  Automated backup script for Postgresql databases
+
+  Refer to the project documentation for additional details on how to use this script.
+  - https://github.com/BCDevOps/backup-container
+
+  Usage: 
+    $0 [options]
+
+  Options:
+  ========
+    -h prints this usage documentation.
+    -c lists the current configuration settings and exits.
+EOF
+exit 1
+}
+# =================================================================================================================
+
+# =================================================================================================================
+# Initialization:
+# -----------------------------------------------------------------------------------------------------------------
+while getopts ch FLAG; do
+  case $FLAG in
+    c)
+      export PRINT_CONFIG=1
+      ;;
+    h) 
+      usage
+      ;;
+    \?)
+      echo -e \\n"Invalid option: -${OPTARG}"\\n
+      usage
+      ;;
+  esac
+done
+shift $((OPTIND-1))
+
+# =================================================================================================================
+
+# =================================================================================================================
 # Funtions:
-# --------------------------------------------------------------------------------------
+# -----------------------------------------------------------------------------------------------------------------
 echoRed (){
   _msg=${1}
   _red='\e[31m'
@@ -264,13 +306,22 @@ getBackupType(){
 
 createBackupFolder(){
   (
-    _backupTypeDir="$(getBackupType)/"
+    _backupTypeDir="$(getBackupType)"
+    if [ ! -z "${_backupTypeDir}" ]; then
+      _backupTypeDir=${_backupTypeDir}/
+    fi
+
     _backupDir="${ROOT_BACKUP_DIR}${_backupTypeDir}`date +\%Y-\%m-\%d`/"
-    echo "Making backup directory ${_backupDir} ..." >&2
-    if ! mkdir -p ${_backupDir}; then
-      echo $(echoRed "[!!ERROR!!] - Failed to create backup directory ${_backupDir}.") >&2
-      exit 1;
-    fi;
+
+    # Don't actually create the folder if we're just printing the configuation.
+    if [ -z "${PRINT_CONFIG}" ]; then
+      echo "Making backup directory ${_backupDir} ..." >&2
+      if ! mkdir -p ${_backupDir}; then
+        echo $(echoRed "[!!ERROR!!] - Failed to create backup directory ${_backupDir}.") >&2
+        exit 1;
+      fi;
+    fi
+
     echo ${_backupDir}
   )
 }
@@ -312,29 +363,37 @@ dailyStrategy(){
 }
 
 listSettings(){
-  (
-    _backupDir=${1}
-    _databases=${2}
-    echo -e \\n"Settings:"
-    if rollingStrategy; then
-      echo "- Backup strategy: rolling"
-    fi
-    if dailyStrategy; then
-      echo "- Backup strategy: daily"
-    fi
-    backupType=$(getBackupType)
-    if [ -z "${backupType}" ]; then
-      echo "- Backup type: flat daily"
-    else
-      echo "- Backup type: ${backupType}"
-    fi
-    echo "- Number of each backup to retain: $(getNumBackupsToRetain)"
-    echo "- Backup folder: ${_backupDir}"
-    echo "- Databases:"
-    for _database in ${_databases}; do
-      echo "  - ${_database}"
-    done
-  )
+  _backupDirectory=${1}
+  _databaseList=${2}
+  echo -e \\n"Settings:"
+  if rollingStrategy; then
+    echo "- Backup strategy: rolling"
+  fi
+  if dailyStrategy; then
+    echo "- Backup strategy: daily"
+  fi
+  if ! rollingStrategy && ! dailyStrategy; then
+    echoYellow "- Backup strategy: Unknown backup strategy; ${BACKUP_STRATEGY}"
+    _configurationError=1
+  fi
+  backupType=$(getBackupType)
+  if [ -z "${backupType}" ]; then
+    echo "- Backup type: flat daily"
+  else
+    echo "- Backup type: ${backupType}"
+  fi
+  echo "- Number of each backup to retain: $(getNumBackupsToRetain)"
+  echo "- Backup folder: ${_backupDirectory}"
+  echo "- Databases:"
+  for _db in ${_databaseList}; do
+    echo "  - ${_db}"
+  done
+
+  if [ ! -z "${_configurationError}" ]; then
+    echoRed "\nConfiguration error!  The script will exit."
+    sleep 5
+    exit 1
+  fi
 }
 # ======================================================================================
 
@@ -369,14 +428,23 @@ export WEEKLY_BACKUPS=${WEEKLY_BACKUPS:-4}
 export MONTHLY_BACKUPS=${MONTHLY_BACKUPS:-1}
 # ======================================================================================
 
-# ======================================================================================
+# =================================================================================================================
 # Main Script
-# --------------------------------------------------------------------------------------
+# -----------------------------------------------------------------------------------------------------------------
 while true; do
-  echoBlue "\nStarting backup process ..."
+  if [ -z "${PRINT_CONFIG}" ]; then
+    echoBlue "\nStarting backup process ..."
+  else
+    echoBlue "\nListing configuration settings ..."
+  fi
+
   databases=$(readConf)
   backupDir=$(createBackupFolder)
   listSettings "${backupDir}" "${databases}"
+
+  if [ ! -z "${PRINT_CONFIG}" ]; then
+    exit 0
+  fi
 
   for database in ${databases}; do
     filename=$(generateFilename "${backupDir}" "${database}")
@@ -393,4 +461,4 @@ while true; do
   echoYellow "Sleeping for ${BACKUP_PERIOD} ...\n"
   sleep ${BACKUP_PERIOD}
 done
-# ======================================================================================
+# =================================================================================================================
