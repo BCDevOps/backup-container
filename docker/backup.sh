@@ -242,9 +242,9 @@ backupDatabase(){
 isLastDayOfMonth(){
   (
     _date=${1:-$(date)}
-    _day=$(date -d "${_date}" +%d)
-    _month=$(date -d "${_date}" +%m)
-    _lastDayOfMonth=$(date -d "${_month}/1 + 1 month - 1 day" "+%d")
+    _day=$(date -d "${_date}" +%-d)
+    _month=$(date -d "${_date}" +%-m)
+    _lastDayOfMonth=$(date -d "${_month}/1 + 1 month - 1 day" "+%-d")
 
     if (( ${_day} == ${_lastDayOfMonth} )); then
       return 0
