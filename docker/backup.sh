@@ -234,7 +234,7 @@ backupDatabase(){
     _rtnCd=$?
 
     duration=$SECONDS
-    echo "Elapsed time: $(($duration / 3600))h:$(($duration / 60))m:$(($duration % 60))s"
+    echo "Elapsed time: $(($duration/3600))h:$(($duration%3600/60))m:$(($duration%60))s"
     return ${_rtnCd}
   )
 }
