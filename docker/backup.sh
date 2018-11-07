@@ -231,10 +231,15 @@ backupDatabase(){
     touch "${_fileName}${IN_PROGRESS_BACKUP_FILE_EXTENSION}"
 
     pg_dump -Fp -h "${_hostname}" -p "${_port}" -U "${_username}" "${_database}" | gzip > ${_fileName}${IN_PROGRESS_BACKUP_FILE_EXTENSION}
-    _rtnCd=$?
+    # Get the status code from pg_dump.  ${?} would provide the status of the last command, gzip in this case.
+    _rtnCd=${PIPESTATUS[0]}
+
+    if (( ${_rtnCd} != 0 )); then
+      rm -rfvd ${_fileName}${IN_PROGRESS_BACKUP_FILE_EXTENSION}
+    fi
 
     duration=$SECONDS
-    echo "Elapsed time: $(($duration/3600))h:$(($duration%3600/60))m:$(($duration%60))s"
+    echo "Elapsed time: $(($duration/3600))h:$(($duration%3600/60))m:$(($duration%60))s - Status Code: ${_rtnCd}"
     return ${_rtnCd}
   )
 }
