@@ -187,6 +187,9 @@ pruneBackups(){
     if [ ! -z "${_filesToPrune}" ]; then
       echoYellow "\nPruning ${_coreFilename} backups from ${_pruneDir} ..."
       echo "${_filesToPrune}" | xargs rm -rfvd
+
+      # Quietly delete any empty directories that are left behind ...
+      find ${ROOT_BACKUP_DIR} -type d -empty -delete > /dev/null 2>&1
     fi
   )
 }
