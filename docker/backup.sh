@@ -461,7 +461,7 @@ while true; do
       finalizeBackup "${filename}"
       pruneBackups "${backupDir}" "${database}"
     else
-      echoRed "\n[!!ERROR!!] - Failed to backup ${database}.\n"
+      echoRed "[!!ERROR!!] - Failed to backup ${database}."
     fi
   done
 
