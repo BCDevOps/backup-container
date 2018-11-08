@@ -22,6 +22,11 @@ usage () {
 
   Restore Options:
   ========
+    The restore process performs the following basic operations:
+      - Drop and recreate the selected database.
+      - Grant the database user access to the recreated database
+      - Restore the database from the selected backup file
+
     -r <DatabaseSpec/>; in the form <Hostname/>/<DatabaseName/>, or <Hostname/>:<Port/>/<DatabaseName/>
       Triggers restore mode and starts restore mode on the specified database.
 
