@@ -198,8 +198,13 @@ readConf(){
 finalizeBackup(){
   (
     _filename=${1}
-    mv ${_filename}${IN_PROGRESS_BACKUP_FILE_EXTENSION} ${_filename}${BACKUP_FILE_EXTENSION}
-    echo "Backup written to ${_filename}${BACKUP_FILE_EXTENSION} ..."
+    _inProgressFilename="${_filename}${IN_PROGRESS_BACKUP_FILE_EXTENSION}"
+    _finalFilename="${_filename}${BACKUP_FILE_EXTENSION}"
+
+    if [ -f ${_inProgressFilename} ]; then
+      mv "${_inProgressFilename}" "${_finalFilename}"
+      echo "Backup written to ${_finalFilename} ..."
+    fi
   )
 }
 
@@ -291,24 +296,36 @@ backupDatabase(){
     _database=$(getDatabaseName ${_databaseSpec})
     _username=$(getUsername ${_databaseSpec})
     _password=$(getPassword ${_databaseSpec})
+    _backupFile="${_fileName}${IN_PROGRESS_BACKUP_FILE_EXTENSION}"
 
     echoGreen "\nBacking up ${_databaseSpec} ..."
 
     export PGPASSWORD=${_password}
     SECONDS=0
-    touch "${_fileName}${IN_PROGRESS_BACKUP_FILE_EXTENSION}"
-
-    pg_dump -Fp -h "${_hostname}" -p "${_port}" -U "${_username}" "${_database}" | gzip > ${_fileName}${IN_PROGRESS_BACKUP_FILE_EXTENSION}
+    touchBackupFile "${_backupFile}"
+    
+    pg_dump -Fp -h "${_hostname}" -p "${_port}" -U "${_username}" "${_database}" | gzip > ${_backupFile}
     # Get the status code from pg_dump.  ${?} would provide the status of the last command, gzip in this case.
     _rtnCd=${PIPESTATUS[0]}
 
     if (( ${_rtnCd} != 0 )); then
-      rm -rfvd ${_fileName}${IN_PROGRESS_BACKUP_FILE_EXTENSION}
+      rm -rfvd ${_backupFile}
     fi
 
     duration=$SECONDS
     echo "Elapsed time: $(($duration/3600))h:$(($duration%3600/60))m:$(($duration%60))s - Status Code: ${_rtnCd}"
     return ${_rtnCd}
+  )
+}
+
+touchBackupFile() {
+  (
+    # For safety, make absolutely certain the directory and file exist.
+    # The pruning process removes empty directories, so if there is an error 
+    # during a backup the backup directory could be deleted.
+    _backupFile=${1}
+    _backupDir="${_backupFile%/*}"
+    mkdir -p ${_backupDir} && touch ${_backupFile}
   )
 }
 
