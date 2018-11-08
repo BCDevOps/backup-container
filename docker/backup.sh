@@ -17,8 +17,15 @@ usage () {
   Standard Options:
   ========
     -h prints this usage documentation.
+    
+    -1 run once.
+      Performs a single set of backups and exits.
+    
     -l lists existing backups.
+      Great for listing the available backups for a restore.
+
     -c lists the current configuration settings and exits.
+      Great for confirming the current settings, and listing the databases included in the backup schedule.
 
   Restore Options:
   ========
@@ -97,6 +104,14 @@ waitForAnyKey() {
 
   # If we get here the user did NOT press Ctrl-C ...
   return 0
+}
+
+runOnce() {
+  if [ ! -z "${RUN_ONCE}" ]; then
+    return 0
+  else
+    return 1
+  fi
 }
 
 getDatabaseName(){
@@ -455,6 +470,11 @@ listSettings(){
   _backupDirectory=${1}
   _databaseList=${2}
   echo -e \\n"Settings:"
+  if runOnce; then
+    echo "- Run mode: Once"
+  else
+    echo "- Run mode: Continuous"
+  fi
   if rollingStrategy; then
     echo "- Backup strategy: rolling"
   fi
@@ -520,7 +540,7 @@ export MONTHLY_BACKUPS=${MONTHLY_BACKUPS:-1}
 # =================================================================================================================
 # Initialization:
 # -----------------------------------------------------------------------------------------------------------------
-while getopts clr:f:h FLAG; do
+while getopts clr:f:1h FLAG; do
   case $FLAG in
     c)
       export PRINT_CONFIG=1
@@ -536,6 +556,9 @@ while getopts clr:f:h FLAG; do
     f)
       # Optionally specify the backup file to restore from ...
       export _fromBackup=${OPTARG}
+      ;;
+    1)
+      export RUN_ONCE=1
       ;;
     h)
       usage
@@ -585,6 +608,11 @@ while true; do
   done
 
   listExistingBackups ${ROOT_BACKUP_DIR}
+
+  if runOnce; then
+    echoGreen "Single backup run complete."
+    exit 0
+  fi
 
   echoYellow "Sleeping for ${BACKUP_PERIOD} ...\n"
   sleep ${BACKUP_PERIOD}

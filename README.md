@@ -108,9 +108,13 @@ Current Backups:
 ## Using the Backup Script
 ---
 
-The [backup script](./docker/backup.sh) has a few utility features built into it.  Running `backup.sh -h` will provide a full list.
+The [backup script](./docker/backup.sh) has a few utility features built into it.  For a full list of features and documentation run `backup.sh -h`.
 
-Features include the ability to list the existing backups, `backup.sh -l`, on the system from the command line, and list the current configuration , `backup.sh -c`, without running the backup.
+Features include:
+- The ability to list the existing backups, `backup.sh -l`
+- Listing the current configuration, `backup.sh -c`
+- Running a single backup cycle, `backup.sh -1`
+- Restoring a database from backup, `backup.sh -r <databaseSpec/> [-f <backupFileFilter>]`
 
 ## Backup
 ---
@@ -123,13 +127,17 @@ The Backup app performs the following sequence of operations:
 3. Cull backups more than $NUM_BACKUPS (default 31 - configured in deployment script)
 4. Sleep for a day and repeat
 
-Note that we are just using a simple "sleep" to run the backup periodically. More elegent solutions were looked at briefly, but there was not a lot of time or benefit, so OpenShift Scheduled Jobs, cron and so on are not used. With some more effort they likely could be made to work.
+Note that we are just using a simple "sleep" to run the backup periodically. More elegant solutions were looked at briefly, but there was not a lot of time or benefit, so OpenShift Scheduled Jobs, cron and so on are not used. With some more effort they likely could be made to work.
 
-A separate pod is used vs. having the backups run from the Postgres Pod for fault tolerent purposes - to keep the backups separate from the database storage.  We don't want to, for example, lose the storage of the database, or have the database and backups storage fill up, and lose both the database and the backups.
+A separate pod is used vs. having the backups run from the Postgres Pod for fault tolerant purposes - to keep the backups separate from the database storage.  We don't want to, for example, lose the storage of the database, or have the database and backups storage fill up, and lose both the database and the backups.
 
 ### Immediate Backup:
 
-To execute a backup right now, check the logs of the Backup pod to make sure a backup isn't run right now (pretty unlikely...), scale the backup pod down and then back up again.  This will restart the backup script.
+To execute a single backup cycle:
+- Check the logs of the Backup pod to make sure a backup isn't run right now (pretty unlikely...)
+- Open a terminal window to the pod
+- Run `backup.sh -1`
+  - This will run a single backup cycle and exit.
 
 ### Restore
 
