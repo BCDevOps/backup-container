@@ -115,6 +115,7 @@ Features include:
 - Listing the current configuration, `backup.sh -c`
 - Running a single backup cycle, `backup.sh -1`
 - Restoring a database from backup, `backup.sh -r <databaseSpec/> [-f <backupFileFilter>]`
+  - Restore mode will allow you to restore a database to a different location (host, and/or database name) provided it can contact the host and you can provide the appropriate credentials.
 
 ## Backup
 ---
@@ -141,7 +142,11 @@ To execute a single backup cycle:
 
 ### Restore
 
-These steps perform a restore of a backup.
+The `backup.sh` script's restore mode makes it very simple to restore the most recent backup of a particular database.  It's as simple as running a the following command, for example (run `backup.sh -h` for full details on additional options);
+
+    backup.sh -r postgresql/TheOrgBook_Database
+
+Following are more detailed steps to perform a restore of a backup.
 
 1. Log into the OpenShift Console and log into OpenShift on the command shell window.
    1. The instructions here use a mix of the console and command line, but all could be done from a command shell using "oc" commands.
@@ -155,7 +160,7 @@ These steps perform a restore of a backup.
    1. Change to the OpenShift project containing the Backup App `oc project <Project Name>`
    1. List pods using `oc get pods`
    1. Open a remote shell connection to the **backup** pod. `oc rsh <Backup Pod Name>`
-1. In the rsh run the backup script in restore mode, `./backup.sh -r <DatabaseSpec/>`, to restore the desired backup file.  For full information on how to use restore mode, refer to the script documentation, `./backup.sh -h`.
+1. In the rsh run the backup script in restore mode, `./backup.sh -r <DatabaseSpec/>`, to restore the desired backup file.  For full information on how to use restore mode, refer to the script documentation, `./backup.sh -h`.  Have the Admin password for the database handy, the script will ask for it during the restore process.
     1. The restore script will automatically grant the database user access to the restored database.  If there are other users needing access to the database, such as the DBA group, you will need to additionally run the following commands on the database pod itself using `psql`:
         1. Get a list of the users by running the command `\du`
         1. For each user that is not "postgres" and $POSTGRESQL_USER, execute the command `GRANT SELECT ON ALL TABLES IN SCHEMA public TO "<name of user>";`

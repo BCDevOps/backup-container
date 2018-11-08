@@ -34,6 +34,18 @@ usage () {
       - Grant the database user access to the recreated database
       - Restore the database from the selected backup file
 
+    Have the 'Admin' (postgres) password handy, the script will ask you for it during the restore.
+
+    When in restore mode, the script will list the settings it will use and wait for your confirmation to continue.
+    This provides you with an opportunity to ensure you have selected the correct database and backup file
+    for the job.
+
+    Restore mode will allow you to restore a database to a different location (host, and/or database name) provided 
+    it can contact the host and you can provide the appropriate credentials.  If you choose to do this, you will need 
+    to provide a file filter using the '-f' option, since the script will likely not be able to determine which backup 
+    file you would want to use.  This functionality provides a convenient way to test your backups or migrate your
+    database/data whithout affecting the original database.
+
     -r <DatabaseSpec/>; in the form <Hostname/>/<DatabaseName/>, or <Hostname/>:<Port/>/<DatabaseName/>
       Triggers restore mode and starts restore mode on the specified database.
 
@@ -55,6 +67,7 @@ usage () {
         
         $0 -r wallet-db/test_db -f wallet-db-tob_holder_2018-11-07_23-59-35.sql.gz
           - Would use the specific backup file regardless of its location in the root backup folder.
+
 EOF
 exit 1
 }
@@ -503,6 +516,7 @@ listSettings(){
     sleep 5
     exit 1
   fi
+  echo
 }
 # ======================================================================================
 
@@ -610,7 +624,7 @@ while true; do
   listExistingBackups ${ROOT_BACKUP_DIR}
 
   if runOnce; then
-    echoGreen "Single backup run complete."
+    echoGreen "Single backup run complete.\n"
     exit 0
   fi
 
