@@ -11,14 +11,63 @@ usage () {
   Refer to the project documentation for additional details on how to use this script.
   - https://github.com/BCDevOps/backup-container
 
-  Usage: 
+  Usage:
     $0 [options]
 
-  Options:
+  Standard Options:
   ========
     -h prints this usage documentation.
+    
+    -1 run once.
+      Performs a single set of backups and exits.
+    
     -l lists existing backups.
+      Great for listing the available backups for a restore.
+
     -c lists the current configuration settings and exits.
+      Great for confirming the current settings, and listing the databases included in the backup schedule.
+
+  Restore Options:
+  ========
+    The restore process performs the following basic operations:
+      - Drop and recreate the selected database.
+      - Grant the database user access to the recreated database
+      - Restore the database from the selected backup file
+
+    Have the 'Admin' (postgres) password handy, the script will ask you for it during the restore.
+
+    When in restore mode, the script will list the settings it will use and wait for your confirmation to continue.
+    This provides you with an opportunity to ensure you have selected the correct database and backup file
+    for the job.
+
+    Restore mode will allow you to restore a database to a different location (host, and/or database name) provided 
+    it can contact the host and you can provide the appropriate credentials.  If you choose to do this, you will need 
+    to provide a file filter using the '-f' option, since the script will likely not be able to determine which backup 
+    file you would want to use.  This functionality provides a convenient way to test your backups or migrate your
+    database/data whithout affecting the original database.
+
+    -r <DatabaseSpec/>; in the form <Hostname/>/<DatabaseName/>, or <Hostname/>:<Port/>/<DatabaseName/>
+      Triggers restore mode and starts restore mode on the specified database.
+
+      Example:
+        $0 -r postgresql:5432/TheOrgBook_Database
+          - Would start the restore process on the database using the most recent backup for the database.
+ 
+    -f <BackupFileFilter/>; the filter to use to find/identify the backup file to restore.
+      This can be a full or partial file specification.  When only part of a filename is specified the restore process
+      attempts to find the most recent backup matching the filter.
+      If not specified, the restore process attempts to locate the most recent backup file for the specified database.
+
+      Examples:
+        $0 -r wallet-db/test_db -f wallet-db-tob_holder
+          - Would try to find the latest backup matching on the partial file name provided.
+        
+        $0 -r wallet-db/test_db -f /backups/daily/2018-11-07/wallet-db-tob_holder_2018-11-07_23-59-35.sql.gz
+          - Would use  the specific backup file.
+        
+        $0 -r wallet-db/test_db -f wallet-db-tob_holder_2018-11-07_23-59-35.sql.gz
+          - Would use the specific backup file regardless of its location in the root backup folder.
+
 EOF
 exit 1
 }
@@ -60,6 +109,22 @@ echoMagenta (){
   _magenta='\e[35m'
   _nc='\e[0m' # No Color
   echo -e "${_magenta}${_msg}${_nc}"
+}
+
+waitForAnyKey() {
+  read -n1 -s -r -p $'\e[33mWould you like to continue?\e[0m  Press Ctrl-C to exit, or any other key to continue ...' key
+  echo -e \\n
+
+  # If we get here the user did NOT press Ctrl-C ...
+  return 0
+}
+
+runOnce() {
+  if [ ! -z "${RUN_ONCE}" ]; then
+    return 0
+  else
+    return 1
+  fi
 }
 
 getDatabaseName(){
@@ -133,8 +198,13 @@ readConf(){
 finalizeBackup(){
   (
     _filename=${1}
-    mv ${_filename}${IN_PROGRESS_BACKUP_FILE_EXTENSION} ${_filename}${BACKUP_FILE_EXTENSION}
-    echo "Backup written to ${_filename}${BACKUP_FILE_EXTENSION} ..."
+    _inProgressFilename="${_filename}${IN_PROGRESS_BACKUP_FILE_EXTENSION}"
+    _finalFilename="${_filename}${BACKUP_FILE_EXTENSION}"
+
+    if [ -f ${_inProgressFilename} ]; then
+      mv "${_inProgressFilename}" "${_finalFilename}"
+      echo "Backup written to ${_finalFilename} ..."
+    fi
   )
 }
 
@@ -187,6 +257,9 @@ pruneBackups(){
     if [ ! -z "${_filesToPrune}" ]; then
       echoYellow "\nPruning ${_coreFilename} backups from ${_pruneDir} ..."
       echo "${_filesToPrune}" | xargs rm -rfvd
+
+      # Quietly delete any empty directories that are left behind ...
+      find ${ROOT_BACKUP_DIR} -type d -empty -delete > /dev/null 2>&1
     fi
   )
 }
@@ -223,19 +296,100 @@ backupDatabase(){
     _database=$(getDatabaseName ${_databaseSpec})
     _username=$(getUsername ${_databaseSpec})
     _password=$(getPassword ${_databaseSpec})
-    
+    _backupFile="${_fileName}${IN_PROGRESS_BACKUP_FILE_EXTENSION}"
+
     echoGreen "\nBacking up ${_databaseSpec} ..."
 
     export PGPASSWORD=${_password}
     SECONDS=0
-    touch "${_fileName}${IN_PROGRESS_BACKUP_FILE_EXTENSION}"
+    touchBackupFile "${_backupFile}"
+    
+    pg_dump -Fp -h "${_hostname}" -p "${_port}" -U "${_username}" "${_database}" | gzip > ${_backupFile}
+    # Get the status code from pg_dump.  ${?} would provide the status of the last command, gzip in this case.
+    _rtnCd=${PIPESTATUS[0]}
 
-    pg_dump -Fp -h "${_hostname}" -p "${_port}" -U "${_username}" "${_database}" | gzip > ${_fileName}${IN_PROGRESS_BACKUP_FILE_EXTENSION}
-    _rtnCd=$?
+    if (( ${_rtnCd} != 0 )); then
+      rm -rfvd ${_backupFile}
+    fi
 
     duration=$SECONDS
-    echo "Elapsed time: $(($duration / 3600))h:$(($duration / 60))m:$(($duration % 60))s"
+    echo "Elapsed time: $(($duration/3600))h:$(($duration%3600/60))m:$(($duration%60))s - Status Code: ${_rtnCd}"
     return ${_rtnCd}
+  )
+}
+
+touchBackupFile() {
+  (
+    # For safety, make absolutely certain the directory and file exist.
+    # The pruning process removes empty directories, so if there is an error 
+    # during a backup the backup directory could be deleted.
+    _backupFile=${1}
+    _backupDir="${_backupFile%/*}"
+    mkdir -p ${_backupDir} && touch ${_backupFile}
+  )
+}
+
+restoreDatabase(){
+  (
+    _databaseSpec=${1}
+    _fileName=${2}
+
+    # If no backup file was specified, find the most recent for the database.
+    # Otherwise treat the value provided as a filter to find the most recent backup file matching the filter.
+    if [ -z "${_fileName}" ]; then
+      _coreFilename=$(generateCoreFilename ${_databaseSpec})
+      _fileName=$(find ${ROOT_BACKUP_DIR}* -type f -printf '%T@ %p\n' | grep ${_coreFilename} | sort | tail -n 1 | sed 's~^.* \(.*$\)~\1~')
+    else
+      _fileName=$(find ${ROOT_BACKUP_DIR}* -type f -printf '%T@ %p\n' | grep ${_fileName} | sort | tail -n 1 | sed 's~^.* \(.*$\)~\1~')
+    fi
+
+    echoBlue "\nRestoring database ..."
+    echo -e "\nSettings:"
+    echo "- Database: ${_databaseSpec}"
+
+    if [ ! -z "${_fileName}" ]; then
+      echo -e "- Backup file: ${_fileName}\n"
+    else
+      echoRed "- Backup file: No backup file found or specified.  Cannot continue with the restore.\n"
+      exit 0
+    fi
+    waitForAnyKey
+
+    _hostname=$(getHostname ${_databaseSpec})
+    _port=$(getPort ${_databaseSpec})
+    _database=$(getDatabaseName ${_databaseSpec})
+    _username=$(getUsername ${_databaseSpec})
+    _password=$(getPassword ${_databaseSpec})
+
+    # Ask for the Admin Password for the database
+    _msg="Admin password (${_databaseSpec}):"
+    _yellow='\033[1;33m'
+    _nc='\033[0m' # No Color
+    _message=$(echo -e "${_yellow}${_msg}${_nc}")
+    read -r -s -p $"${_message}" _adminPassword
+    echo -e "\n"
+
+    export PGPASSWORD=${_adminPassword}
+
+    # Drop
+    psql -h "${_hostname}" -p "${_port}" -ac "DROP DATABASE \"${_database}\";"
+    echo
+
+    # Create
+    psql -h "${_hostname}" -p "${_port}" -ac "CREATE DATABASE \"${_database}\";"
+    echo
+
+    # Grant User Access
+    psql -h "${_hostname}" -p "${_port}" -ac "GRANT ALL ON DATABASE \"${_database}\" TO \"${_username}\";"
+    echo
+
+    # Restore
+    echo "Restoring from backup ..."
+    gunzip -c "${_fileName}" | psql -h "${_hostname}" -p "${_port}" -d "${_database}"
+    echo -e "Restore complete."\\n
+
+    # List tables
+    psql -h "${_hostname}" -p "${_port}" -d "${_database}" -c "\d"
   )
 }
 
@@ -346,6 +500,11 @@ listSettings(){
   _backupDirectory=${1}
   _databaseList=${2}
   echo -e \\n"Settings:"
+  if runOnce; then
+    echo "- Run mode: Once"
+  else
+    echo "- Run mode: Continuous"
+  fi
   if rollingStrategy; then
     echo "- Backup strategy: rolling"
   fi
@@ -374,6 +533,7 @@ listSettings(){
     sleep 5
     exit 1
   fi
+  echo
 }
 # ======================================================================================
 
@@ -411,7 +571,7 @@ export MONTHLY_BACKUPS=${MONTHLY_BACKUPS:-1}
 # =================================================================================================================
 # Initialization:
 # -----------------------------------------------------------------------------------------------------------------
-while getopts clh FLAG; do
+while getopts clr:f:1h FLAG; do
   case $FLAG in
     c)
       export PRINT_CONFIG=1
@@ -420,7 +580,18 @@ while getopts clh FLAG; do
       listExistingBackups ${ROOT_BACKUP_DIR}
       exit 0
       ;;
-    h) 
+    r)
+      # Trigger restore mode ...
+      export _restoreDatabase=${OPTARG}
+      ;;
+    f)
+      # Optionally specify the backup file to restore from ...
+      export _fromBackup=${OPTARG}
+      ;;
+    1)
+      export RUN_ONCE=1
+      ;;
+    h)
       usage
       ;;
     \?)
@@ -435,6 +606,13 @@ shift $((OPTIND-1))
 # =================================================================================================================
 # Main Script
 # -----------------------------------------------------------------------------------------------------------------
+# If we are in restore mode, restore the database and exit.
+if [ ! -z "${_restoreDatabase}" ]; then
+  restoreDatabase "${_restoreDatabase}" "${_fromBackup}"
+  exit 0
+fi
+
+# Otherwise enter backup mode.
 while true; do
   if [ -z "${PRINT_CONFIG}" ]; then
     echoBlue "\nStarting backup process ..."
@@ -456,11 +634,16 @@ while true; do
       finalizeBackup "${filename}"
       pruneBackups "${backupDir}" "${database}"
     else
-      echoRed "\n[!!ERROR!!] - Failed to backup ${database}.\n"
+      echoRed "[!!ERROR!!] - Failed to backup ${database}."
     fi
   done
 
   listExistingBackups ${ROOT_BACKUP_DIR}
+
+  if runOnce; then
+    echoGreen "Single backup run complete.\n"
+    exit 0
+  fi
 
   echoYellow "Sleeping for ${BACKUP_PERIOD} ...\n"
   sleep ${BACKUP_PERIOD}
