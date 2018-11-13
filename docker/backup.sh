@@ -370,6 +370,7 @@ restoreDatabase(){
     echo -e "\n"
 
     export PGPASSWORD=${_adminPassword}
+    SECONDS=0
 
     # Drop
     psql -h "${_hostname}" -p "${_port}" -ac "DROP DATABASE \"${_database}\";"
@@ -386,7 +387,9 @@ restoreDatabase(){
     # Restore
     echo "Restoring from backup ..."
     gunzip -c "${_fileName}" | psql -h "${_hostname}" -p "${_port}" -d "${_database}"
-    echo -e "Restore complete."\\n
+
+    duration=$SECONDS
+    echo -e "Restore complete - Elapsed time: $(($duration/3600))h:$(($duration%3600/60))m:$(($duration%60))s"\\n
 
     # List tables
     psql -h "${_hostname}" -p "${_port}" -d "${_database}" -c "\d"
