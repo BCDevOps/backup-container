@@ -216,7 +216,7 @@ ftpBackup(){
     
     _filename=${1}${BACKUP_FILE_EXTENSION}
     echo "Transferring ${_filename} to ${FTP_URL}"
-    curl -k --ftp-ssl -T ${_filename} --user ${FTP_USER}:${FTP_PASSWORD} ftp://${FTP_URL}
+    curl --ftp-ssl -T ${_filename} --user ${FTP_USER}:${FTP_PASSWORD} ftp://${FTP_URL}
     
     if [ ${?} -eq 0 ]; then
       echo "Successfully transferred ${_filename} to the FTP server"
