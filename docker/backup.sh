@@ -214,14 +214,15 @@ ftpBackup(){
       return 0
     fi    
     
-    _filename=${1}${BACKUP_FILE_EXTENSION}
-    echo "Transferring ${_filename} to ${FTP_URL}"
-    curl --ftp-ssl -T ${_filename} --user ${FTP_USER}:${FTP_PASSWORD} ftp://${FTP_URL}
+    _filename=${1}
+    _filenameWithExtension="${_filename}${BACKUP_FILE_EXTENSION}"
+    echo "Transferring ${_filenameWithExtension} to ${FTP_URL}"    
+    curl --ftp-ssl -T ${_filenameWithExtension} --user ${FTP_USER}:${FTP_PASSWORD} ${FTP_URL}
     
     if [ ${?} -eq 0 ]; then
-      echo "Successfully transferred ${_filename} to the FTP server"
+      echo "Successfully transferred ${_filenameWithExtension} to the FTP server"
     else
-      echoRed "[!!ERROR!!] - Failed to transfer ${_filename} with the exit code ${?}"
+      echoRed "[!!ERROR!!] - Failed to transfer ${_filenameWithExtension} with the exit code ${?}"
     fi
   )
 }

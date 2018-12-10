@@ -32,8 +32,8 @@ The following environment variables are defaults used by the `backup` app.
 | POSTGRESQL_USER | *wired to a secret* | The username for the database(s) hosted by the `postgresql` Postgres server. The deployment configuration makes the assumption you have your database credentials stored in secrets (which you should), and the key for the username is `database-user`.  The name of the secret must be provided as the `DATABASE_DEPLOYMENT_NAME` parameter to the deployment configuration template. |
 | POSTGRESQL_PASSWORD | *wired to a secret* | The password for the database(s) hosted by the `postgresql` Postgres server. The deployment configuration makes the assumption you have your database credentials stored in secrets (which you should), and the key for the username is `database-password`.  The name of the secret must be provided as the `DATABASE_DEPLOYMENT_NAME` parameter to the deployment configuration template. |
 | FTP_URL |  | The FTP server URL. If not specified, the FTP backup feature is disabled. The default value in the deployment configuration is an empty value - not specified. |
-| FTP_USER | *wired to a secret* | The username for the FTP server. The deployment configuration creates a secret with the name specified in the FTP_SECRET_KEY parameter (default: `ftp-secret`). The key for the username is `ftp-user` and the value is an empty value by default. Note that when setting FTP_USER parameter in the backup-deploy.json, the value must be base64 encoded. |
-| FTP_PASSWORD | *wired to a secret* | The password for the FTP server. The deployment configuration creates a secret with the name specified in the FTP_SECRET_KEY parameter (default: `ftp-secret`). The key for the password is `ftp-password` and the value is an empty value by default. Note that when setting FTP_PASSWORD parameter in the backup-deploy.json, the value must be base64 encoded. |
+| FTP_USER | *wired to a secret* | The username for the FTP server. The deployment configuration creates a secret with the name specified in the FTP_SECRET_KEY parameter (default: `ftp-secret`). The key for the username is `ftp-user` and the value is an empty value by default. |
+| FTP_PASSWORD | *wired to a secret* | The password for the FTP server. The deployment configuration creates a secret with the name specified in the FTP_SECRET_KEY parameter (default: `ftp-secret`). The key for the password is `ftp-password` and the value is an empty value by default. |
 
 Using this default configuration you can easily back up a single postgres database, however you can extend the configuration and use the `backup.conf` file to list a number of databases for backup.
 
@@ -123,7 +123,7 @@ Features include:
 ## Using the FTP backup
 - The FTP backup feature is enabled by specifying the FTP server URL `FTP_URL`.
 - The FTP server must support FTPS.
-- Path can be added to the URL. For example, the URL can be `ftp.gov.bc.ca/schoolbus-db-backup/`. Note that when adding path, the URL must be ended with `/` as the example.
+- Path can be added to the URL. For example, the URL can be `ftp://ftp.gov.bc.ca/schoolbus-db-backup/`. Note that when adding path, the URL must be ended with `/` as the example.
 - The username and password must be populated in the secret key. Refer to the deployment configuration section.
 - There is a known issue for FTPS with Windows 2012 FTP. http://redoubtsolutions.com/fix-the-supplied-message-is-incomplete-error-when-you-use-an-ftps-client-to-upload-a-file-in-windows/
 

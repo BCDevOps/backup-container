@@ -34,7 +34,7 @@
 		"name": "${FTP_SECRET_KEY}"
 	  },
 	  "type": "Opaque",
-	  "data": {
+	  "stringData": {
 		"ftp-user": "${FTP_USER}",
 		"ftp-password": "${FTP_PASSWORD}"
 	  }
