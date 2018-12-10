@@ -22,6 +22,15 @@ generateConfigMap() {
   oc create configmap ${_config_map_name} --from-file ${_source_file} --dry-run -o ${_output_format} > ${_output_file}
 }
 
+printStatusMsg(){
+  (
+    _msg=${1}
+    _yellow='\033[1;33m'
+    _nc='\033[0m' # No Color
+    printf "\n${_yellow}${_msg}\n${_nc}" >&2
+  )
+}
+
 readParameter(){
   (
     _msg=${1}
@@ -36,26 +45,6 @@ readParameter(){
     read -r -p $"${_message}" ${_paramName}
 
     writeParameter "${_paramName}" "${_defaultValue}" "${_encode}"
-  )
-}
-
-printStatusMsg(){
-  (
-    _msg=${1}
-    _yellow='\033[1;33m'
-    _nc='\033[0m' # No Color
-    printf "\n${_yellow}${_msg}\n${_nc}" >&2
-  )
-}
-
-readFtpInfo(){
-  (
-    _ftpUrl = readParameter "FTP_URL - Please provide the FTP server URL.  If left blank, the FTP backup feature will be disabled:" FTP_URL "" 
-
-    if [ ! -z "${_ftpUrl}" ]; then
-       readParameter "FTP_USER - Please provide the FTP user name." FTP_USER ""
-
-    fi
   )
 }
 
