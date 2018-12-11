@@ -208,6 +208,25 @@ finalizeBackup(){
   )
 }
 
+ftpBackup(){
+  (
+    if [ -z "${FTP_URL}" ] ; then
+      return 0
+    fi    
+    
+    _filename=${1}
+    _filenameWithExtension="${_filename}${BACKUP_FILE_EXTENSION}"
+    echo "Transferring ${_filenameWithExtension} to ${FTP_URL}"    
+    curl --ftp-ssl -T ${_filenameWithExtension} --user ${FTP_USER}:${FTP_PASSWORD} ${FTP_URL}
+    
+    if [ ${?} -eq 0 ]; then
+      echo "Successfully transferred ${_filenameWithExtension} to the FTP server"
+    else
+      echoRed "[!!ERROR!!] - Failed to transfer ${_filenameWithExtension} with the exit code ${?}"
+    fi
+  )
+}
+
 listExistingBackups(){
   (
     _backupDir=${1:-${ROOT_BACKUP_DIR}}
@@ -530,6 +549,11 @@ listSettings(){
   for _db in ${_databaseList}; do
     echo "  - ${_db}"
   done
+  if [ -z "${FTP_URL}" ]; then
+    echo "- FTP: not configured"
+  else
+    echo "- FTP: ${FTP_URL}"
+  fi
 
   if [ ! -z "${_configurationError}" ]; then
     echoRed "\nConfiguration error!  The script will exit."
@@ -635,6 +659,7 @@ while true; do
     filename=$(generateFilename "${backupDir}" "${database}")
     if backupDatabase "${database}" "${filename}"; then
       finalizeBackup "${filename}"
+      ftpBackup "${filename}"
       pruneBackups "${backupDir}" "${database}"
     else
       echoRed "[!!ERROR!!] - Failed to backup ${database}."
