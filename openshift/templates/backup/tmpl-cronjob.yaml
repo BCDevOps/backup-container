@@ -1,0 +1,108 @@
+- kind: "CronJob"
+  apiVersion: "batch/v1beta1"
+  metadata:
+    name: "${JOB_NAME}"
+    namespace: "${NAMESPACE}"
+    labels:
+      template: "${JOB_NAME}-cronjob-template"
+      cronjob: "${JOB_NAME}"
+  spec:
+    schedule: "${SCHEDULE}"
+    concurrencyPolicy: "Forbid"
+    successfulJobsHistoryLimit: "${{SUCCESS_JOBS_HISTORY_LIMIT}}"
+    failedJobsHistoryLimit: "${{FAILED_JOBS_HISTORY_LIMIT}}"
+    jobTemplate:
+      metadata:
+        labels:
+          template: "${JOB_NAME}-job-template"
+          cronjob: "${JOB_NAME}"
+      spec:
+        backoffLimit: ${JOB_BACKOFF_LIMIT}
+        template:
+          spec:
+            containers:
+              - name: "${JOB_NAME}-cronjob"
+                image: "docker-registry.default.svc:5000/${IMAGE_NAMESPACE}/${SOURCE_IMAGE_NAME}:${TAG_NAME}"
+#                image: backup
+                command:
+                  - "/bin/bash"
+                  - "-c"
+                  - "/backup.sh -1"
+                volumeMounts:
+                  - mountPath: "${BACKUP_DIR}"
+                    name: "backup"
+                env:
+                  - name: BACKUP_DIR
+                    value: "${BACKUP_DIR}"
+                  - name: BACKUP_STRATEGY
+                    valueFrom:
+                      configMapKeyRef:
+                        name: "${JOB_NAME}-config"
+                        key: BACKUP_STRATEGY
+                  - name: NUM_BACKUPS
+                    valueFrom:
+                      configMapKeyRef:
+                        name: "${JOB_NAME}-config"
+                        key: NUM_BACKUPS
+                        optional: true
+                  - name: DAILY_BACKUPS
+                    valueFrom:
+                      configMapKeyRef:
+                        name: "${JOB_NAME}-config"
+                        key: DAILY_BACKUPS
+                        optional: true
+                  - name: WEEKLY_BACKUPS
+                    valueFrom:
+                      configMapKeyRef:
+                        name: "${JOB_NAME}-config"
+                        key: WEEKLY_BACKUPS
+                        optional: true
+                  - name: MONTHLY_BACKUPS
+                    valueFrom:
+                      configMapKeyRef:
+                        name: "${JOB_NAME}-config"
+                        key: MONTHLY_BACKUPS
+                        optional: true
+                  - name: DATABASE_SERVICE_NAME
+                    valueFrom:
+                      configMapKeyRef:
+                        name: "${JOB_NAME}-config"
+                        key: DATABASE_SERVICE_NAME
+                  - name: DEFAULT_PORT
+                    valueFrom:
+                      configMapKeyRef:
+                        name: "${JOB_NAME}-config"
+                        key: DEFAULT_PORT
+                        optional: true
+                  - name: POSTGRESQL_DATABASE
+                    valueFrom:
+                      configMapKeyRef:
+                        name: "${JOB_NAME}-config"
+                        key: POSTGRESQL_DATABASE
+                  - name: POSTGRESQL_USER
+                    valueFrom:
+                      secretKeyRef:
+                        name: "${DATABASE_DEPLOYMENT_NAME}"
+                        key: database-user
+                  - name: POSTGRESQL_PASSWORD
+                    valueFrom:
+                      secretKeyRef:
+                        name: "${DATABASE_DEPLOYMENT_NAME}"
+                        key: database-password
+            volumes:
+              - name: backup
+                persistentVolumeClaim:
+                  claimName: "${JOB_PERSISTENT_STORAGE_NAME}"
+#              - name: backup-config-volume
+#                configMap:
+#                  name: backup-conf
+#                  defaultMode: 420
+#                  items:
+#                    - key: backup.conf
+#                      path: backup.conf
+            restartPolicy: "Never"
+            terminationGracePeriodSeconds: 30
+            activeDeadlineSeconds: 1600
+            dnsPolicy: "ClusterFirst"
+            serviceAccountName: "${JOB_SERVICE_ACCOUNT}"
+            serviceAccount: "${JOB_SERVICE_ACCOUNT}"
