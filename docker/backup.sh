@@ -195,6 +195,22 @@ readConf(){
   )
 }
 
+makeDirectory()
+{
+  (
+    # Creates directories with permissions reclusively.
+    # ${1} is the directory to be created
+    # Inspired by https://unix.stackexchange.com/questions/49263/recursive-mkdir
+    directory="${1}"
+
+    test $# -eq 1 || { echo "Function 'makeDirectory' can create only one directory (with it's parent directories)."; exit 1; }
+    test -d "${directory}" && return 0
+    test -d "$(dirname "${directory}")" || { makeDirectory "$(dirname "${directory}")" || return 1; }
+    test -d "${directory}" || { mkdir --mode=g+w "${directory}" || return 1; }
+    return 0
+  )
+}
+
 finalizeBackup(){
   (
     _filename=${1}
@@ -344,7 +360,7 @@ touchBackupFile() {
     # during a backup the backup directory could be deleted.
     _backupFile=${1}
     _backupDir="${_backupFile%/*}"
-    mkdir -p ${_backupDir} && touch ${_backupFile}
+    makeDirectory ${_backupDir} && touch ${_backupFile}
   )
 }
 
@@ -472,7 +488,7 @@ createBackupFolder(){
     # Don't actually create the folder if we're just printing the configuation.
     if [ -z "${PRINT_CONFIG}" ]; then
       echo "Making backup directory ${_backupDir} ..." >&2
-      if ! mkdir -p ${_backupDir}; then
+      if ! makeDirectory ${_backupDir}; then
         echo $(echoRed "[!!ERROR!!] - Failed to create backup directory ${_backupDir}.") >&2
         exit 1;
       fi;
