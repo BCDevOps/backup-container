@@ -34,6 +34,9 @@ The following environment variables are defaults used by the `backup` app.
 | FTP_URL |  | The FTP server URL. If not specified, the FTP backup feature is disabled. The default value in the deployment configuration is an empty value - not specified. |
 | FTP_USER | *wired to a secret* | The username for the FTP server. The deployment configuration creates a secret with the name specified in the FTP_SECRET_KEY parameter (default: `ftp-secret`). The key for the username is `ftp-user` and the value is an empty value by default. |
 | FTP_PASSWORD | *wired to a secret* | The password for the FTP server. The deployment configuration creates a secret with the name specified in the FTP_SECRET_KEY parameter (default: `ftp-secret`). The key for the password is `ftp-password` and the value is an empty value by default. |
+| WEBHOOK_URL |  | The URL of the webhook endpoint to use for notifications. If not specified, the webhook integration feature is disabled. The default value in the deployment configuration is an empty value - not specified. |
+| ENVIRONMENT_FRIENDLY_NAME |  | A friendly (human readable) name of the environment.  This variable is used by the webhook integration to identify the environment from which the backup notifications originate. The default value in the deployment configuration is an empty value - not specified. |
+| ENVIRONMENT_NAME |  | A name or ID of the environment.  This variable is used by the webhook integration to identify the environment from which the backup notifications originate. The default value in the deployment configuration is an empty value - not specified. |
 
 Using this default configuration you can easily back up a single postgres database, however you can extend the configuration and use the `backup.conf` file to list a number of databases for backup.
 
@@ -126,6 +129,22 @@ Features include:
 - Path can be added to the URL. For example, the URL can be `ftp://ftp.gov.bc.ca/schoolbus-db-backup/`. Note that when adding path, the URL must be ended with `/` as the example.
 - The username and password must be populated in the secret key. Refer to the deployment configuration section.
 - There is a known issue for FTPS with Windows 2012 FTP. http://redoubtsolutions.com/fix-the-supplied-message-is-incomplete-error-when-you-use-an-ftps-client-to-upload-a-file-in-windows/
+
+## Using the Webhook Integration
+
+The Webhook integration feature is enabled by specifying the webhook URL, `WEBHOOK_URL`, in your configuration.  It's recommended that you also provide values for `ENVIRONMENT_FRIENDLY_NAME` and `ENVIRONMENT_NAME`, so you can better identify the environment from which the messages originate and do things like produce links to the environment.
+
+The Webhook integration feature was built with Rocket.Chat in mind and an integration script for Rocket.Chat can be found in [rocket.chat.integration.js](./scripts/rocket.chat.integration.js).  This script was developed to support the BC OpenShift Pathfinder environment and will format the notifications from the backup script into Rocket.Chat messages (examples below).  If you provide values for the environment name (`ENVIRONMENT_FRIENDLY_NAME` and `ENVIRONMENT_NAME`) hyperlinks will be added to the messages to link you to the pathfinder project console.
+
+Sample Message:
+
+![Sample Message](./docs/SampleRocketChatMessage.png)
+
+Sample Error Message:
+
+![Sample Erros Message](./docs/SampleRocketChatErrorMessage.png)
+
+For information on how setup a webhook in Rocket.Chat refer to [Incoming WebHook Scripting](https://rocket.chat/docs/administrator-guides/integrations/).  The **Webhook URL** created during this process is the URL you use for `WEBHOOK_URL` to enable the Webhook integration feature.
 
 ## Backup
 ---

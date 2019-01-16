@@ -317,7 +317,7 @@
     {
       "name": "WEBHOOK_URL",
       "displayName": "Webhook URL",
-      "description": "The URL of the webhook to use for notifications.",
+      "description": "The URL of the webhook to use for notifications.  If not specified, the webhook integration feature is disabled.",
       "required": false,
       "value": ""
     },
