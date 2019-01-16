@@ -43,7 +43,7 @@ When using the `backup.conf` file the following environment variables are ignore
 
 When backing up multiple databases, the retention settings apply to each database individually.  For instance if you use the `daily` strategy and set the retention number(s) to 5, you will retain 5 copies of each database.  So plan your backup storage accordingly.
 
-An example of the backup container in action can be found here; [example log output](./ExampleLog.md)
+An example of the backup container in action can be found here; [example log output](./docs/ExampleLog.md)
 
 ## Backup Strategies
 ---
