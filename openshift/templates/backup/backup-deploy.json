@@ -27,18 +27,18 @@
         }
       }
     },
-	{
-	  "apiVersion": "v1",
-	  "kind": "Secret",
-	  "metadata": {
-		"name": "${FTP_SECRET_KEY}"
-	  },
-	  "type": "Opaque",
-	  "stringData": {
-		"ftp-user": "${FTP_USER}",
-		"ftp-password": "${FTP_PASSWORD}"
-	  }
-	},
+    {
+      "apiVersion": "v1",
+      "kind": "Secret",
+      "metadata": {
+        "name": "${FTP_SECRET_KEY}"
+      },
+      "type": "Opaque",
+      "stringData": {
+        "ftp-user": "${FTP_USER}",
+        "ftp-password": "${FTP_PASSWORD}"
+      }
+    },
     {
       "kind": "DeploymentConfig",
       "apiVersion": "v1",
@@ -169,7 +169,7 @@
                   {
                     "name": "FTP_URL",
                     "value": "${FTP_URL}"
-                  },		  
+                  },
                   {
                     "name": "FTP_USER",
                     "valueFrom": {
@@ -187,6 +187,18 @@
                         "key": "ftp-password"
                       }
                     }
+                  },
+                  {
+                    "name": "WEBHOOK_URL",
+                    "value": "${WEBHOOK_URL}"
+                  },
+                  {
+                    "name": "ENVIRONMENT_FRIENDLY_NAME",
+                    "value": "${ENVIRONMENT_FRIENDLY_NAME}"
+                  },
+                  {
+                    "name": "ENVIRONMENT_NAME",
+                    "value": "${ENVIRONMENT_NAME}"
                   }
                 ],
                 "resources": {
@@ -274,34 +286,55 @@
       "required": true,
       "value": "rolling"
     },
-	{
+    {
       "name": "FTP_SECRET_KEY",
       "displayName": "FTP Secret Key",
       "description": "The FTP secret key is used to wire up the credentials associated to the FTP.",
       "required": true,
       "value": "ftp-secret"
-    },	
-	{
+    },
+    {
       "name": "FTP_URL",
       "displayName": "FTP Server URL",
       "description": "The URL of the backup FTP server",
       "required": false,
       "value": ""
-    },	
-	{
+    },
+    {
       "name": "FTP_USER",
       "displayName": "FTP user name",
       "description": "FTP user name",
       "required": false,
       "value": ""
-    },	
-	{
+    },
+    {
       "name": "FTP_PASSWORD",
       "displayName": "FTP password",
       "description": "FTP password",
       "required": false,
       "value": ""
-    },	
+    },
+    {
+      "name": "WEBHOOK_URL",
+      "displayName": "Webhook URL",
+      "description": "The URL of the webhook to use for notifications.",
+      "required": false,
+      "value": ""
+    },
+    {
+      "name": "ENVIRONMENT_FRIENDLY_NAME",
+      "displayName": "Friendly Environment Name",
+      "description": "The human readable name of the environment.  This variable is used by the webhook integration to identify the environment in which the backup notifications originate.",
+      "required": false,
+      "value": ""
+    },
+    {
+      "name": "ENVIRONMENT_NAME",
+      "displayName": "Environment Name (Environment Id)",
+      "description": "The name or Id of the environment.  This variable is used by the webhook integration to identify the environment in which the backup notifications originate.",
+      "required": false,
+      "value": ""
+    },
     {
       "name": "BACKUP_DIR",
       "displayName": "The root backup directory",
