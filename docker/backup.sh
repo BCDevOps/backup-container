@@ -1,4 +1,4 @@
-#!/bin/bash
+  #!/bin/bash
 
 # =================================================================================================================
 # Usage:
@@ -111,6 +111,50 @@ echoMagenta (){
   echo -e "${_magenta}${_msg}${_nc}"
 }
 
+logInfo(){
+  (
+    infoMsg="${1}"
+    echo "${infoMsg}"
+    postMsgToWebhook "${ENVIRONMENT_FRIENDLY_NAME}" \
+                     "${ENVIRONMENT_NAME}" \
+                     "INFO" \
+                     "${infoMsg}"
+  )
+}
+
+logError(){
+  (
+    errorMsg="${1}"
+    echoRed "[!!ERROR!!] - ${errorMsg}"
+    postMsgToWebhook "${ENVIRONMENT_FRIENDLY_NAME}" \
+                     "${ENVIRONMENT_NAME}" \
+                     "ERROR" \
+                     "${errorMsg}"
+  )
+}
+
+getWebhookPayload(){
+  _payload=$(eval "cat <<-EOF
+$(<${WEBHOOK_TEMPLATE})
+EOF
+")
+  echo "${_payload}"
+}
+
+postMsgToWebhook(){
+  (
+    if [ -z "${WEBHOOK_URL}" ] && [ -f ${WEBHOOK_TEMPLATE} ]; then
+      return 0
+    fi
+
+    projectFriendlyName=${1}
+    projectName=${2}
+    statusCode=${3}
+    message=${4}
+    curl -s -X POST -H 'Content-Type: application/json' --data "$(getWebhookPayload)" "${WEBHOOK_URL}" > /dev/null
+  )
+}
+
 waitForAnyKey() {
   read -n1 -s -r -p $'\e[33mWould you like to continue?\e[0m  Press Ctrl-C to exit, or any other key to continue ...' key
   echo -e \\n
@@ -219,7 +263,7 @@ finalizeBackup(){
 
     if [ -f ${_inProgressFilename} ]; then
       mv "${_inProgressFilename}" "${_finalFilename}"
-      echo "Backup written to ${_finalFilename} ..."
+      logInfo "Backup written to ${_finalFilename} ..."
     fi
   )
 }
@@ -236,9 +280,9 @@ ftpBackup(){
     curl --ftp-ssl -T ${_filenameWithExtension} --user ${FTP_USER}:${FTP_PASSWORD} ${FTP_URL}
     
     if [ ${?} -eq 0 ]; then
-      echo "Successfully transferred ${_filenameWithExtension} to the FTP server"
+      logInfo "Successfully transferred ${_filenameWithExtension} to the FTP server"
     else
-      echoRed "[!!ERROR!!] - Failed to transfer ${_filenameWithExtension} with the exit code ${?}"
+      logError "Failed to transfer ${_filenameWithExtension} with the exit code ${?}"
     fi
   )
 }
@@ -489,7 +533,7 @@ createBackupFolder(){
     if [ -z "${PRINT_CONFIG}" ]; then
       echo "Making backup directory ${_backupDir} ..." >&2
       if ! makeDirectory ${_backupDir}; then
-        echo $(echoRed "[!!ERROR!!] - Failed to create backup directory ${_backupDir}.") >&2
+        echo $(logError "Failed to create backup directory ${_backupDir}.") >&2
         exit 1;
       fi;
     fi
@@ -537,6 +581,10 @@ dailyStrategy(){
 listSettings(){
   _backupDirectory=${1}
   _databaseList=${2}
+  _yellow='\e[33m'
+  _nc='\e[0m' # No Color
+  _notConfigured="${_yellow}not configured${_nc}"
+
   echo -e \\n"Settings:"
   if runOnce; then
     echo "- Run mode: Once"
@@ -565,14 +613,30 @@ listSettings(){
   for _db in ${_databaseList}; do
     echo "  - ${_db}"
   done
+  echo
   if [ -z "${FTP_URL}" ]; then
-    echo "- FTP: not configured"
+    echo -e "- FTP server: ${_notConfigured}"
   else
-    echo "- FTP: ${FTP_URL}"
+    echo "- FTP server: ${FTP_URL}"
+  fi
+  if [ -z "${WEBHOOK_URL}" ]; then
+    echo -e "- Webhook Endpoint: ${_notConfigured}"
+  else
+    echo "- Webhook Endpoint: ${WEBHOOK_URL}"
+  fi
+  if [ -z "${ENVIRONMENT_FRIENDLY_NAME}" ]; then
+    echo -e "- Environment Friendly Name: ${_notConfigured}"
+  else
+    echo -e "- Environment Friendly Name: ${ENVIRONMENT_FRIENDLY_NAME}"
+  fi
+  if [ -z "${ENVIRONMENT_NAME}" ]; then
+    echo -e "- Environment Name (Id): ${_notConfigured}"
+  else
+    echo "- Environment Name (Id): ${ENVIRONMENT_NAME}"
   fi
 
   if [ ! -z "${_configurationError}" ]; then
-    echoRed "\nConfiguration error!  The script will exit."
+    logError "\nConfiguration error!  The script will exit."
     sleep 5
     exit 1
   fi
@@ -609,6 +673,9 @@ export NUM_BACKUPS=${NUM_BACKUPS:-31}
 export DAILY_BACKUPS=${DAILY_BACKUPS:-6}
 export WEEKLY_BACKUPS=${WEEKLY_BACKUPS:-4}
 export MONTHLY_BACKUPS=${MONTHLY_BACKUPS:-1}
+
+# Webhook defaults
+WEBHOOK_TEMPLATE=${WEBHOOK_TEMPLATE:-webhook-template.json}
 # ======================================================================================
 
 # =================================================================================================================
@@ -678,7 +745,7 @@ while true; do
       ftpBackup "${filename}"
       pruneBackups "${backupDir}" "${database}"
     else
-      echoRed "[!!ERROR!!] - Failed to backup ${database}."
+      logError "Failed to backup ${database}."
     fi
   done
 

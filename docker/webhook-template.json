@@ -1,0 +1,6 @@
+{
+  "projectFriendlyName": "${projectFriendlyName}",
+  "projectName": "${projectName}",
+  "statusCode": "${statusCode}",
+  "message": "${message}"
+}

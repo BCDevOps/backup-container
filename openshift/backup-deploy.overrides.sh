@@ -87,6 +87,9 @@ readParameter "FTP_URL - Please provide the FTP server URL.  If left blank, the 
 readParameter "FTP_USER - Please provide the FTP user name:" FTP_USER "" 
 readParameter "FTP_PASSWORD - Please provide the FTP password:" FTP_PASSWORD "" 
 
+# Get the webhook URL
+readParameter "WEBHOOK_URL - Please provide the webhook endpoint URL.  If left blank, the webhook integration feature will be disabled:" WEBHOOK_URL "" 
+
 SPECIALDEPLOYPARMS="--param-file=${_overrideParamFile}"
 echo ${SPECIALDEPLOYPARMS}
 
