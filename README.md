@@ -5,13 +5,11 @@
 This is a simple containerized backup solution for backing up one or more postgres databases to a secondary location.  _Code and documentation was originally pulled from the [HETS Project](https://github.com/bcgov/hets)_
 
 ## Postgres Backups in OpenShift
-----
 This project provides you with a starting point for integrating backups into your OpenShift projects.  The scripts and templates provided in the [openshift](./openshift) directory are compatible with the [openshift-developer-tools](https://github.com/BCDevOps/openshift-developer-tools) scripts.  They help you create an OpenShift deployment or cronjob called `backup` in your projects that runs backups on a Postgres database(s) within the project environment.  You only need to integrate the scripts and templates into your project(s), the builds can be done with this repository as the source.
 
 Following are the instructions for running the backups and a restore.
 
 ## Deployment / Configuration
-----
 Together, the scripts and templates provided in the [openshift](./openshift) directory will automatically deploy the `backup` app as described below.  The [backup-deploy.overrides.sh](./openshift/backup-deploy.overrides.sh) script generates the deployment configuration necessary for the [backup.conf](config/backup.conf) file to be mounted as a ConfigMap by the `backup` container.
 
 The following environment variables are defaults used by the `backup` app.
@@ -49,7 +47,7 @@ The cronjob object can be deployed in the same manner as the application, and wi
 The following variables are supported in the first iteration of the backup cronjob:
 
 | Name | Default (if not set) | Purpose |
-| ---- | ------- | ------- |
+| ---- | -------------------- | ------- |
 | BACKUP_STRATEGY | daily | To control the backup strategy used for backups.  This is explained more below. |
 | BACKUP_DIR | /backups/ | The directory under which backups will be stored.  The deployment configuration mounts the persistent volume claim to this location when first deployed. |
 | NUM_BACKUPS | 31 | For backward compatibility this value is used with the daily backup strategy to set the number of backups to retain before pruning. |
@@ -63,13 +61,17 @@ The following variables are supported in the first iteration of the backup cronj
 
 The following variables are NOT supported:
 
-| BACKUP_PERIOD | 1d | The schedule on which to run the backups.  The value is replaced by the cron schedule variable (SCHEDULE)
+| Name | Default (if not set) | Purpose |
+| ---- | -------------------- | ------- |
+| BACKUP_PERIOD | 1d | The schedule on which to run the backups.  The value is replaced by the cron schedule variable (SCHEDULE) |
 
 The scheduled job does not yet support the FTP environment variables.
 
-| FTP_URL
-| FTP_USER
-| FTP_PASSWORD
+| Name |
+| ---- |
+| FTP_URL |
+| FTP_USER |
+| FTP_PASSWORD |
 
 ## Multiple Databases
 
@@ -78,7 +80,6 @@ When backing up multiple databases, the retention settings apply to each databas
 An example of the backup container in action can be found here; [example log output](./docs/ExampleLog.md)
 
 ## Backup Strategies
----
 
 The `backup` app supports two backup strategies, each are explained below.  Regardless of the strategy backups are identified using a core name derived from the `host/database` specification and a timestamp.  All backups are compressed using gzip.
 
@@ -141,7 +142,6 @@ Current Backups:
 ```
 
 ## Using the Backup Script
----
 
 The [backup script](./docker/backup.sh) has a few utility features built into it.  For a full list of features and documentation run `backup.sh -h`.
 
@@ -178,7 +178,7 @@ Sample Error Message:
 For information on how setup a webhook in Rocket.Chat refer to [Incoming WebHook Scripting](https://rocket.chat/docs/administrator-guides/integrations/).  The **Webhook URL** created during this process is the URL you use for `WEBHOOK_URL` to enable the Webhook integration feature.
 
 ## Backup
----
+
 The purpose of the backup app is to do automatic backups.  Deploy the Backup app to do daily backups.  Viewing the Logs for the Backup App will show a record of backups that have been completed.
 
 The Backup app performs the following sequence of operations:
@@ -236,7 +236,7 @@ Following are more detailed steps to perform a restore of a backup.
 1. Verify that the database restore worked
     1. On the database pod, query a table - e.g the USER table: `SELECT * FROM "SBI_USER";` - you can look at other tables if you want.
     1. Verify the expected data is shown.
-1. Exit remote shells back to your local commmand line
+1. Exit remote shells back to your local command line
 1. From the Openshift Console restart the app:
     1. Scale up any pods you scaled down and wait for them to finish starting up.  View the logs to verify there were no startup issues.
 1.  Verify full application functionality.
@@ -244,11 +244,9 @@ Following are more detailed steps to perform a restore of a backup.
 Done!
 
 ## Getting Help or Reporting an Issue
----
 To report bugs/issues/feature requests, please file an [issue](../../issues).
 
 ## How to Contribute
----
 If you would like to contribute, please see our [CONTRIBUTING](./CONTRIBUTING.md) guidelines.
 
 Please note that this project is released with a [Contributor Code of Conduct](./CODE_OF_CONDUCT.md). 
