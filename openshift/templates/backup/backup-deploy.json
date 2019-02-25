@@ -153,7 +153,7 @@
                     "valueFrom": {
                       "secretKeyRef": {
                         "name": "${DATABASE_DEPLOYMENT_NAME}",
-                        "key": "database-user"
+                        "key": "${DATABASE_USER_KEY_NAME}"
                       }
                     }
                   },
@@ -162,7 +162,7 @@
                     "valueFrom": {
                       "secretKeyRef": {
                         "name": "${DATABASE_DEPLOYMENT_NAME}",
-                        "key": "database-password"
+                        "key": "${DATABASE_PASSWORD_KEY_NAME}"
                       }
                     }
                   },
@@ -278,6 +278,20 @@
       "description": "The name associated to the database deployment resources.  In particular, this is used to wire up the credentials associated to the database.",
       "required": true,
       "value": "postgresql"
+    },
+    {
+      "name": "DATABASE_USER_KEY_NAME",
+      "displayName": "Database User Key Name",
+      "description": "The datbase user key name stoed in database deployment resources specified by DATABASE_DEPLOYMENT_NAME.",
+      "required": true,
+      "value": "database-user"
+    },
+    {
+      "name": "DATABASE_PASSWORD_KEY_NAME",
+      "displayName": "Database Password Key Name",
+      "description": "The database password key name stored in database deployment resources specified by DATABASE_DEPLOYMENT_NAME.",
+      "required": true,
+      "value": "database-password"
     },
     {
       "name": "BACKUP_STRATEGY",
