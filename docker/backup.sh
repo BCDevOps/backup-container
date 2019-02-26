@@ -225,9 +225,13 @@ getHostPasswordParam(){
 readConf(){
   (
     if [ -f ${BACKUP_CONF} ]; then
-      # Read in the config minus any comments ...
+      # Read in the config ...
+      #  - Remove all comments
+      #  - Remove any remaining lines that do not match the expected format(s):
+      #     - <Hostname/>/<DatabaseName/>
+      #     - <Hostname/>:<Port/>/<DatabaseName/>
       echo "Reading backup config from ${BACKUP_CONF} ..." >&2
-      _value=$(sed '/^[[:blank:]]*#/d;s/#.*//' ${BACKUP_CONF})
+      _value=$(sed '/^[[:blank:]]*#/d;/#.*/d;/^[a-zA-Z0-9_/-]*\(:[0-9]*\)\?\/[a-zA-Z0-9_/-]*$/!d;' ${BACKUP_CONF})
     fi
 
     if [ -z "${_value}" ]; then
@@ -732,6 +736,7 @@ while true; do
 
   databases=$(readConf)
   backupDir=$(createBackupFolder)
+
   listSettings "${backupDir}" "${databases}"
 
   if [ ! -z "${PRINT_CONFIG}" ]; then
