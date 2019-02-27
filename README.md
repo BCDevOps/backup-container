@@ -24,7 +24,7 @@ The following environment variables are defaults used by the `backup` app.
 | DAILY_BACKUPS | 6 | When using the rolling backup strategy this value is used to determine the number of daily (Mon-Sat) backups to retain before pruning. |
 | WEEKLY_BACKUPS | 4 | When using the rolling backup strategy this value is used to determine the number of weekly (Sun) backups to retain before pruning. |
 | MONTHLY_BACKUPS | 1 | When using the rolling backup strategy this value is used to determine the number of monthly (last day of the month) backups to retain before pruning. |
-| BACKUP_PERIOD | 1d | The schedule on which to run the backups.  The value is used by a sleep command and can be defined in d, h, m, or s. |
+| BACKUP_PERIOD | 1d | Only used for Legacy Mode.  Ignored when running in Cron Mode.  The schedule on which to run the backups.  The value is used by a sleep command and can be defined in d, h, m, or s. |
 | DATABASE_SERVICE_NAME | postgresql | The name of the service/host for the *default* database target. |
 | POSTGRESQL_DATABASE | my_postgres_db | The name of the *default* database target; the name of the database you want to backup. |
 | POSTGRESQL_USER | *wired to a secret* | The username for the database(s) hosted by the `postgresql` Postgres server. The deployment configuration makes the assumption you have your database credentials stored in secrets (which you should), and the key for the username is `database-user`.  The name of the secret must be provided as the `DATABASE_DEPLOYMENT_NAME` parameter to the deployment configuration template. |
@@ -36,11 +36,17 @@ The following environment variables are defaults used by the `backup` app.
 | ENVIRONMENT_FRIENDLY_NAME |  | A friendly (human readable) name of the environment.  This variable is used by the webhook integration to identify the environment from which the backup notifications originate. The default value in the deployment configuration is an empty value - not specified. |
 | ENVIRONMENT_NAME |  | A name or ID of the environment.  This variable is used by the webhook integration to identify the environment from which the backup notifications originate. The default value in the deployment configuration is an empty value - not specified. |
 
-Using this default configuration you can easily back up a single postgres database, however you can extend the configuration and use the `backup.conf` file to list a number of databases for backup.
+Using this default configuration you can easily back up a single postgres database, however you can extend the configuration and use the `backup.conf` file to list a number of databases for backup and even set a cron schedule for the backups.
 
 When using the `backup.conf` file the following environment variables are ignored, since you list all of your `host`/`database` pairs in the file; `DATABASE_SERVICE_NAME`, `POSTGRESQL_DATABASE`.  To provide the credentials needed for the listed databases you extend the deployment configuration to include `hostname_USER` and `hostname_PASSWORD` credential pairs which are wired to the appropriate secrets (where hostname matches the hostname/servicename, in all caps and underscores, of the database).  For example, if you are backing up a database named `wallet-db/my_wallet`, you would have to extend the deployment configuration to include a `WALLET_DB_USER` and `WALLET_DB_PASSWORD` credential pair, wired to the appropriate secrets, to access the database(s) on the `wallet-db` server.  You may notice the default configuration is already wired for the host/service name `postgresql`, so you're already covered if all your databases are on a server of that name.
 
+### Cron Mode
+
+The `backup` container supports running the backups on a cron schedule.  The schedule is specified in the `backup.conf` file.  Refer to the [backup.conf](./config/backup.conf) file for additional details and examples.
+
 ### Cronjob Deployment / Configuration / Constraints
+
+*This section describes the configuration of an OpenShift CronJob this is different than the Cron Mode supported by the container when deployed in "long running" mode.*
 
 The cronjob object can be deployed in the same manner as the application, and will also have a dependency on the image built by the build config.  The main constraint for the cronjob objects is that they will require a configmap in place of environment variables and does not support the `backup.conf` for multiple database backups in the same job.  In order to backup multiple databases, create multiple cronjob objects with their associated configmaps and secrets.
 
@@ -186,9 +192,9 @@ The Backup app performs the following sequence of operations:
 1. Create a directory that will be used to store the backup.
 2. Use the `pg_dump` and `gzip` commands to make a backup.
 3. Cull backups more than $NUM_BACKUPS (default 31 - configured in deployment script)
-4. Sleep for a day and repeat
+4. Wait/Sleep for a period of time and repeat
 
-Note that with the pod deployment, we are just using a simple "sleep" to run the backup periodically.  With the OpenShift Scheduled Job deployment, use the backup-cronjob.yaml template and set the schedule via the cronjob object SCHEDULE template parameter.
+Note that with the pod deployment, we support cron schedule(s) or the legacy mode (which uses a simple "sleep") to run the backup periodically.  With the OpenShift Scheduled Job deployment, use the backup-cronjob.yaml template and set the schedule via the OpenShift cronjob object SCHEDULE template parameter.
 
 A separate pod is used vs. having the backups run from the Postgres Pod for fault tolerant purposes - to keep the backups separate from the database storage.  We don't want to, for example, lose the storage of the database, or have the database and backups storage fill up, and lose both the database and the backups.
 
