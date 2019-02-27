@@ -610,8 +610,8 @@ function formatList(){
 }
 
 function listSettings(){
-  _backupDirectory=${1}
-  _databaseList=${2}
+  _backupDirectory=${1:-$(createBackupFolder 1)}
+  _databaseList=${2:-$(readConf 2>/dev/null)}
   _yellow='\e[33m'
   _nc='\e[0m' # No Color
   _notConfigured="${_yellow}not configured${_nc}"
@@ -770,6 +770,7 @@ function runBackups(){
 }
 
 function startCron(){
+  listSettings
   echo "Starting go-crond as a forground task ..."
   CRON_CMD="go-crond -v --allow-unprivileged ${BACKUP_CONF}"
   exec ${CRON_CMD}
@@ -835,9 +836,7 @@ while getopts clr:f:1sh FLAG; do
   case $FLAG in
     c)
       echoBlue "\nListing configuration settings ..."
-      databases=$(readConf)
-      backupDir=$(createBackupFolder 1)
-      listSettings "${backupDir}" "${databases}"
+      listSettings
       exit 0
       ;;
     l)
