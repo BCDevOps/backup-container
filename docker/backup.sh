@@ -19,13 +19,16 @@ function usage () {
     -h prints this usage documentation.
     
     -1 run once.
-      Performs a single set of backups and exits.
-    
+       Performs a single set of backups and exits.
+
+    -s run scheduled.
+       Performs simular to run once.  A flag to be used by cron scheduled backups to indicate they are being run on a schedule.
+
     -l lists existing backups.
-      Great for listing the available backups for a restore.
+       Great for listing the available backups for a restore.
 
     -c lists the current configuration settings and exits.
-      Great for confirming the current settings, and listing the databases included in the backup schedule.
+       Great for confirming the current settings, and listing the databases included in the backup schedule.
 
   Restore Options:
   ========
@@ -47,16 +50,16 @@ function usage () {
     database/data whithout affecting the original database.
 
     -r <DatabaseSpec/>; in the form <Hostname/>/<DatabaseName/>, or <Hostname/>:<Port/>/<DatabaseName/>
-      Triggers restore mode and starts restore mode on the specified database.
+       Triggers restore mode and starts restore mode on the specified database.
 
       Example:
         $0 -r postgresql:5432/TheOrgBook_Database
           - Would start the restore process on the database using the most recent backup for the database.
  
     -f <BackupFileFilter/>; the filter to use to find/identify the backup file to restore.
-      This can be a full or partial file specification.  When only part of a filename is specified the restore process
-      attempts to find the most recent backup matching the filter.
-      If not specified, the restore process attempts to locate the most recent backup file for the specified database.
+       This can be a full or partial file specification.  When only part of a filename is specified the restore process
+       attempts to find the most recent backup matching the filter.
+       If not specified, the restore process attempts to locate the most recent backup file for the specified database.
 
       Examples:
         $0 -r wallet-db/test_db -f wallet-db-tob_holder
@@ -635,7 +638,7 @@ function listSettings(){
   echo "- Number of each backup to retain: $(getNumBackupsToRetain)"
   echo "- Backup folder: ${_backupDirectory}"
   if [[ "${_mode}" != ${ONCE} ]]; then
-    if [[ "${_mode}" == ${CRON} ]]; then
+    if [[ "${_mode}" == ${CRON} ]] || [[ "${_mode}" == ${SCHEDULED} ]]; then
       _backupSchedule=$(readConf 1 2>/dev/null)
     fi
     _backupSchedule=$(formatList "${_backupSchedule:-${BACKUP_PERIOD}}")
@@ -687,13 +690,23 @@ function isInstalled(){
 
 function cronMode(){
   (
-    cronTabs=$(readConf 1)
+    cronTabs=$(readConf 1 2>/dev/null)
     if isInstalled "go-crond" && [ ! -z "${cronTabs}" ]; then
       return 0
     else
       return 1
     fi
   )
+}
+
+function isScheduled(){
+  (
+    if [ ! -z "${SCHEDULED_RUN}" ]; then
+      return 0
+    else
+      return 1
+    fi
+  )  
 }
 
 function restoreMode(){
@@ -716,6 +729,10 @@ function getMode(){
 
     if [ -z "${_mode}" ] && runOnce; then
       _mode="${ONCE}"
+    fi
+
+    if [ -z "${_mode}" ] && isScheduled; then
+      _mode="${SCHEDULED}"
     fi
 
     if [ -z "${_mode}" ] && cronMode; then
@@ -805,6 +822,7 @@ WEBHOOK_TEMPLATE=${WEBHOOK_TEMPLATE:-webhook-template.json}
 
 # Modes:
 export ONCE="once"
+export SCHEDULED="scheduled"
 export RESTORE="restore"
 export CRON="cron"
 export LEGACY="legacy"
@@ -813,7 +831,7 @@ export LEGACY="legacy"
 # =================================================================================================================
 # Initialization:
 # -----------------------------------------------------------------------------------------------------------------
-while getopts clr:f:1h FLAG; do
+while getopts clr:f:1sh FLAG; do
   case $FLAG in
     c)
       echoBlue "\nListing configuration settings ..."
@@ -837,6 +855,9 @@ while getopts clr:f:1h FLAG; do
     1)
       export RUN_ONCE=1
       ;;
+    s)
+      export SCHEDULED_RUN=1
+      ;;
     h)
       usage
       ;;
@@ -856,6 +877,11 @@ case $(getMode) in
   ${ONCE})
     runBackups 
     echoGreen "Single backup run complete.\n"
+    ;;
+
+  ${SCHEDULED})
+    runBackups 
+    echoGreen "Scheduled backup run complete.\n"
     ;;
 
   ${RESTORE})
