@@ -789,8 +789,9 @@ function runBackups(){
 }
 
 function startCron(){
+  echoBlue "Starting backup process ..."
   listSettings
-  echo "Starting go-crond as a forground task ..."
+  echoBlue "Starting go-crond as a forground task ...\n"
   CRON_CMD="go-crond -v --allow-unprivileged ${BACKUP_CONF}"
   exec ${CRON_CMD}
 }
