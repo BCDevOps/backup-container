@@ -6,7 +6,17 @@
 function usage () {
   cat <<-EOF
 
-  Automated backup script for Postgresql databases
+  Automated backup script for Postgresql databases.
+
+  There are two modes of scheduling backups:
+    - Cron Mode:
+      - Allows one or more schedules to be defined as cron tabs in ${BACKUP_CONF}.
+      - If cron (go-crond) is installed and at least one cron tab is defined, the script will startup in Cron Mode,
+        otherwise it will default to Legacy Mode.
+      - Refer to ${BACKUP_CONF} for additional details and examples of using cron scheduling.
+
+    - Legacy Mode:
+      - Uses a simple sleep command to set the schedule based on the setting of BACKUP_PERIOD; defaults to ${BACKUP_PERIOD}
 
   Refer to the project documentation for additional details on how to use this script.
   - https://github.com/BCDevOps/backup-container
@@ -17,12 +27,15 @@ function usage () {
   Standard Options:
   ========
     -h prints this usage documentation.
-    
+
     -1 run once.
        Performs a single set of backups and exits.
 
     -s run scheduled.
-       Performs simular to run once.  A flag to be used by cron scheduled backups to indicate they are being run on a schedule.
+       Performs similar to run once.
+       A flag to be used by cron scheduled backups to indicate they are being run on a schedule.
+       Requires cron (go-crond) to be installed and at least one cron tab to be defined in ${BACKUP_CONF}
+       Refer to ${BACKUP_CONF} for additional details and examples of using cron scheduling.
 
     -l lists existing backups.
        Great for listing the available backups for a restore.
@@ -43,11 +56,11 @@ function usage () {
     This provides you with an opportunity to ensure you have selected the correct database and backup file
     for the job.
 
-    Restore mode will allow you to restore a database to a different location (host, and/or database name) provided 
-    it can contact the host and you can provide the appropriate credentials.  If you choose to do this, you will need 
-    to provide a file filter using the '-f' option, since the script will likely not be able to determine which backup 
+    Restore mode will allow you to restore a database to a different location (host, and/or database name) provided
+    it can contact the host and you can provide the appropriate credentials.  If you choose to do this, you will need
+    to provide a file filter using the '-f' option, since the script will likely not be able to determine which backup
     file you would want to use.  This functionality provides a convenient way to test your backups or migrate your
-    database/data whithout affecting the original database.
+    database/data without affecting the original database.
 
     -r <DatabaseSpec/>; in the form <Hostname/>/<DatabaseName/>, or <Hostname/>:<Port/>/<DatabaseName/>
        Triggers restore mode and starts restore mode on the specified database.
@@ -55,7 +68,7 @@ function usage () {
       Example:
         $0 -r postgresql:5432/TheOrgBook_Database
           - Would start the restore process on the database using the most recent backup for the database.
- 
+
     -f <BackupFileFilter/>; the filter to use to find/identify the backup file to restore.
        This can be a full or partial file specification.  When only part of a filename is specified the restore process
        attempts to find the most recent backup matching the filter.
@@ -64,10 +77,10 @@ function usage () {
       Examples:
         $0 -r wallet-db/test_db -f wallet-db-tob_holder
           - Would try to find the latest backup matching on the partial file name provided.
-        
+
         $0 -r wallet-db/test_db -f /backups/daily/2018-11-07/wallet-db-tob_holder_2018-11-07_23-59-35.sql.gz
           - Would use  the specific backup file.
-        
+
         $0 -r wallet-db/test_db -f wallet-db-tob_holder_2018-11-07_23-59-35.sql.gz
           - Would use the specific backup file regardless of its location in the root backup folder.
 
@@ -240,7 +253,7 @@ function readConf(){
       filters="${filters}/^[a-zA-Z0-9_/-]*\(:[0-9]*\)\?\/[a-zA-Z0-9_/-]*$/!d;"
     else
       # Read in the cron config ...
-      #  - Remove any lines that MATCH expected database spec format(s), 
+      #  - Remove any lines that MATCH expected database spec format(s),
       #    leaving, what should be, cron tabs.
       filters="${filters}/^[a-zA-Z0-9_/-]*\(:[0-9]*\)\?\/[a-zA-Z0-9_/-]*$/d;"
     fi
@@ -293,13 +306,13 @@ function ftpBackup(){
   (
     if [ -z "${FTP_URL}" ] ; then
       return 0
-    fi    
-    
+    fi
+
     _filename=${1}
     _filenameWithExtension="${_filename}${BACKUP_FILE_EXTENSION}"
-    echo "Transferring ${_filenameWithExtension} to ${FTP_URL}"    
+    echo "Transferring ${_filenameWithExtension} to ${FTP_URL}"
     curl --ftp-ssl -T ${_filenameWithExtension} --user ${FTP_USER}:${FTP_PASSWORD} ${FTP_URL}
-    
+
     if [ ${?} -eq 0 ]; then
       logInfo "Successfully transferred ${_filenameWithExtension} to the FTP server"
     else
@@ -403,7 +416,7 @@ function backupDatabase(){
     export PGPASSWORD=${_password}
     SECONDS=0
     touchBackupFile "${_backupFile}"
-    
+
     pg_dump -Fp -h "${_hostname}" -p "${_port}" -U "${_username}" "${_database}" | gzip > ${_backupFile}
     # Get the status code from pg_dump.  ${?} would provide the status of the last command, gzip in this case.
     _rtnCd=${PIPESTATUS[0]}
@@ -421,7 +434,7 @@ function backupDatabase(){
 function touchBackupFile() {
   (
     # For safety, make absolutely certain the directory and file exist.
-    # The pruning process removes empty directories, so if there is an error 
+    # The pruning process removes empty directories, so if there is an error
     # during a backup the backup directory could be deleted.
     _backupFile=${1}
     _backupDir="${_backupFile%/*}"
@@ -640,6 +653,7 @@ function listSettings(){
   if [[ "${_mode}" != ${ONCE} ]]; then
     if [[ "${_mode}" == ${CRON} ]] || [[ "${_mode}" == ${SCHEDULED} ]]; then
       _backupSchedule=$(readConf 1 2>/dev/null)
+      echo "- Time Zone: $(date +"%Z %z")"
     fi
     _backupSchedule=$(formatList "${_backupSchedule:-${BACKUP_PERIOD}}")
     echo "- Schedule:"
@@ -706,7 +720,7 @@ function isScheduled(){
     else
       return 1
     fi
-  )  
+  )
 }
 
 function restoreMode(){
@@ -732,7 +746,12 @@ function getMode(){
     fi
 
     if [ -z "${_mode}" ] && isScheduled; then
-      _mode="${SCHEDULED}"
+      if cronMode; then
+        _mode="${SCHEDULED}"
+      else
+        _mode="${ERROR}"
+        echoRed "Scheduled mode cannot be used without cron being installed and at least one cron tab being defined in ${BACKUP_CONF}."  >&2
+      fi
     fi
 
     if [ -z "${_mode}" ] && cronMode; then
@@ -779,7 +798,7 @@ function startCron(){
 function startLegacy(){
   (
     while true; do
-      runBackups 
+      runBackups
 
       echoYellow "Sleeping for ${BACKUP_PERIOD} ...\n"
       sleep ${BACKUP_PERIOD}
@@ -827,6 +846,7 @@ export SCHEDULED="scheduled"
 export RESTORE="restore"
 export CRON="cron"
 export LEGACY="legacy"
+export ERROR="error"
 # ======================================================================================
 
 # =================================================================================================================
@@ -874,12 +894,12 @@ shift $((OPTIND-1))
 # -----------------------------------------------------------------------------------------------------------------
 case $(getMode) in
   ${ONCE})
-    runBackups 
+    runBackups
     echoGreen "Single backup run complete.\n"
     ;;
 
   ${SCHEDULED})
-    runBackups 
+    runBackups
     echoGreen "Scheduled backup run complete.\n"
     ;;
 
@@ -895,8 +915,12 @@ case $(getMode) in
     startLegacy
     ;;
 
+  ${ERROR})
+    echoYellow "A configuration error has occurred, review the details above."
+    usage
+    ;;
   *)
-    echoWarning "Unrecognized operational mode; ${_cmd}"
+    echoYellow "Unrecognized operational mode; ${_mode}"
     usage
     ;;
 esac
