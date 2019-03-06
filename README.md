@@ -158,6 +158,8 @@ Features include:
 - Running a single backup cycle, `backup.sh -1`
 - Restoring a database from backup, `backup.sh -r <databaseSpec/> [-f <backupFileFilter>]`
   - Restore mode will allow you to restore a database to a different location (host, and/or database name) provided it can contact the host and you can provide the appropriate credentials.
+- Verifying backups, `backup.sh -v <databaseSpec/> [-f <backupFileFilter>]`
+  - Verify mode will restore a backup to the local server to ensure it can be restored without error.  Once restored a table query is performed to ensure there was at least one table restored and queries against the database succeed without error.  All database files and configuration are destroyed following the tests.
 
 ## Using the FTP backup
 
