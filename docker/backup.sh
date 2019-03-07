@@ -472,10 +472,8 @@ function backupDatabase(){
 
     echoGreen "\nBacking up ${_databaseSpec} ..."
 
-    export PGPASSWORD=${_password}
     touchBackupFile "${_backupFile}"
-
-    pg_dump -Fp -h "${_hostname}" -p "${_port}" -U "${_username}" "${_database}" | gzip > ${_backupFile}
+    PGPASSWORD=${_password} pg_dump -Fp -h "${_hostname}" -p "${_port}" -U "${_username}" "${_database}" | gzip > ${_backupFile}
     # Get the status code from pg_dump.  ${?} would provide the status of the last command, gzip in this case.
     _rtnCd=${PIPESTATUS[0]}
 
@@ -921,13 +919,14 @@ function runBackups(){
 
       if (( ${rtnCd} == 0 )); then
         backupPath=$(finalizeBackup "${filename}")
-        logInfo "Successfully backed up ${database}.\nBackup written to ${backupPath}.${elapsedTime}"
+        dbSize=$(getDbSize "${database}")
+        backupSize=$(getFileSize "${backupPath}")
+        logInfo "Successfully backed up ${database}.\nBackup written to ${backupPath}.\nDatabase Size: ${dbSize}\nBackup Size: ${backupSize}${elapsedTime}"
         ftpBackup "${filename}"
         pruneBackups "${backupDir}" "${database}"
       else
         logError "Failed to backup ${database}.${elapsedTime}"
       fi
-
     done
 
     listExistingBackups ${ROOT_BACKUP_DIR}
@@ -1095,11 +1094,17 @@ function verifyBackup(){
       rtnCd=${?}
     fi
 
+    # Get the size of the restored database
+    if (( ${rtnCd} == 0 )); then
+      size=$(getDbSize -l "${_databaseSpec}")
+      rtnCd=${?}
+    fi
+
     if (( ${rtnCd} == 0 )); then
       numResults=$(echo "${tables}"| wc -l)
       if [[ ! -z "${tables}" ]] && (( numResults >= 1 )); then
         # All good
-        verificationLog="\nThe restored database contained ${numResults} tables."
+        verificationLog="\nThe restored database contained ${numResults} tables, and is ${size} in size."
       else
         # Not so good
         verificationLog="\nNo tables were found in the restored database."
@@ -1117,6 +1122,44 @@ function verifyBackup(){
       logError "Backup verification failed; ${_fileName}${verificationLog}${restoreLog}${elapsedTime}"
     fi
 
+    return ${rtnCd}
+  )
+}
+
+function getFileSize(){
+  (
+    _filename=${1}
+    echo $(du -h "${_filename}" | awk '{print $1}')
+  )
+}
+
+function getDbSize(){
+  (
+    local OPTIND
+    local localhost
+    unset localhost
+    while getopts l FLAG; do
+      case $FLAG in
+        l ) localhost=1 ;;
+      esac
+    done
+    shift $((OPTIND-1))
+
+    _databaseSpec=${1}
+    _database=$(getDatabaseName ${_databaseSpec})
+    _username=$(getUsername ${_databaseSpec})
+    _password=$(getPassword ${_databaseSpec})
+    if [ -z "${localhost}" ]; then
+      _hostname=$(getHostname ${_databaseSpec})
+      _port=$(getPort ${_databaseSpec})
+    else
+      _hostname="127.0.0.1"
+      _port="${DEFAULT_PORT}"
+    fi
+
+    size=$(PGPASSWORD=${_password} psql -h "${_hostname}" -p "${_port}" -U "${_username}" -d "${_database}" -t -c "SELECT pg_size_pretty(pg_database_size(current_database())) as size;")
+    rtnCd=${?}
+    echo "${size}"
     return ${rtnCd}
   )
 }
