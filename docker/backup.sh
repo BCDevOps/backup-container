@@ -318,7 +318,6 @@ function readConf(){
     fi
 
     if [ -f ${BACKUP_CONF} ]; then
-
       if [ -z "${quiet}" ]; then
         echo "Reading backup config from ${BACKUP_CONF} ..." >&2
       fi
@@ -403,6 +402,9 @@ function getNumBackupsToRetain(){
     case "${_backupType}" in
     daily)
       _count=${DAILY_BACKUPS}
+      if (( ${_count} <= 0 )) && (( ${WEEKLY_BACKUPS} <= 0 )) && (( ${MONTHLY_BACKUPS} <= 0 )); then
+        _count=1
+      fi
       ;;
     weekly)
       _count=${WEEKLY_BACKUPS}
@@ -435,7 +437,7 @@ function prune(){
     if rollingStrategy; then
       backupTypes="daily weekly monthly"
       for backupType in ${backupTypes}; do
-        backupDirs="${backupDirs} $(createBackupFolder -g ${backupType})"
+          backupDirs="${backupDirs} $(createBackupFolder -g ${backupType})"
       done
     else
       backupDirs=$(createBackupFolder -g)
@@ -466,16 +468,18 @@ function pruneBackups(){
     _pruneDir="$(dirname "${_backupDir}")"
     _numBackupsToRetain=$(getNumBackupsToRetain)
     _coreFilename=$(generateCoreFilename ${_databaseSpec})
+    
+    if [ -d ${_pruneDir} ]; then
+      let _index=${_numBackupsToRetain}+1
+      _filesToPrune=$(find ${_pruneDir}* -type f -printf '%T@ %p\n' | grep ${_coreFilename} | sort -r | tail -n +${_index} | sed 's~^.* \(.*$\)~\1~')
 
-    let _index=${_numBackupsToRetain}+1
-    _filesToPrune=$(find ${_pruneDir}* -type f -printf '%T@ %p\n' | grep ${_coreFilename} | sort -r | tail -n +${_index} | sed 's~^.* \(.*$\)~\1~')
+      if [ ! -z "${_filesToPrune}" ]; then
+        echoYellow "\nPruning ${_coreFilename} backups from ${_pruneDir} ..."
+        echo "${_filesToPrune}" | xargs rm -rfvd
 
-    if [ ! -z "${_filesToPrune}" ]; then
-      echoYellow "\nPruning ${_coreFilename} backups from ${_pruneDir} ..."
-      echo "${_filesToPrune}" | xargs rm -rfvd
-
-      # Quietly delete any empty directories that are left behind ...
-      find ${ROOT_BACKUP_DIR} -type d -empty -delete > /dev/null 2>&1
+        # Quietly delete any empty directories that are left behind ...
+        find ${ROOT_BACKUP_DIR} -type d -empty -delete > /dev/null 2>&1
+      fi
     fi
   )
 }
@@ -719,7 +723,7 @@ function createBackupFolder(){
     fi
 
     _backupDir="${ROOT_BACKUP_DIR}${_backupTypeDir}`date +\%Y-\%m-\%d`/"
-    
+
     # Don't actually create the folder if we're just generating it for printing the configuation.
     if [ -z "${genOnly}" ]; then
       echo "Making backup directory ${_backupDir} ..." >&2
@@ -754,7 +758,7 @@ function generateCoreFilename(){
 }
 
 function rollingStrategy(){
-  if [[ "${BACKUP_STRATEGY}" == "rolling" ]] && (( "${WEEKLY_BACKUPS}" > 0 )) && (( "${MONTHLY_BACKUPS}" >= 0 )); then
+  if [[ "${BACKUP_STRATEGY}" == "rolling" ]] && (( "${WEEKLY_BACKUPS}" >= 0 )) && (( "${MONTHLY_BACKUPS}" >= 0 )); then
     return 0
   else
     return 1
@@ -762,7 +766,7 @@ function rollingStrategy(){
 }
 
 function dailyStrategy(){
-  if [[ "${BACKUP_STRATEGY}" == "daily" ]] || (( "${WEEKLY_BACKUPS}" <= 0 )); then
+  if [[ "${BACKUP_STRATEGY}" == "daily" ]] || (( "${WEEKLY_BACKUPS}" < 0 )); then
     return 0
   else
     return 1
