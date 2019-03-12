@@ -217,6 +217,10 @@
                     "mountPath": "${BACKUP_DIR}"
                   },
                   {
+                    "name": "${VERIFICATION_VOLUME_NAME}",
+                    "mountPath": "${VERIFICATION_VOLUME_MOUNT_PATH}"
+                  },
+                  {
                     "name": "${NAME}-config-volume",
                     "mountPath": "${CONFIG_MOUNT_PATH}${CONFIG_FILE_NAME}",
                     "subPath": "${CONFIG_FILE_NAME}"
@@ -357,6 +361,20 @@
       "value": "/backups/"
     },
     {
+      "name": "VERIFICATION_VOLUME_NAME",
+      "displayName": "Verification Volume Name",
+      "description": "The name for the verification volume, used for restoring and verifying backups.  By default this should be the same as ${NAME}.",
+      "required": false,
+      "value": "backup"
+    },
+    {
+      "name": "VERIFICATION_VOLUME_MOUNT_PATH",
+      "displayName": "Verification Volume Mount Path",
+      "description": "The path on which to mount the verification volume.  This is used by the database server to contain the database configuration and data files.",
+      "required": true,
+      "value": "/var/lib/pgsql/data"
+    },
+    {
       "name": "NUM_BACKUPS",
       "displayName": "The number of backup files to be retained",
       "description": "The number of backup files to be retained.  Used for the `daily` backup strategy.  Ignored when using the `rolling` backup strategy.",
@@ -430,7 +448,7 @@
       "name": "PERSISTENT_VOLUME_CLASS",
       "displayName": "Persistent Volume Class name",
       "description": "The class of the volume; gluster-file, gluster-block, gluster-file-db",
-      "required": false,
+      "required": true,
       "value": ""
     },
     {
