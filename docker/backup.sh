@@ -449,6 +449,9 @@ function prune(){
         echoYellow "\nAbout to delete backup file: ${pruneBackup}"
         waitForAnyKey
         rm -rfvd "${pruneBackup}"
+
+        # Quietly delete any empty directories that are left behind ...
+        find ${ROOT_BACKUP_DIR} -type d -empty -delete > /dev/null 2>&1
         pruneBackup="$(findBackup "" "${_fromBackup}")"
       done
     else
