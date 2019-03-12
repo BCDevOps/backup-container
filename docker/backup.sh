@@ -42,6 +42,11 @@ function usage () {
     -c lists the current configuration settings and exits.
        Great for confirming the current settings, and listing the databases included in the backup schedule.
 
+    -p prune backups
+       Used to manually prune backups.
+       This can be used with the '-f' option, see below, to prune specific backups or sets of backups.
+       Use caution when using the '-f' option.
+
   Verify Options:
   ================
     The verify process performs the following basic operations:
@@ -339,7 +344,6 @@ function makeDirectory()
     # ${1} is the directory to be created
     # Inspired by https://unix.stackexchange.com/questions/49263/recursive-mkdir
     directory="${1}"
-
     test $# -eq 1 || { echo "Function 'makeDirectory' can create only one directory (with it's parent directories)."; exit 1; }
     test -d "${directory}" && return 0
     test -d "$(dirname "${directory}")" || { makeDirectory "$(dirname "${directory}")" || return 1; }
@@ -412,6 +416,46 @@ function getNumBackupsToRetain(){
     esac
 
     echo "${_count}"
+  )
+}
+
+function prune(){
+  (
+    local database
+    local backupDirs
+    local backupDir
+    local backupType
+    local backupTypes
+    local pruneBackup
+    unset backupTypes
+    unset backupDirs
+    unset pruneBackup
+
+    local databases=$(readConf -q)
+    if rollingStrategy; then
+      backupTypes="daily weekly monthly"
+      for backupType in ${backupTypes}; do
+        backupDirs="${backupDirs} $(createBackupFolder -g ${backupType})"
+      done
+    else
+      backupDirs=$(createBackupFolder -g)
+    fi
+
+    if [ ! -z "${_fromBackup}" ]; then
+      pruneBackup="$(findBackup "" "${_fromBackup}")"
+      while [ ! -z "${pruneBackup}" ]; do
+        echoYellow "\nAbout to delete backup file: ${pruneBackup}"
+        waitForAnyKey
+        rm -rfvd "${pruneBackup}"
+        pruneBackup="$(findBackup "" "${_fromBackup}")"
+      done
+    else
+      for backupDir in ${backupDirs}; do
+        for database in ${databases}; do
+          pruneBackups "${backupDir}" "${database}"
+        done
+      done
+    fi
   )
 }
 
@@ -594,7 +638,7 @@ function restoreDatabase(){
     # Restore
     if (( ${_rtnCd} == 0 )); then
       echo "Restoring from backup ..."
-      gunzip -c "${_fileName}" | psql -h "${_hostname}" -p "${_port}" -d "${_database}"
+      gunzip -c "${_fileName}" | psql -v ON_ERROR_STOP=1 -x -h "${_hostname}" -p "${_port}" -d "${_database}"
       # Get the status code from psql specifically.  ${?} would only provide the status of the last command, psql in this case.
       _rtnCd=${PIPESTATUS[1]}
     fi
@@ -669,13 +713,13 @@ function createBackupFolder(){
     done
     shift $((OPTIND-1))
 
-    _backupTypeDir="$(getBackupType)"
+    _backupTypeDir="${1:-$(getBackupType)}"
     if [ ! -z "${_backupTypeDir}" ]; then
       _backupTypeDir=${_backupTypeDir}/
     fi
 
     _backupDir="${ROOT_BACKUP_DIR}${_backupTypeDir}`date +\%Y-\%m-\%d`/"
-
+    
     # Don't actually create the folder if we're just generating it for printing the configuation.
     if [ -z "${genOnly}" ]; then
       echo "Making backup directory ${_backupDir} ..." >&2
@@ -861,9 +905,23 @@ function verifyMode(){
   )
 }
 
+function pruneMode(){
+  (
+    if [ ! -z "${RUN_PRUNE}" ]; then
+      return 0
+    else
+      return 1
+    fi
+  )
+}
+
 function getMode(){
   (
     unset _mode
+
+    if pruneMode; then
+      _mode="${PRUNE}"
+    fi
 
     if [ -z "${_mode}" ] && restoreMode; then
       _mode="${RESTORE}"
@@ -1214,6 +1272,7 @@ export CRON="cron"
 export LEGACY="legacy"
 export ERROR="error"
 export SCHEDULED_VERIFY="scheduled-verify"
+export PRUNE="prune"
 
 # Other:
 export DATABASE_SERVER_TIMEOUT=${DATABASE_SERVER_TIMEOUT:-30}
@@ -1222,7 +1281,7 @@ export DATABASE_SERVER_TIMEOUT=${DATABASE_SERVER_TIMEOUT:-30}
 # =================================================================================================================
 # Initialization:
 # -----------------------------------------------------------------------------------------------------------------
-while getopts clr:v:f:1sh FLAG; do
+while getopts clr:v:f:1sph FLAG; do
   case $FLAG in
     c)
       echoBlue "\nListing configuration settings ..."
@@ -1250,6 +1309,9 @@ while getopts clr:v:f:1sh FLAG; do
       ;;
     s)
       export SCHEDULED_RUN=1
+      ;;
+    p)
+      export RUN_PRUNE=1
       ;;
     h)
       usage
@@ -1295,6 +1357,10 @@ case $(getMode) in
 
   ${LEGACY})
     startLegacy
+    ;;
+
+  ${PRUNE})
+    prune
     ;;
 
   ${ERROR})
