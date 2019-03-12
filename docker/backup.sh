@@ -394,7 +394,7 @@ function listExistingBackups(){
 function getNumBackupsToRetain(){
   (
     _count=0
-    _backupType=$(getBackupType)
+    _backupType=${1:-$(getBackupType)}
 
     case "${_backupType}" in
     daily)
@@ -755,11 +755,18 @@ function listSettings(){
   fi
   backupType=$(getBackupType)
   if [ -z "${backupType}" ]; then
-    echo "- Backup type: flat daily"
+    echo "- Current backup type: flat daily"
   else
-    echo "- Backup type: ${backupType}"
+    echo "- Current backup type: ${backupType}"
   fi
-  echo "- Number of each backup to retain: $(getNumBackupsToRetain)"
+  echo "- Backups to retain:"
+  if rollingStrategy; then
+    echo "  - Daily: $(getNumBackupsToRetain daily)"
+    echo "  - Weekly: $(getNumBackupsToRetain weekly)"
+    echo "  - Monthly: $(getNumBackupsToRetain monthly)"
+  else
+    echo "  - Total: $(getNumBackupsToRetain)"
+  fi
   echo "- Backup folder: ${_backupDirectory}"
   if [[ "${_mode}" != ${ONCE} ]]; then
     if [[ "${_mode}" == ${CRON} ]] || [[ "${_mode}" == ${SCHEDULED} ]]; then
