@@ -385,10 +385,19 @@ function ftpBackup(){
 
 function listExistingBackups(){
   (
-    _backupDir=${1:-${ROOT_BACKUP_DIR}}
+    local _backupDir=${1:-${ROOT_BACKUP_DIR}}
+    local database
+    
+    local databases=$(readConf -q)
+    local output="\nDatabase,Current Size"
+    for database in ${databases}; do
+      output="${output}\n${database},$(getDbSize "${database}")"
+    done
+
     echoMagenta "\n================================================================================================================================"
     echoMagenta "Current Backups:"
-    echoMagenta "$(df -h ${_backupDir})"
+    echoMagenta "\n$(echo -ne "${output}" | column -t -s ,)"
+    echoMagenta "\n$(df -h ${_backupDir})"
     echoMagenta "--------------------------------------------------------------------------------------------------------------------------------"
     du -ah --time ${_backupDir}
     echoMagenta "================================================================================================================================\n"
@@ -472,7 +481,7 @@ function pruneBackups(){
     _pruneDir="$(dirname "${_backupDir}")"
     _numBackupsToRetain=$(getNumBackupsToRetain)
     _coreFilename=$(generateCoreFilename ${_databaseSpec})
-    
+
     if [ -d ${_pruneDir} ]; then
       let _index=${_numBackupsToRetain}+1
       _filesToPrune=$(find ${_pruneDir}* -type f -printf '%T@ %p\n' | grep ${_coreFilename} | sort -r | tail -n +${_index} | sed 's~^.* \(.*$\)~\1~')
@@ -1230,8 +1239,13 @@ function getDbSize(){
       _port="${DEFAULT_PORT}"
     fi
 
-    size=$(PGPASSWORD=${_password} psql -h "${_hostname}" -p "${_port}" -U "${_username}" -d "${_database}" -t -c "SELECT pg_size_pretty(pg_database_size(current_database())) as size;")
-    rtnCd=${?}
+    if isInstalled "psql"; then
+      size=$(PGPASSWORD=${_password} psql -h "${_hostname}" -p "${_port}" -U "${_username}" -d "${_database}" -t -c "SELECT pg_size_pretty(pg_database_size(current_database())) as size;")
+      rtnCd=${?}
+    else
+      size="not found"
+      rtnCd=1
+    fi
     echo "${size}"
     return ${rtnCd}
   )
