@@ -158,8 +158,16 @@ Features include:
 - Running a single backup cycle, `backup.sh -1`
 - Restoring a database from backup, `backup.sh -r <databaseSpec/> [-f <backupFileFilter>]`
   - Restore mode will allow you to restore a database to a different location (host, and/or database name) provided it can contact the host and you can provide the appropriate credentials.
-- Verifying backups, `backup.sh -v <databaseSpec/> [-f <backupFileFilter>]`
+- Verifying backups, `backup.sh [-s] -v <databaseSpec/> [-f <backupFileFilter>]`
   - Verify mode will restore a backup to the local server to ensure it can be restored without error.  Once restored a table query is performed to ensure there was at least one table restored and queries against the database succeed without error.  All database files and configuration are destroyed following the tests.
+
+## Using Backup Verification
+
+The [backup script](./docker/backup.sh) supports running manual or scheduled verifications on your backups; `backup.sh [-s] -v <databaseSpec/> [-f <backupFileFilter>]`.  Refer to the script documentation `backup.sh -h`, and the configuration documentation, [backup.conf](config/backup.conf), for additional details on how to use this feature.
+
+By default, the deployment configuration will mount the backup volume to both the backup directory and the data directory for the server.  The server will use the volume as temporary storage while performing a backup verification (the backup gets restored locally).  Therefore you need to take the additional space requirements into account when provisioning your backup storage.  You need to have enough space for the number of backups you intend to keep plus the addition storage required to completely restore the largest database in your backup set.
+
+*Optionally you could modify the deployment configuration to separate the temporary storage from the backup storage.*
 
 ## Using the FTP backup
 
