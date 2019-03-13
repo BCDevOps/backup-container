@@ -431,6 +431,25 @@ function getNumBackupsToRetain(){
   )
 }
 
+getDirectoryName(){
+  (
+    local path=${1}
+    path="${path%"${path##*[!/]}"}"
+    local name="${path##*/}"
+    echo "${name}"
+  )
+}
+
+getBackupTypeFromPath(){
+  (
+    local path=${1}
+    path="${path%"${path##*[!/]}"}"
+    path="$(dirname "${path}")"
+    local backupType=$(getDirectoryName "${path}")
+    echo "${backupType}"
+  )
+}
+
 function prune(){
   (
     local database
@@ -467,7 +486,11 @@ function prune(){
     else
       for backupDir in ${backupDirs}; do
         for database in ${databases}; do
-          pruneBackups "${backupDir}" "${database}"
+          unset backupType
+          if rollingStrategy; then
+            backupType=$(getBackupTypeFromPath "${backupDir}")
+          fi
+          pruneBackups "${backupDir}" "${database}" "${backupType}"
         done
       done
     fi
@@ -478,8 +501,9 @@ function pruneBackups(){
   (
     _backupDir=${1}
     _databaseSpec=${2}
+    _backupType=${3:-''}
     _pruneDir="$(dirname "${_backupDir}")"
-    _numBackupsToRetain=$(getNumBackupsToRetain)
+    _numBackupsToRetain=$(getNumBackupsToRetain "${_backupType}")
     _coreFilename=$(generateCoreFilename ${_databaseSpec})
 
     if [ -d ${_pruneDir} ]; then
