@@ -24,23 +24,27 @@ You'll note the name of the resulting storage claim has a random component to it
 
 `nfs-backup` storageClass is a lower tier of storage and not considered highly available.  `read: don't use this for live application storage`.  The storageClass **IS** covered by the default enterprise backup policies, and can be directly referenced for restores using the PVC name when opening a restore ticket with 7700.
 
-`nfs-backup` PVCs **cannot** be used for restore-verification.  The permissions on the underlying volume do not allow the PostgreSql server to host it's configuration and data files on a directory backed by this class of storage.
+`nfs-backup` PVCs **cannot** be used for restore/verification.  The permissions on the underlying volume do not allow the PostgreSql server to host it's configuration and data files on a directory backed by this class of storage.
 
 Ensure you review and plan your storage requirements before provisioning.
 
 More information on provisioning `nfs-backup` storage here; [provision-nfs-apb](https://github.com/BCDevOps/provision-nfs-apb)
 
 ### Restore/Verification Storage Volume
-The default storage class for the restore/verification volume is `gluster-block`.  The supplied deployment template will auto-provision this volume for you with it is published.
+The default storage class for the restore/verification volume is `gluster-file-db`.  The supplied deployment template will auto-provision this volume for you with it is published.  Refer to the *Storage Performance* section for performance considerations.
 
 This volume should be large enough to host your largest database.  Set the size by updating/overriding the `VERIFICATION_VOLUME_SIZE` value within the template.
 
 ### Storage Performance
-`gluster-block` is recommended over `gluster-file-db` for the restore/verification volume due to performance.
+The performance of `gluster-block` for restore/verification is far superior to that of `gluster-file-db`, however it should only be used in cases where the time it takes to verify a backup begins to encroach on the over-all timing and verification cycle.  You want the verification(s) to complete before another backup and verification cycle begins and you want a bit of idle time between the end of one cycle and the beginning of another in case things take a little longer now and again.
 
 Restore/Verification timing for a 9GB database:
 - `gluster-block`: ~15 minutes
 - `gluster-file-db`: ~1 hour
+
+Restore/Verification timing for a 42GB database:
+- `gluster-block`: ~1 hour
+- `gluster-file-db`: estimated at 4 to 5 hours
 
 ## Deployment / Configuration
 Together, the scripts and templates provided in the [openshift](./openshift) directory will automatically deploy the `backup` app as described below.  The [backup-deploy.overrides.sh](./openshift/backup-deploy.overrides.sh) script generates the deployment configuration necessary for the [backup.conf](config/backup.conf) file to be mounted as a ConfigMap by the `backup` container.
