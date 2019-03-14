@@ -28,7 +28,7 @@ You'll note the name of the resulting storage claim has a random component to it
 
 Ensure you review and plan your storage requirements before provisioning.
 
-More information on provisioning `nfs-storage` here; [provision-nfs-apb](https://github.com/BCDevOps/provision-nfs-apb)
+More information on provisioning `nfs-backup` storage here; [provision-nfs-apb](https://github.com/BCDevOps/provision-nfs-apb)
 
 ### Restore/Verification Storage Volume
 The recommended (and default) storage class for the restore/verification volume is `gluster-block`.  The supplied deployment template will auto-provision this volume for you with it is published.
