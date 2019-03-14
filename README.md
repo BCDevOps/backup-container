@@ -24,7 +24,7 @@ You'll note the name of the resulting storage claim has a random component to it
 
 `nfs-storage` is external to the OpenShift cluster and is covered by additional backup policies.  Best of all it has the added benefit of persisting even if the entire project is deleted, allowing it to be later mounted to another project in a disaster recovery type scenario.
 
-`nfs-storage` **cannot** be used for restore/verification.  The permissions on the underlying volume do not allow the PostgreSql server to host it's configuration and data files on a directory backed by this class of storage.
+`nfs-backup` PVCs **cannot** be used for restore-verification.  The permissions on the underlying volume do not allow the PostgreSql server to host it's configuration and data files on a directory backed by this class of storage.
 
 Ensure you review and plan your storage requirements before provisioning.
 
