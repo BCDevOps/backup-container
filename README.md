@@ -31,7 +31,7 @@ Ensure you review and plan your storage requirements before provisioning.
 More information on provisioning `nfs-backup` storage here; [provision-nfs-apb](https://github.com/BCDevOps/provision-nfs-apb)
 
 ### Restore/Verification Storage Volume
-The recommended (and default) storage class for the restore/verification volume is `gluster-block`.  The supplied deployment template will auto-provision this volume for you with it is published.
+The default storage class for the restore/verification volume is `gluster-block`.  The supplied deployment template will auto-provision this volume for you with it is published.
 
 This volume should be large enough to host your largest database.  Set the size by updating/overriding the `VERIFICATION_VOLUME_SIZE` value within the template.
 
