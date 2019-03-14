@@ -38,8 +38,8 @@ This volume should be large enough to host your largest database.  Set the size 
 ### Storage Performance
 `gluster-block` is recommended over `gluster-file-db` for the restore/verification volume due to performance.
 
-Restore/Verification timing for a 7GB database:
-- `gluster-block`: ~10 minutes
+Restore/Verification timing for a 9GB database:
+- `gluster-block`: ~15 minutes
 - `gluster-file-db`: ~1 hour
 
 ## Deployment / Configuration
