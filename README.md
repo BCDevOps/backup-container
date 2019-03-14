@@ -22,7 +22,7 @@ When using `nfs-backup` you will need to provision your claims **before** you pu
 
 You'll note the name of the resulting storage claim has a random component to it (example, `bk-devex-von-bc-tob-test-xjrmkhsnshay`).  This name needs to be injected into the default value of the `BACKUP_VOLUME_NAME` parameter of the template **before** publishing the deployment configuration in order for the storage to be correctly mounted to the `/backups/` directory of the container.
 
-`nfs-storage` is external to the OpenShift cluster and is covered by additional backup policies.  Best of all it has the added benefit of persisting even if the entire project is deleted, allowing it to be later mounted to another project in a disaster recovery type scenario.
+`nfs-backup` storageClass is a lower tier of storage and not considered highly available.  `read: don't use this for live application storage`.  The storageClass **IS** covered by the default enterprise backup policies, and can be directly referenced for restores using the PVC name when opening a restore ticket with 7700.
 
 `nfs-backup` PVCs **cannot** be used for restore-verification.  The permissions on the underlying volume do not allow the PostgreSql server to host it's configuration and data files on a directory backed by this class of storage.
 
