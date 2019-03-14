@@ -20,7 +20,7 @@ The recommended storage class for the backup volume is `nfs-backup`.  This class
 
 When using `nfs-backup` you will need to provision your claims **before** you publish your deployment configuration, through either the [service catalog](https://github.com/BCDevOps/provision-nfs-apb#provision-via-gui-catalog) using the [BC Gov NFS Storage](https://github.com/BCDevOps/provision-nfs-apb/blob/master/docs/usage-gui.md) wizard, or by using the [svcat cli](https://github.com/BCDevOps/provision-nfs-apb#provision-via-svcat-cli).
 
-You'll note the name of the resulting storage claim has a random component to it (example, `bk-devex-von-bc-tob-test-xjrmkhsnshay`).  This name needs to be injected into the template and override the default value of the `BACKUP_VOLUME_NAME` parameter in order for the storage to be correctly mounted to the `/backups/` directory of the container.  This is the reasoning behind provisioning the storage **before** publishing the deployment configuration.
+You'll note the name of the resulting storage claim has a random component to it (example, `bk-devex-von-bc-tob-test-xjrmkhsnshay`).  This name needs to be injected into the default value of the `BACKUP_VOLUME_NAME` parameter of the template **before** publishing the deployment configuration in order for the storage to be correctly mounted to the `/backups/` directory of the container.
 
 `nfs-storage` is external to the OpenShift cluster and is covered by additional backup policies.  Best of all it has the added benefit of persisting even if the entire project is deleted, allowing it to be later mounted to another project in a disaster recovery type scenario.
 
