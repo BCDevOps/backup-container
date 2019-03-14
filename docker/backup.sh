@@ -1071,10 +1071,9 @@ function startServer(){
     # Wait for server to start ...
     local startTime=${SECONDS}
     rtnCd=0
-    _waitingForDB="waiting for server to start."
+    printf "waiting for server to start"
     while ! pingDbServer ${_databaseSpec}; do
-      printf "\r${_waitingForDB}"
-      _waitingForDB="${_waitingForDB}."
+      printf "."
       local duration=$(($SECONDS - $startTime))
       if (( ${duration} >= ${DATABASE_SERVER_TIMEOUT} )); then
         echoRed "\nThe server failed to start within ${duration} seconds.\n"
