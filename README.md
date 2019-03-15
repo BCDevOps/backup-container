@@ -44,7 +44,7 @@ Restore/Verification timing for a 9GB database:
 
 Restore/Verification timing for a 42GB database:
 - `gluster-block`: ~1 hour
-- `gluster-file-db`: estimated at 4 to 5 hours
+- `gluster-file-db`: ~3 hours
 
 ## Deployment / Configuration
 Together, the scripts and templates provided in the [openshift](./openshift) directory will automatically deploy the `backup` app as described below.  The [backup-deploy.overrides.sh](./openshift/backup-deploy.overrides.sh) script generates the deployment configuration necessary for the [backup.conf](config/backup.conf) file to be mounted as a ConfigMap by the `backup` container.
