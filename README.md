@@ -9,6 +9,43 @@ This project provides you with a starting point for integrating backups into you
 
 Following are the instructions for running the backups and a restore.
 
+## Storage
+*Before we get too far into the the details, we're going to take a moment to discuss the most important part of the whole process - **The Storage**.*  The backup container uses two volumes, one for storing the backups and the other for restore/verification testing.  The deployment template separates them intentionally.
+
+The following sections on storage discuss the recommendations and limitations of the storage classes created specifically for the BC Government's [PathFinder](https://console.pathfinder.gov.bc.ca:8443/) environment.
+
+
+### Backup Storage Volume
+The recommended storage class for the backup volume is `nfs-backup`.  This class of storage **cannot** be auto-provisioned through the use of a deployment template.  The `PersistentVolumeClaim` declared in the supplied deployment template for the *backup volume* will purposely fail to properly provision and wire an `nfs-backup` volume if published before you manually provision your `nfs-backup` claim.
+
+When using `nfs-backup` you will need to provision your claims **before** you publish your deployment configuration, through either the [service catalog](https://github.com/BCDevOps/provision-nfs-apb#provision-via-gui-catalog) using the [BC Gov NFS Storage](https://github.com/BCDevOps/provision-nfs-apb/blob/master/docs/usage-gui.md) wizard, or by using the [svcat cli](https://github.com/BCDevOps/provision-nfs-apb#provision-via-svcat-cli).
+
+You'll note the name of the resulting storage claim has a random component to it (example, `bk-devex-von-bc-tob-test-xjrmkhsnshay`).  This name needs to be injected into the default value of the `BACKUP_VOLUME_NAME` parameter of the template **before** publishing the deployment configuration in order for the storage to be correctly mounted to the `/backups/` directory of the container.
+
+`nfs-backup` storageClass is a lower tier of storage and not considered highly available.  `read: don't use this for live application storage`.  The storageClass **IS** covered by the default enterprise backup policies, and can be directly referenced for restores using the PVC name when opening a restore ticket with 7700.
+
+`nfs-backup` PVCs **cannot** be used for restore/verification.  The permissions on the underlying volume do not allow the PostgreSql server to host it's configuration and data files on a directory backed by this class of storage.
+
+Ensure you review and plan your storage requirements before provisioning.
+
+More information on provisioning `nfs-backup` storage here; [provision-nfs-apb](https://github.com/BCDevOps/provision-nfs-apb)
+
+### Restore/Verification Storage Volume
+The default storage class for the restore/verification volume is `gluster-file-db`.  The supplied deployment template will auto-provision this volume for you with it is published.  Refer to the *Storage Performance* section for performance considerations.
+
+This volume should be large enough to host your largest database.  Set the size by updating/overriding the `VERIFICATION_VOLUME_SIZE` value within the template.
+
+### Storage Performance
+The performance of `gluster-block` for restore/verification is far superior to that of `gluster-file-db`, however it should only be used in cases where the time it takes to verify a backup begins to encroach on the over-all timing and verification cycle.  You want the verification(s) to complete before another backup and verification cycle begins and you want a bit of idle time between the end of one cycle and the beginning of another in case things take a little longer now and again.
+
+Restore/Verification timing for a 9GB database:
+- `gluster-block`: ~15 minutes
+- `gluster-file-db`: ~1 hour
+
+Restore/Verification timing for a 42GB database:
+- `gluster-block`: ~1 hour
+- `gluster-file-db`: ~3 hours
+
 ## Deployment / Configuration
 Together, the scripts and templates provided in the [openshift](./openshift) directory will automatically deploy the `backup` app as described below.  The [backup-deploy.overrides.sh](./openshift/backup-deploy.overrides.sh) script generates the deployment configuration necessary for the [backup.conf](config/backup.conf) file to be mounted as a ConfigMap by the `backup` container.
 
@@ -158,6 +195,12 @@ Features include:
 - Running a single backup cycle, `backup.sh -1`
 - Restoring a database from backup, `backup.sh -r <databaseSpec/> [-f <backupFileFilter>]`
   - Restore mode will allow you to restore a database to a different location (host, and/or database name) provided it can contact the host and you can provide the appropriate credentials.
+- Verifying backups, `backup.sh [-s] -v <databaseSpec/> [-f <backupFileFilter>]`
+  - Verify mode will restore a backup to the local server to ensure it can be restored without error.  Once restored a table query is performed to ensure there was at least one table restored and queries against the database succeed without error.  All database files and configuration are destroyed following the tests.
+
+## Using Backup Verification
+
+The [backup script](./docker/backup.sh) supports running manual or scheduled verifications on your backups; `backup.sh [-s] -v <databaseSpec/> [-f <backupFileFilter>]`.  Refer to the script documentation `backup.sh -h`, and the configuration documentation, [backup.conf](config/backup.conf), for additional details on how to use this feature.
 
 ## Using the FTP backup
 
