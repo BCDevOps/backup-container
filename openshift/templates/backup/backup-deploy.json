@@ -477,7 +477,7 @@
       "displayName": "Backup Volume Size",
       "description": "The size of the persistent volume used for restoring and verifying backups, e.g. 512Mi, 1Gi, 2Gi.  Ensure this is sized correctly.  It should be large enough to contain your largest database.",
       "required": true,
-      "value": "5Gi"
+      "value": "1Gi"
     },
     {
       "name": "VERIFICATION_VOLUME_CLASS",
