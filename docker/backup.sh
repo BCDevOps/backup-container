@@ -1213,7 +1213,7 @@ function verifyBackup(){
       else
         # Not so good
         verificationLog="\nNo tables were found in the restored database."
-        rtnCd="-1"
+        rtnCd="3"
       fi
     fi
 
