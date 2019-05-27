@@ -1,8 +1,22 @@
-
+---
+title: Backup Container
+description: A simple containerized backup solution for backing up one or more postgres databases to a secondary location..
+author: WadeBarnes
+resourceType: Components
+personas: 
+  - Developer
+  - Product Owner
+  - Designer
+labels:
+  - backup
+  - backups
+  - postgres
+  - database
+---
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
 
 # Backup Container
-This is a simple containerized backup solution for backing up one or more postgres databases to a secondary location.  _Code and documentation was originally pulled from the [HETS Project](https://github.com/bcgov/hets)_
+[Backup Container](https://github.com/BCDevOps/backup-container) is a simple containerized backup solution for backing up one or more postgres databases to a secondary location.  _Code and documentation was originally pulled from the [HETS Project](https://github.com/bcgov/hets)_
 
 ## Postgres Backups in OpenShift
 This project provides you with a starting point for integrating backups into your OpenShift projects.  The scripts and templates provided in the [openshift](./openshift) directory are compatible with the [openshift-developer-tools](https://github.com/BCDevOps/openshift-developer-tools) scripts.  They help you create an OpenShift deployment or cronjob called `backup` in your projects that runs backups on a Postgres database(s) within the project environment.  You only need to integrate the scripts and templates into your project(s), the builds can be done with this repository as the source.
