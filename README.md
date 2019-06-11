@@ -44,6 +44,14 @@ Ensure you review and plan your storage requirements before provisioning.
 
 More information on provisioning `nfs-backup` storage here; [provision-nfs-apb](https://github.com/BCDevOps/provision-nfs-apb)
 
+#### NFS Storage Backup and Retention Policy
+NFS backed storage is covered by the following backup and retention policies:
+- Backup
+  - Daily: Incremental
+  - Monthly: Full
+- Retention
+  - 90 days
+
 ### Restore/Verification Storage Volume
 The default storage class for the restore/verification volume is `gluster-file-db`.  The supplied deployment template will auto-provision this volume for you with it is published.  Refer to the *Storage Performance* section for performance considerations.
 
