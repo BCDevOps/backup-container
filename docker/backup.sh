@@ -1283,7 +1283,7 @@ export IN_PROGRESS_BACKUP_FILE_EXTENSION=".sql.gz.in_progress"
 export DEFAULT_PORT=${POSTGRESQL_PORT_NUM:-5432}
 export DATABASE_SERVICE_NAME=${DATABASE_SERVICE_NAME:-postgresql}
 export POSTGRESQL_DATABASE=${POSTGRESQL_DATABASE:-my_postgres_db}
-export TABLE_SCHEMA="public"
+export TABLE_SCHEMA=${TABLE_SCHEMA:-public}
 
 # Supports:
 # - daily
