@@ -177,6 +177,10 @@
                     "value": "${DATABASE_NAME}"
                   },
                   {
+                    "name": "TABLE_SCHEMA",
+                    "value": "${TABLE_SCHEMA}"
+                  },
+                  {
                     "name": "POSTGRESQL_USER",
                     "valueFrom": {
                       "secretKeyRef": {
