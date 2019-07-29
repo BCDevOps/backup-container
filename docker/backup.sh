@@ -387,7 +387,7 @@ function listExistingBackups(){
   (
     local _backupDir=${1:-${ROOT_BACKUP_DIR}}
     local database
-    
+
     local databases=$(readConf -q)
     local output="\nDatabase,Current Size"
     for database in ${databases}; do
@@ -1195,7 +1195,7 @@ function verifyBackup(){
       _hostname="127.0.0.1"
       _port="${DEFAULT_PORT}"
       _database=$(getDatabaseName ${_databaseSpec})
-      tables=$(psql -h "${_hostname}" -p "${_port}" -d "${_database}" -t -c "SELECT table_name FROM information_schema.tables WHERE table_schema='public' AND table_type='BASE TABLE';")
+      tables=$(psql -h "${_hostname}" -p "${_port}" -d "${_database}" -t -c "SELECT table_name FROM information_schema.tables WHERE table_schema='${TABLE_SCHEMA}' AND table_type='BASE TABLE';")
       rtnCd=${?}
     fi
 
