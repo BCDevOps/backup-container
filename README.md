@@ -142,6 +142,9 @@ The scheduled job does not yet support the FTP environment variables.
 | FTP_USER |
 | FTP_PASSWORD |
 
+### Resources
+The backup-container is assigned with `Best-effort` resource type (setting zero for request and limit), which allows the resources to scale up and down without an explicit limit as resource on the node allow. It benefits from large bursts of recourses for short periods of time to get things more quickly. After some time of running the backup-container, you could then set the request and limit according to the average resource consumption.
+
 ## Multiple Databases
 
 When backing up multiple databases, the retention settings apply to each database individually.  For instance if you use the `daily` strategy and set the retention number(s) to 5, you will retain 5 copies of each database.  So plan your backup storage accordingly.

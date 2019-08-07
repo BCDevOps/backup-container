@@ -1,6 +1,10 @@
 # This image provides a postgres installation from which to run backups 
 FROM registry.access.redhat.com/rhscl/postgresql-10-rhel7
 
+# Change timezone to PST for convenience
+ENV TZ=PST8PDT
+RUN echo $TZ > /etc/timezone
+
 # Set the workdir to be root
 WORKDIR /
 
