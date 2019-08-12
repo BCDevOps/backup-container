@@ -3,7 +3,6 @@ FROM registry.access.redhat.com/rhscl/postgresql-10-rhel7
 
 # Change timezone to PST for convenience
 ENV TZ=PST8PDT
-RUN echo $TZ > /etc/timezone
 
 # Set the workdir to be root
 WORKDIR /
@@ -26,6 +25,12 @@ ADD https://github.com/$SOURCE_REPO/go-crond/releases/download/$GOCROND_VERSION/
 
 USER root
 RUN chmod ug+x /usr/bin/go-crond
+# ========================================================================================================
+
+# ========================================================================================================
+# Perform operations that require root privilages here ...
+# --------------------------------------------------------------------------------------------------------
+RUN echo $TZ > /etc/timezone
 # ========================================================================================================
 
 # Important - Reset to the base image's user account.
