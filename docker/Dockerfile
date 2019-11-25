@@ -10,9 +10,6 @@ WORKDIR /
 # Load the backup script into the container (must be executable).
 COPY backup.sh /
 
-# REMOVE BEFORE PULL REQUEST TO PROD
-RUN chmod 777 /backup.sh
-
 COPY webhook-template.json /
 
 # ========================================================================================================
@@ -28,6 +25,10 @@ ARG GOCROND_VERSION=0.6.2
 ADD https://github.com/$SOURCE_REPO/go-crond/releases/download/$GOCROND_VERSION/go-crond-64-linux /usr/bin/go-crond
 
 USER root
+
+# REMOVE BEFORE PULL REQUEST TO PROD
+RUN chmod 777 /backup.sh
+
 RUN chmod ug+x /usr/bin/go-crond
 # ========================================================================================================
 
