@@ -6,7 +6,7 @@
 function usage () {
   cat <<-EOF
 
-  Automated backup script for Postgresql databases.
+  Automated backup script for Postgresql and MongoDB databases.
 
   There are two modes of scheduling backups:
     - Cron Mode:
@@ -57,11 +57,11 @@ function usage () {
       - Stop the local database server instance.
       - Delete the local database and configuration.
 
-    -v <DatabaseSpec/>; in the form <Hostname/>/<DatabaseName/>, or <Hostname/>:<Port/>/<DatabaseName/>
+    -v <DatabaseSpec/>; in the form <Hostname/>/<DatabaseName/>/<DatabaseType/>, or <Hostname/>:<Port/>/<DatabaseName/>/<DatabaseType/>
        Triggers verify mode and starts verify mode on the specified database.
 
       Example:
-        $0 -v postgresql:5432/TheOrgBook_Database
+        $0 -v postgresql:5432/TheOrgBook_Database/postgres
           - Would start the verification process on the database using the most recent backup for the database.
 
         $0 -v all
@@ -77,7 +77,7 @@ function usage () {
       - Grant the database user access to the recreated database
       - Restore the database from the selected backup file
 
-    Have the 'Admin' (postgres) password handy, the script will ask you for it during the restore.
+    Have the 'Admin' (postgres or mongodb) password handy, the script will ask you for it during the restore.
 
     When in restore mode, the script will list the settings it will use and wait for your confirmation to continue.
     This provides you with an opportunity to ensure you have selected the correct database and backup file
@@ -89,11 +89,11 @@ function usage () {
     file you would want to use.  This functionality provides a convenient way to test your backups or migrate your
     database/data without affecting the original database.
 
-    -r <DatabaseSpec/>; in the form <Hostname/>/<DatabaseName/>, or <Hostname/>:<Port/>/<DatabaseName/>
+    -r <DatabaseSpec/>; in the form <Hostname/>/<DatabaseName/>/<DatabaseType/>, or <Hostname/>:<Port/>/<DatabaseName/>/<DatabaseType/>
        Triggers restore mode and starts restore mode on the specified database.
 
       Example:
-        $0 -r postgresql:5432/TheOrgBook_Database
+        $0 -r postgresql:5432/TheOrgBook_Database/postgres
           - Would start the restore process on the database using the most recent backup for the database.
 
     -f <BackupFileFilter/>; an OPTIONAL filter to use to find/identify the backup file to restore.
@@ -102,13 +102,13 @@ function usage () {
        If not specified, the restore process attempts to locate the most recent backup file for the specified database.
 
       Examples:
-        $0 -r wallet-db/test_db -f wallet-db-tob_holder
+        $0 -r wallet-db/test_db/postgres -f wallet-db-tob_holder
           - Would try to find the latest backup matching on the partial file name provided.
 
-        $0 -r wallet-db/test_db -f /backups/daily/2018-11-07/wallet-db-tob_holder_2018-11-07_23-59-35.sql.gz
+        $0 -r wallet-db/test_db/postgres -f /backups/daily/2018-11-07/wallet-db-tob_holder_2018-11-07_23-59-35.sql.gz
           - Would use  the specific backup file.
 
-        $0 -r wallet-db/test_db -f wallet-db-tob_holder_2018-11-07_23-59-35.sql.gz
+        $0 -r wallet-db/test_db/postgres -f wallet-db-tob_holder_2018-11-07_23-59-35.sql.gz
           - Would use the specific backup file regardless of its location in the root backup folder.
 
 EOF
@@ -238,17 +238,39 @@ function runOnce() {
 function getDatabaseName(){
   (
     _databaseSpec=${1}
-    _databaseName=$(echo ${_databaseSpec} | sed 's~^.*/\(.*$\)~\1~')
+	_databaseName=$(echo ${_databaseSpec} | sed 's~^[^/]*/\(.*\)~\1~' | sed 's~\(.*\)/\(.*\)~\1~')
     echo "${_databaseName}"
   )
 }
 
+function getDatabaseType(){
+  (
+    _databaseSpec=${1}
+    _databaseType=$(echo ${_databaseSpec} | sed 's~^[^/]*/\(.*\)~\1~' | sed 's~\(.*\)/\(.*\)~\2~' | tr '[:upper:]' '[:lower:]')
+    echo "${_databaseType}"
+  )
+}
 function getPort(){
   (
     _databaseSpec=${1}
-    _port=$(echo ${_databaseSpec} | sed "s~\(^.*:\)\(.*\)/\(.*$\)~\2~;s~${_databaseSpec}~~g;")
-    if [ -z ${_port} ]; then
-      _port=${DEFAULT_PORT}
+	_databasetype=$(getDatabaseType ${_databaseSpec})
+    portsed="s~\(^.*:\)\(.*\)/\(.*$\)~\2~;s~${_databaseSpec}~~g;s~/.*~~" 
+   	_port=$(echo ${_databaseSpec} | sed "${portsed}") 
+	
+	if [ -z ${_port} ]; then
+		case ${_databasetype} in
+	       "postgres") 
+			_port=${DEFAULT_PORT_PG}
+			;;
+           "mongodb") 
+			_port=${DEFAULT_PORT_MD}
+			;;
+		   *) 
+		    _configurationError=1
+			_port="UNKNOWN"
+			echoRed "- Unknown Database Type default port cannot be set, script will exit" >&2
+			;;  
+	    esac
     fi
     echo "${_port}"
   )
@@ -257,7 +279,7 @@ function getPort(){
 function getHostname(){
   (
     _databaseSpec=${1}
-    _hostname=$(echo ${_databaseSpec} | sed 's~\(^.*\)/.*$~\1~;s~\(^.*\):.*$~\1~;')
+	_hostname=$(echo ${_databaseSpec} | sed 's~[:/].*~~') 
     echo "${_hostname}"
   )
 }
@@ -307,8 +329,8 @@ function readConf(){
     if [ -z "${readCron}" ]; then
       # Read in the database config ...
       #  - Remove any lines that do not match the expected database spec format(s)
-      #     - <Hostname/>/<DatabaseName/>
-      #     - <Hostname/>:<Port/>/<DatabaseName/>
+      #     - <Hostname/>/<DatabaseName/>/<DatabaseType/>
+      #     - <Hostname/>:<Port/>/<DatabaseName/>/<DatabaseType/>
       filters="${filters}/^[a-zA-Z0-9_/-]*\(:[0-9]*\)\?\/[a-zA-Z0-9_/-]*$/!d;"
     else
       # Read in the cron config ...
@@ -329,12 +351,13 @@ function readConf(){
       if [ -z "${quiet}" ]; then
         echo "Reading backup config from environment variables ..." >&2
       fi
-      _value="${DATABASE_SERVICE_NAME}:${DEFAULT_PORT}/${POSTGRESQL_DATABASE}"
+      _value="${DATABASE_SERVICE_NAME}:${DEFAULT_PORT_PG}/${POSTGRESQL_DATABASE}"
     fi
 
     echo "${_value}"
   )
 }
+
 
 function makeDirectory()
 {
@@ -524,10 +547,21 @@ function pruneBackups(){
 function getUsername(){
   (
     _databaseSpec=${1}
+	_databasetype=$(getDatabaseType ${_databaseSpec})	
     _hostname=$(getHostname ${_databaseSpec})
     _paramName=$(getHostUserParam ${_hostname})
     # Backward compatibility ...
-    _username="${!_paramName:-${POSTGRESQL_USER}}"
+    case ${_databasetype} in
+	       "postgres") 
+		    _username="${!_paramName:-${POSTGRESQL_USER}}"
+			;;
+           "mongodb") 
+		    _username="${!_paramName:-"admin"}"
+			;;
+		   *) 
+			echoRed "- Unknown Database Type: ${_databaseType}"
+			;;  
+	    esac	
     echo ${_username}
   )
 }
@@ -535,10 +569,23 @@ function getUsername(){
 function getPassword(){
   (
     _databaseSpec=${1}
+	_databasetype=$(getDatabaseType ${_databaseSpec})
     _hostname=$(getHostname ${_databaseSpec})
     _paramName=$(getHostPasswordParam ${_hostname})
     # Backward compatibility ...
-    _password="${!_paramName:-${POSTGRESQL_PASSWORD}}"
+    case ${_databasetype} in
+	       "postgres") 
+		    _password="${!_paramName:-${POSTGRESQL_PASSWORD}}"
+			;;
+           "mongodb") 
+		    _password="${!_paramName:-${MONGODB_ADMIN_PASSWORD}}"
+			;;
+		   *) 
+			echoRed "- Unknown Database Type: ${_databaseType}"
+			;;  
+	    esac		
+	
+	
     echo ${_password}
   )
 }
@@ -549,23 +596,46 @@ function backupDatabase(){
     _fileName=${2}
 
     _hostname=$(getHostname ${_databaseSpec})
-    _port=$(getPort ${_databaseSpec})
     _database=$(getDatabaseName ${_databaseSpec})
-    _username=$(getUsername ${_databaseSpec})
+	_databasetype=$(getDatabaseType ${_databaseSpec})
+    _port=$(getPort ${_databaseSpec})
+	_username=$(getUsername ${_databaseSpec})
     _password=$(getPassword ${_databaseSpec})
+	
     _backupFile="${_fileName}${IN_PROGRESS_BACKUP_FILE_EXTENSION}"
 
     echoGreen "\nBacking up ${_databaseSpec} ..."
-
+	
+	if [ ! -z "${_configurationError}" ]; then
+       logError "\nConfiguration error!  The script will exit."
+       sleep 5
+       exit 1
+	fi		
+		
     touchBackupFile "${_backupFile}"
-    PGPASSWORD=${_password} pg_dump -Fp -h "${_hostname}" -p "${_port}" -U "${_username}" "${_database}" | gzip > ${_backupFile}
-    # Get the status code from pg_dump.  ${?} would provide the status of the last command, gzip in this case.
-    _rtnCd=${PIPESTATUS[0]}
-
+	
+    case ${_databasetype} in
+	       "postgres") 
+		    echoGreen "starting Postgres backup using pg_dump....."
+			PGPASSWORD=${_password} pg_dump -Fp -h "${_hostname}" -p "${_port}" -U "${_username}" "${_database}" | gzip > ${_backupFile}
+			_rtnCd=${PIPESTATUS[0]}	
+			;;
+           "mongodb") 
+		    echoGreen "starting Mongo DB backup using mongodump....."
+			mongodump --authenticationDatabase="${MONGODB_AUTHENTICATION_DATABASE}" -h "${_hostname}" -u "${_username}" -p "${_password}" -d "${_database}" --quiet --gzip --archive=${_backupFile} 
+			_rtnCd=${?}	
+			;;
+		   *) 
+			echoRed "- Unknown Database Type: ${_databaseType}"
+			_rtnCd=1
+			;;  
+	esac
+    
     if (( ${_rtnCd} != 0 )); then
       rm -rfvd ${_backupFile}
     fi
     return ${_rtnCd}
+	
   )
 }
 
@@ -632,66 +702,124 @@ function restoreDatabase(){
     fi
 
     _database=$(getDatabaseName ${_databaseSpec})
+	_databasetype=$(getDatabaseType ${_databaseSpec})
     _username=$(getUsername ${_databaseSpec})
     _password=$(getPassword ${_databaseSpec})
+	
+	#set the port based on hostname and database type
     if [ -z "${localhost}" ]; then
       _hostname=$(getHostname ${_databaseSpec})
       _port=$(getPort ${_databaseSpec})
     else
       _hostname="127.0.0.1"
-      _port="${DEFAULT_PORT}"
+	  case ${_databasetype} in
+	       "postgres") 
+		     echo "Postgres DB using default port 5432"
+			_port=${DEFAULT_PORT_PG}
+			;;
+           "mongodb") 
+		    echo "Mongo DB using default port 27017"
+			_port=${DEFAULT_PORT_MD}
+			;;
+		   *) 
+		    _configurationError=1
+			_port="UNKNOWN"
+			echoRed "- Unknown Database Type default port cannot be set, script will exit"
+			;;  
+	   esac
     fi
-
+	
+	if [ ! -z "${_configurationError}" ]; then
+       logError "\nConfiguration error!  The script will exit."
+       sleep 5
+       exit 1
+	fi		
+	
     echo "Restoring to ${_hostname}:${_port} ..."
+	
+	if [ -z "${quiet}" ]; then
+	# Ask for the Admin Password for the database
+		_msg="Admin password (${_databaseSpec}):"
+		_yellow='\033[1;33m'
+		_nc='\033[0m' # No Color
+		_message=$(echo -e "${_yellow}${_msg}${_nc}")
+		read -r -s -p $"${_message}" _adminPassword
+		echo -e "\n"
+	fi
 
-    if [ -z "${quiet}" ]; then
-      # Ask for the Admin Password for the database
-      _msg="Admin password (${_databaseSpec}):"
-      _yellow='\033[1;33m'
-      _nc='\033[0m' # No Color
-      _message=$(echo -e "${_yellow}${_msg}${_nc}")
-      read -r -s -p $"${_message}" _adminPassword
-      echo -e "\n"
-    fi
+	local startTime=${SECONDS}						  
+	case ${_databasetype} in
+	     "postgres") 
+			export PGPASSWORD=${_adminPassword}
+			# Wait for server ...
+			_rtnCd=0
+			printf "waiting for server to start"
+			while ! pingDbServer ${_databaseSpec}; do
+				printf "."
+				local duration=$(($SECONDS - $startTime))
+				if (( ${duration} >= ${DATABASE_SERVER_TIMEOUT} )); then
+					echoRed "\nThe server failed to start within ${duration} seconds.\n"
+					_rtnCd=1
+					break
+				fi
+				sleep 1
+			done
 
-    export PGPASSWORD=${_adminPassword}
-    local startTime=${SECONDS}
+		   # Drop
+			if (( ${_rtnCd} == 0 )); then
+				psql -h "${_hostname}" -p "${_port}" -ac "DROP DATABASE \"${_database}\";"
+			   _rtnCd=${?}
+			    echo				
+			fi
 
-    # Drop
-    psql -h "${_hostname}" -p "${_port}" -ac "DROP DATABASE \"${_database}\";"
-    _rtnCd=${?}
-    echo
+			# Create
+			if (( ${_rtnCd} == 0 )); then
+			  psql -h "${_hostname}" -p "${_port}" -ac "CREATE DATABASE \"${_database}\";"
+			  _rtnCd=${?}
+			  echo
+			fi
 
-    # Create
-    if (( ${_rtnCd} == 0 )); then
-      psql -h "${_hostname}" -p "${_port}" -ac "CREATE DATABASE \"${_database}\";"
-      _rtnCd=${?}
-      echo
-    fi
+			# Grant User Access
+			if (( ${_rtnCd} == 0 )); then
+			  psql -h "${_hostname}" -p "${_port}" -ac "GRANT ALL ON DATABASE \"${_database}\" TO \"${_username}\";"
+			  _rtnCd=${?}
+			  echo
+			fi
 
-    # Grant User Access
-    if (( ${_rtnCd} == 0 )); then
-      psql -h "${_hostname}" -p "${_port}" -ac "GRANT ALL ON DATABASE \"${_database}\" TO \"${_username}\";"
-      _rtnCd=${?}
-      echo
-    fi
+			# Restore
+			if (( ${_rtnCd} == 0 )); then
+			  echo "Restoring from backup ..."
+			  gunzip -c "${_fileName}" | psql -v ON_ERROR_STOP=1 -x -h "${_hostname}" -p "${_port}" -d "${_database}"
+			  # Get the status code from psql specifically.  ${?} would only provide the status of the last command, psql in this case.
+			  _rtnCd=${PIPESTATUS[1]}
+			fi
 
-    # Restore
-    if (( ${_rtnCd} == 0 )); then
-      echo "Restoring from backup ..."
-      gunzip -c "${_fileName}" | psql -v ON_ERROR_STOP=1 -x -h "${_hostname}" -p "${_port}" -d "${_database}"
-      # Get the status code from psql specifically.  ${?} would only provide the status of the last command, psql in this case.
-      _rtnCd=${PIPESTATUS[1]}
-    fi
+			local duration=$(($SECONDS - $startTime))
+			echo -e "Restore complete - Elapsed time: $(($duration/3600))h:$(($duration%3600/60))m:$(($duration%60))s"\\n
 
-    local duration=$(($SECONDS - $startTime))
-    echo -e "Restore complete - Elapsed time: $(($duration/3600))h:$(($duration%3600/60))m:$(($duration%60))s"\\n
-
-    # List tables
-    if [ -z "${quiet}" ] && (( ${_rtnCd} == 0 )); then
-      psql -h "${_hostname}" -p "${_port}" -d "${_database}" -c "\d"
-      _rtnCd=${?}
-    fi
+			# List tables
+			if [ -z "${quiet}" ] && (( ${_rtnCd} == 0 )); then
+			  psql -h "${_hostname}" -p "${_port}" -d "${_database}" -c "\d"
+			  _rtnCd=${?}
+			fi
+			;;
+         "mongodb") 
+		    # drop database
+			echo "Restoring from backup ..."
+			mongorestore --drop --gzip --archive=${_fileName} --nsInclude="sbc*"
+			_rtnCd=${?}
+			if (( ${_rtnCd} == 0 )); then
+			    local duration=$(($SECONDS - $startTime))
+			    echo -e "Restore complete - Elapsed time: $(($duration/3600))h:$(($duration%3600/60))m:$(($duration%60))s"\\n
+			else
+				echoRed "*****mongorestor has failed"
+			fi
+			;;
+		 *) 
+		    _configurationError=1
+			echoRed "- Unknown Database Type database cannot be restored, script will exit"
+			;;  
+	esac
 
     return ${_rtnCd}
   )
@@ -820,6 +948,8 @@ function formatList(){
 
 function listSettings(){
   _backupDirectory=${1:-$(createBackupFolder -g)}
+  
+  
   _databaseList=${2:-$(readConf -q)}
   _yellow='\e[33m'
   _nc='\e[0m' # No Color
@@ -1012,8 +1142,8 @@ function runBackups(){
     echoBlue "\nStarting backup process ..."
     databases=$(readConf)
     backupDir=$(createBackupFolder)
-    listSettings "${backupDir}" "${databases}"
-
+    #listSettings "${backupDir}" "${databases}"
+	
     for database in ${databases}; do
 
       local startTime=${SECONDS}
@@ -1024,14 +1154,14 @@ function runBackups(){
       local elapsedTime="\n\nElapsed time: $(($duration/3600))h:$(($duration%3600/60))m:$(($duration%60))s - Status Code: ${rtnCd}"
 
       if (( ${rtnCd} == 0 )); then
-        backupPath=$(finalizeBackup "${filename}")
-        dbSize=$(getDbSize "${database}")
-        backupSize=$(getFileSize "${backupPath}")
-        logInfo "Successfully backed up ${database}.\nBackup written to ${backupPath}.\nDatabase Size: ${dbSize}\nBackup Size: ${backupSize}${elapsedTime}"
-        ftpBackup "${filename}"
-        pruneBackups "${backupDir}" "${database}"
+         backupPath=$(finalizeBackup "${filename}")
+         dbSize=$(getDbSize "${database}")
+         backupSize=$(getFileSize "${backupPath}")
+         logInfo "Successfully backed up ${database}.\nBackup written to ${backupPath}.\nDatabase Size: ${dbSize}\nBackup Size: ${backupSize}${elapsedTime}"
+         ftpBackup "${filename}"
+         pruneBackups "${backupDir}" "${database}"
       else
-        logError "Failed to backup ${database}.${elapsedTime}"
+         logError "Failed to backup ${database}.${elapsedTime}"
       fi
     done
 
@@ -1061,13 +1191,26 @@ function startLegacy(){
 function startServer(){
   (
     _databaseSpec=${1}
-
-    # Start a local PostgreSql instance
-    POSTGRESQL_DATABASE=$(getDatabaseName "${_databaseSpec}") \
-    POSTGRESQL_USER=$(getUsername "${_databaseSpec}") \
-    POSTGRESQL_PASSWORD=$(getPassword "${_databaseSpec}") \
-    run-postgresql >/dev/null 2>&1 &
-
+	_databasetype=$(getDatabaseType ${_databaseSpec})
+	
+	case ${_databasetype} in
+	     "postgres") 
+			# Start a local PostgreSql instance
+			POSTGRESQL_DATABASE=$(getDatabaseName "${_databaseSpec}") \
+			POSTGRESQL_USER=$(getUsername "${_databaseSpec}") \
+			POSTGRESQL_PASSWORD=$(getPassword "${_databaseSpec}") \
+			run-postgresql >/dev/null 2>&1 &
+			;;
+         "mongodb") 
+		    #echo "Mongo DB using default port 27017"
+			/usr/bin/run-mongod >/dev/null 2>&1 &
+			;;
+		 *) 
+		    _configurationError=1
+			echoRed "- Unknown Database Type database cannot be started, script will exit"
+			;;  
+	esac
+	
     # Wait for server to start ...
     local startTime=${SECONDS}
     rtnCd=0
@@ -1089,25 +1232,91 @@ function startServer(){
 
 function stopServer(){
   (
-    # Stop the local PostgreSql instance
-    pg_ctl stop -D /var/lib/pgsql/data/userdata
+    _databaseSpec=${1}
+	_databasetype=$(getDatabaseType ${_databaseSpec})	
+  
+ 	case ${_databasetype} in
+	     "postgres") 
+			# Stop the local PostgreSql instance
+			pg_ctl stop -D /var/lib/pgsql/data/userdata
 
-    # Delete the database files and configuration
-    echo -e "Cleaning up ...\n"
-    rm -rf /var/lib/pgsql/data/userdata
+			# Delete the database files and configuration
+			echo -e "Cleaning up ...\n" >&2
+			rm -rf /var/lib/pgsql/data/userdata
+			;;
+         "mongodb") 
+		    #echo "Mongo DB using default port 27017"
+			sleep 10
+			mongod --dbpath /data/db --shutdown
+			
+			# Delete the database files and configuration
+			echo -e "Cleaning up ...\n" >&2
+			rm -rf /data/db		
+			;;
+		 *) 
+		    _configurationError=1
+			echoRed "- Unknown Database Type database cannot be started, script will exit"
+			;;  
+	esac	 
+
   )
 }
 
 function pingDbServer(){
   (
     _databaseSpec=${1}
+	_databasetype=$(getDatabaseType ${_databaseSpec})	
     _database=$(getDatabaseName "${_databaseSpec}")
-    _user=$(getUsername "${_databaseSpec}")
-    if psql -h 127.0.0.1 -U ${_user} -q -d ${_database} -c 'SELECT 1' >/dev/null 2>&1; then
-      return 0
+    _username=$(getUsername ${_databaseSpec})
+	_password=$(getPassword ${_databaseSpec})
+	unset _configurationError
+	
+	#Set the port based on the database type
+    if [ -z "${localhost}" ]; then
+      _hostname=$(getHostname ${_databaseSpec})
+      _port=$(getPort ${_databaseSpec})
     else
-      return 1
+      _hostname="127.0.0.1"
+	  case ${_databasetype} in
+	   "postgres") 
+		_port=${DEFAULT_PORT_PG}
+		;;
+	   "mongodb") 
+		_port=${DEFAULT_PORT_MD}
+		;;
+	   *) 
+		_configurationError=1
+		_port="UNKNOWN"
+		echoRed "- Unknown Database Type default port cannot be set, script will exit" >&2
+		return 1
+		;;  
+	  esac
     fi
+	
+	if [ -z "${_configurationError}" ]; then
+		case ${_databasetype} in
+			 "postgres") 
+				if psql -h ${_hostname} -U ${_username} -q -d ${_database} -c 'SELECT 1' >/dev/null 2>&1; then
+					return 0
+				else
+					return 1
+				fi
+				;;
+			 "mongodb") 
+				if mongo -h "${_hostname}" --authenticationDatabase="${MONGODB_AUTHENTICATION_DATABASE}" -u "${_username}" -p "${_password}" --port "${_port}" --quiet --eval 'db.runCommand({ connectionStatus: 1 })' >/dev/null 2>&1; then			
+					return 0
+				else
+					return 1
+				fi
+				;;
+			 *) 
+				_configurationError=1
+				echoRed "- Unknown Database Type database cannot be pinged, script will exit"
+				return 1
+				;;  
+		esac
+	fi
+	
   )
 }
 
@@ -1150,7 +1359,12 @@ function verifyBackup(){
     shift $((OPTIND-1))
 
     _databaseSpec=${1}
-    _fileName=${2}
+	_database=$(getDatabaseName ${_databaseSpec})	
+	_databasetype=$(getDatabaseType ${_databaseSpec})
+    _username=$(getUsername ${_databaseSpec})
+    _password=$(getPassword ${_databaseSpec})
+
+	_fileName=${2}
     _fileName=$(findBackup "${_databaseSpec}" "${_fileName}")
 
     echoBlue "\nVerifying backup ..."
@@ -1169,15 +1383,15 @@ function verifyBackup(){
     fi
 
     local startTime=${SECONDS}
-    startServer "${_databaseSpec}"
-    rtnCd=${?}
+	startServer "${_databaseSpec}"
+	rtnCd=${?}
 
     # Restore the database
     if (( ${rtnCd} == 0 )); then
       echo
       echo "Restoring from backup ..."
       if [ -z "${quiet}" ]; then
-        restoreDatabase -ql "${_databaseSpec}" "${_fileName}"
+        restoreDatabase -ql "${_databaseSpec}" "${_fileName}" 
         rtnCd=${?}
       else
         # Filter out stdout, keep stderr
@@ -1192,11 +1406,19 @@ function verifyBackup(){
 
     # Ensure there are tables in the databse and general queries work
     if (( ${rtnCd} == 0 )); then
-      _hostname="127.0.0.1"
-      _port="${DEFAULT_PORT}"
-      _database=$(getDatabaseName ${_databaseSpec})
-      tables=$(psql -h "${_hostname}" -p "${_port}" -d "${_database}" -t -c "SELECT table_name FROM information_schema.tables WHERE table_schema='${TABLE_SCHEMA}' AND table_type='BASE TABLE';")
-      rtnCd=${?}
+	    _hostname="127.0.0.1"
+		case ${_databasetype} in
+	     "postgres") 
+			_port="${DEFAULT_PORT_PG}"
+			tables=$(psql -h "${_hostname}" -p "${_port}" -d "${_database}" -t -c "SELECT table_name FROM information_schema.tables WHERE table_schema='${TABLE_SCHEMA}' AND table_type='BASE TABLE';")
+			;;
+         "mongodb") 
+			collections=$(mongo ${_hostname}/${_database} --quiet --eval 'var dbs = [];dbs = db.getCollectionNames();for (i in dbs){ print(db.dbs[i]);}';)			
+			;;			
+		 *) 
+			;;  
+		esac
+    rtnCd=${?}
     fi
 
     # Get the size of the restored database
@@ -1206,18 +1428,37 @@ function verifyBackup(){
     fi
 
     if (( ${rtnCd} == 0 )); then
-      numResults=$(echo "${tables}"| wc -l)
-      if [[ ! -z "${tables}" ]] && (( numResults >= 1 )); then
-        # All good
-        verificationLog="\nThe restored database contained ${numResults} tables, and is ${size} in size."
-      else
-        # Not so good
-        verificationLog="\nNo tables were found in the restored database."
-        rtnCd="3"
-      fi
+	   case ${_databasetype} in
+	        "postgres") 
+				numResults=$(echo "${tables}"| wc -l)
+				if [[ ! -z "${tables}" ]] && (( numResults >= 1 )); then
+					# All good
+					verificationLog="\nThe restored database contained ${numResults} tables, and is ${size} in size."
+				else
+					# Not so good
+					verificationLog="\nNo tables were found in the restored database."
+					rtnCd="3"
+				fi
+				;;
+			"mongodb") 
+				# 
+				numResults=$(echo "${collections}"| wc -l)
+				if [[ ! -z "${collections}" ]] && (( numResults >= 1 )); then
+					# All good
+					verificationLog="\nThe restored database contained ${numResults} collections, and is ${size} in size."
+				else
+					# Not so good
+					verificationLog="\nNo collections were found in the restored database {_database}."
+					rtnCd="3"
+				fi				
+				;;
+			*) 
+				;;  
+		esac	  
     fi
 
-    stopServer
+	#Stop the database server
+	stopServer "${_databaseSpec}"
     local duration=$(($SECONDS - $startTime))
     local elapsedTime="\n\nElapsed time: $(($duration/3600))h:$(($duration%3600/60))m:$(($duration%60))s - Status Code: ${rtnCd}"
 
@@ -1252,23 +1493,59 @@ function getDbSize(){
 
     _databaseSpec=${1}
     _database=$(getDatabaseName ${_databaseSpec})
+	_databasetype=$(getDatabaseType ${_databaseSpec})
     _username=$(getUsername ${_databaseSpec})
     _password=$(getPassword ${_databaseSpec})
+	
+	#Set the port based on the database type
     if [ -z "${localhost}" ]; then
       _hostname=$(getHostname ${_databaseSpec})
       _port=$(getPort ${_databaseSpec})
     else
       _hostname="127.0.0.1"
-      _port="${DEFAULT_PORT}"
+	  case ${_databasetype} in
+	   "postgres") 
+		_port=${DEFAULT_PORT_PG}
+		;;
+	   "mongodb") 
+		_port=${DEFAULT_PORT_MD}
+		;;
+	   *) 
+		_configurationError=1
+		_port="UNKNOWN"
+		echoRed "- Unknown Database Type default port cannot be set, script will exit" >&2
+		;;  
+	  esac
     fi
 
-    if isInstalled "psql"; then
-      size=$(PGPASSWORD=${_password} psql -h "${_hostname}" -p "${_port}" -U "${_username}" -d "${_database}" -t -c "SELECT pg_size_pretty(pg_database_size(current_database())) as size;")
-      rtnCd=${?}
-    else
-      size="not found"
-      rtnCd=1
-    fi
+	#Run the sql query based on each database type
+	case ${_databasetype} in
+	   "postgres") 
+		if isInstalled "psql"; then
+			size=$(PGPASSWORD=${_password} psql -h "${_hostname}" -p "${_port}" -U "${_username}" -t -c "SELECT pg_size_pretty(pg_database_size(current_database())) as size;")
+			rtnCd=${?}
+		else
+			size="psql not found"
+			rtnCd=1
+		fi
+		;;
+	   "mongodb") 
+		if isInstalled "mongo"; then
+           if [ -z "${localhost}" ]; then
+              size=$(mongo ${_hostname}/${_database} -u ${MONGODB_ADMIN_USER} -p ${MONGODB_ADMIN_PASSWORD} --authenticationDatabase ${MONGODB_AUTHENTICATION_DATABASE} --quiet --eval 'printjson(db.stats().fsTotalSize)')
+           else
+              size=$(mongo ${_hostname}/${_database} --quiet --eval 'printjson(db.stats().fsTotalSize)')
+           fi		
+           rtnCd=${?}
+		else
+			size="mongo not found"
+			rtnCd=1
+		fi
+		;;
+	   *) 
+		;;  
+	esac
+
     echo "${size}"
     return ${rtnCd}
   )
@@ -1280,9 +1557,11 @@ function getDbSize(){
 # --------------------------------------------------------------------------------------
 export BACKUP_FILE_EXTENSION=".sql.gz"
 export IN_PROGRESS_BACKUP_FILE_EXTENSION=".sql.gz.in_progress"
-export DEFAULT_PORT=${POSTGRESQL_PORT_NUM:-5432}
+export DEFAULT_PORT_PG=${POSTGRESQL_PORT_NUM:-5432}
+export DEFAULT_PORT_MD=${MONGO_PORT_NUM:-27017}
 export DATABASE_SERVICE_NAME=${DATABASE_SERVICE_NAME:-postgresql}
 export POSTGRESQL_DATABASE=${POSTGRESQL_DATABASE:-my_postgres_db}
+export MONGODB_AUTHENTICATION_DATABASE=${MONGODB_AUTHENTICATION_DATABASE:-admin}
 export TABLE_SCHEMA=${TABLE_SCHEMA:-public}
 
 # Supports:
@@ -1321,7 +1600,7 @@ export SCHEDULED_VERIFY="scheduled-verify"
 export PRUNE="prune"
 
 # Other:
-export DATABASE_SERVER_TIMEOUT=${DATABASE_SERVER_TIMEOUT:-30}
+export DATABASE_SERVER_TIMEOUT=${DATABASE_SERVER_TIMEOUT:-60}
 # ======================================================================================
 
 # =================================================================================================================
@@ -1410,7 +1689,7 @@ case $(getMode) in
     ;;
 
   ${ERROR})
-    echoYellow "A configuration error has occurred, review the details above."
+    echoRed "A configuration error has occurred, review the details above."
     usage
     ;;
   *)

@@ -17,9 +17,7 @@
       },
       "spec": {
         "storageClassName": "${BACKUP_VOLUME_CLASS}",
-        "accessModes": [
-          "ReadWriteOnce"
-        ],
+        "accessModes": ["ReadWriteOnce"],
         "resources": {
           "requests": {
             "storage": "${BACKUP_VOLUME_SIZE}"
@@ -39,9 +37,7 @@
       },
       "spec": {
         "storageClassName": "${VERIFICATION_VOLUME_CLASS}",
-        "accessModes": [
-          "ReadWriteOnce"
-        ],
+        "accessModes": ["ReadWriteOnce"],
         "resources": {
           "requests": {
             "storage": "${VERIFICATION_VOLUME_SIZE}"
@@ -85,9 +81,7 @@
             "type": "ImageChange",
             "imageChangeParams": {
               "automatic": true,
-              "containerNames": [
-                "${NAME}"
-              ],
+              "containerNames": ["${NAME}"],
               "from": {
                 "kind": "ImageStreamTag",
                 "namespace": "${IMAGE_NAMESPACE}",
@@ -173,15 +167,19 @@
                     "value": "${DATABASE_SERVICE_NAME}"
                   },
                   {
-                    "name": "POSTGRESQL_DATABASE",
+                    "name": "DATABASE_NAME",
                     "value": "${DATABASE_NAME}"
+                  },
+                  {
+                    "name": "MONGODB_AUTHENTICATION_DATABASE",
+                    "value": "${MONGODB_AUTHENTICATION_DATABASE}"
                   },
                   {
                     "name": "TABLE_SCHEMA",
                     "value": "${TABLE_SCHEMA}"
                   },
                   {
-                    "name": "POSTGRESQL_USER",
+                    "name": "QL_USER",
                     "valueFrom": {
                       "secretKeyRef": {
                         "name": "${DATABASE_DEPLOYMENT_NAME}",
@@ -190,7 +188,7 @@
                     }
                   },
                   {
-                    "name": "POSTGRESQL_PASSWORD",
+                    "name": "DATABASE_PASSWORD",
                     "valueFrom": {
                       "secretKeyRef": {
                         "name": "${DATABASE_DEPLOYMENT_NAME}",
@@ -307,6 +305,13 @@
       "description": "The name of the database.",
       "required": true,
       "value": "MyDatabase"
+    },
+    {
+      "name": "MONGODB_AUTHENTICATION_DATABASE",
+      "displayName": "MongoDB Authentication Database",
+      "description": "Value required if you are backing up MongoDB",
+      "required": false,
+      "value": "admin"
     },
     {
       "name": "DATABASE_DEPLOYMENT_NAME",

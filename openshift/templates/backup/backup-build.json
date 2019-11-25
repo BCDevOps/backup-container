@@ -43,10 +43,6 @@
         "strategy": {
           "type": "Docker",
           "dockerStrategy": {
-            "from": {
-              "kind": "${SOURCE_IMAGE_KIND}",
-              "name": "${SOURCE_IMAGE_NAME}:${SOURCE_IMAGE_TAG}"
-            },
             "dockerfilePath": "${DOCKER_FILE_PATH}"
           }
         },
@@ -65,7 +61,7 @@
       "displayName": "Name",
       "description": "The name assigned to all of the resources defined in this template.",
       "required": true,
-      "value": "backup"
+      "value": "pgbackup"
     },
     {
       "name": "GIT_REPO_URL",
@@ -89,20 +85,6 @@
       "value": "/docker"
     },
     {
-      "name": "SOURCE_IMAGE_KIND",
-      "displayName": "Source Image Kind",
-      "description": "The 'kind' (type) of the  source image; typically ImageStreamTag, or DockerImage.",
-      "required": true,
-      "value": "DockerImage"
-    },
-    {
-      "name": "SOURCE_IMAGE_NAME",
-      "displayName": "Source Image Name",
-      "description": "The name of the source image.",
-      "required": true,
-      "value": "registry.access.redhat.com/rhscl/postgresql-10-rhel7"
-    },
-    {
       "name": "SOURCE_IMAGE_TAG",
       "displayName": "Source Image Tag",
       "description": "The tag of the source image.",
@@ -111,8 +93,8 @@
     },
     {
       "name": "DOCKER_FILE_PATH",
-      "displayName": "Docker File Path",
-      "description": "The path to the docker file defining the build.",
+      "displayName": "Docker File",
+      "description": "The path and file of the docker file defining the build.  Choose either 'Dockerfile' for Postgres bulds or 'Dockerfile.Mongo' for MongoDB build",
       "required": false,
       "value": "Dockerfile"
     },
