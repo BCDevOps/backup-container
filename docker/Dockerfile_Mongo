@@ -11,6 +11,10 @@ WORKDIR /
 
 # Load the backup script into the container (must be executable).
 COPY backup.sh /
+
+# REMOVE BEFORE PULL REQUEST TO PROD
+RUN chmod 777 backup.sh
+
 COPY webhook-template.json /
 
 # ========================================================================================================
