@@ -11,7 +11,7 @@ WORKDIR /
 COPY backup.sh /
 
 # REMOVE BEFORE PULL REQUEST TO PROD
-RUN chmod 777 backup.sh
+RUN chmod 777 /backup.sh
 
 COPY webhook-template.json /
 
