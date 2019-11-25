@@ -547,21 +547,10 @@ function pruneBackups(){
 function getUsername(){
   (
     _databaseSpec=${1}
-	_databasetype=$(getDatabaseType ${_databaseSpec})	
     _hostname=$(getHostname ${_databaseSpec})
     _paramName=$(getHostUserParam ${_hostname})
     # Backward compatibility ...
-    case ${_databasetype} in
-	       "postgres") 
-		    _username="${!_paramName:-${POSTGRESQL_USER}}"
-			;;
-           "mongodb") 
-		    _username="${!_paramName:-"admin"}"
-			;;
-		   *) 
-			echoRed "- Unknown Database Type: ${_databaseType}"
-			;;  
-	    esac	
+    _username="${!_paramName:-${DATABASE_USER}}"
     echo ${_username}
   )
 }
@@ -569,23 +558,10 @@ function getUsername(){
 function getPassword(){
   (
     _databaseSpec=${1}
-	_databasetype=$(getDatabaseType ${_databaseSpec})
     _hostname=$(getHostname ${_databaseSpec})
     _paramName=$(getHostPasswordParam ${_hostname})
     # Backward compatibility ...
-    case ${_databasetype} in
-	       "postgres") 
-		    _password="${!_paramName:-${POSTGRESQL_PASSWORD}}"
-			;;
-           "mongodb") 
-		    _password="${!_paramName:-${MONGODB_ADMIN_PASSWORD}}"
-			;;
-		   *) 
-			echoRed "- Unknown Database Type: ${_databaseType}"
-			;;  
-	    esac		
-	
-	
+    _password="${!_paramName:-${DATABASE_PASSWORD}}"
     echo ${_password}
   )
 }
@@ -1251,7 +1227,7 @@ function stopServer(){
 			
 			# Delete the database files and configuration
 			echo -e "Cleaning up ...\n" >&2
-			rm -rf /data/db		
+			rm -rf /data/db/*		
 			;;
 		 *) 
 		    _configurationError=1
@@ -1563,6 +1539,7 @@ export DATABASE_SERVICE_NAME=${DATABASE_SERVICE_NAME:-postgresql}
 export POSTGRESQL_DATABASE=${POSTGRESQL_DATABASE:-my_postgres_db}
 export MONGODB_AUTHENTICATION_DATABASE=${MONGODB_AUTHENTICATION_DATABASE:-admin}
 export TABLE_SCHEMA=${TABLE_SCHEMA:-public}
+
 
 # Supports:
 # - daily

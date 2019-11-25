@@ -85,16 +85,9 @@
       "value": "/docker"
     },
     {
-      "name": "SOURCE_IMAGE_TAG",
-      "displayName": "Source Image Tag",
-      "description": "The tag of the source image.",
-      "required": true,
-      "value": "latest"
-    },
-    {
       "name": "DOCKER_FILE_PATH",
       "displayName": "Docker File",
-      "description": "The path and file of the docker file defining the build.  Choose either 'Dockerfile' for Postgres bulds or 'Dockerfile.Mongo' for MongoDB build",
+      "description": "The path and file of the docker file defining the build.  Choose either 'Dockerfile' for Postgres bulds or 'Dockerfile_Mongo' for MongoDB build",
       "required": false,
       "value": "Dockerfile"
     },
