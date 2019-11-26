@@ -780,9 +780,10 @@ function restoreDatabase(){
 			fi
 			;;
          "mongodb") 
-		    # drop database
-			echo "Restoring from backup ..."
-			mongorestore -u ${DATABASE_USER} -p ${DATABASE_PASSWORD} --authenticationDatabase=${MONGODB_AUTHENTICATION_DATABASE} --drop --gzip --archive=${_fileName} --nsInclude="sbc*"
+          # drop database
+			    echo "Restoring from backup ..."
+			mongorestore --drop -u "${_username}" -p "${MONGODB_ADMIN_PASSWORD}" --authenticationDatabase="${MONGODB_AUTHENTICATION_DATABASE}" -d "${_database}" --gzip --archive=${_fileName} --nsInclude="sbc*"
+
 			_rtnCd=${?}
 			if (( ${_rtnCd} == 0 )); then
 			    local duration=$(($SECONDS - $startTime))
@@ -1179,6 +1180,7 @@ function startServer(){
 			;;
          "mongodb") 
 		    #echo "Mongo DB using default port 27017"
+      export MONGODB_ADMIN_PASSWORD="${DATABASE_PASSWORD}"
 			/usr/bin/run-mongod >/dev/null 2>&1 &
 			;;
 		 *) 
@@ -1227,7 +1229,7 @@ function stopServer(){
 			
 			# Delete the database files and configuration
 			echo -e "Cleaning up ...\n" >&2
-			rm -rf  /var/lib/mongodb/data*		
+			rm -rf  /var/lib/mongodb/data/*
 			;;
 		 *) 
 		    _configurationError=1
@@ -1539,7 +1541,6 @@ export DATABASE_SERVICE_NAME=${DATABASE_SERVICE_NAME:-postgresql}
 export POSTGRESQL_DATABASE=${POSTGRESQL_DATABASE:-my_postgres_db}
 export MONGODB_AUTHENTICATION_DATABASE=${MONGODB_AUTHENTICATION_DATABASE:-admin}
 export TABLE_SCHEMA=${TABLE_SCHEMA:-public}
-export MONGODB_ADMIN_PASSWORD="${DATABASE_PASSWORD}"
 
 
 # Supports:
