@@ -1391,7 +1391,8 @@ function verifyBackup(){
 			tables=$(psql -h "${_hostname}" -p "${_port}" -d "${_database}" -t -c "SELECT table_name FROM information_schema.tables WHERE table_schema='${TABLE_SCHEMA}' AND table_type='BASE TABLE';")
 			;;
          "mongodb") 
-			collections=$(mongo ${_hostname}/${_database} --quiet --eval 'var dbs = [];dbs = db.getCollectionNames();for (i in dbs){ print(db.dbs[i]);}';)			
+         echo 
+			collections=$(mongo ${_hostname}/${_database} --authenticationDatabase="${MONGODB_AUTHENTICATION_DATABASE}" -u "${_username}" -p "${_password}" --quiet --eval 'var dbs = [];dbs = db.getCollectionNames();for (i in dbs){ print(db.dbs[i]);}';)			
 			;;			
 		 *) 
 			;;  
@@ -1510,9 +1511,9 @@ function getDbSize(){
 	   "mongodb") 
 		if isInstalled "mongo"; then
            if [ -z "${localhost}" ]; then
-              size=$(mongo ${_hostname}/${_database} -u ${MONGODB_ADMIN_USER} -p ${MONGODB_ADMIN_PASSWORD} --authenticationDatabase ${MONGODB_AUTHENTICATION_DATABASE} --quiet --eval 'printjson(db.stats().fsTotalSize)')
+              size=$(mongo ${_hostname}/${_database} --authenticationDatabase="${MONGODB_AUTHENTICATION_DATABASE}" -u "${_username}" -p "${_password}" --quiet --eval 'printjson(db.stats().fsTotalSize)')
            else
-              size=$(mongo ${_hostname}/${_database} --quiet --eval 'printjson(db.stats().fsTotalSize)')
+              size=$(mongo ${_hostname}/${_database} --authenticationDatabase="${MONGODB_AUTHENTICATION_DATABASE}" -u "${_username}" -p "${_password}" --quiet --eval 'printjson(db.stats().fsTotalSize)')
            fi		
            rtnCd=${?}
 		else
