@@ -1286,7 +1286,7 @@ function pingDbServer(){
 	if [ -z "${_configurationError}" ]; then
 		case ${_databasetype} in
 			 "postgres") 
-				if psql -h ${_hostname} -U ${_username} -q -d ${_database} -c 'SELECT 1' >/dev/null 2>&1; then
+				if PGPASSWORD=${_password} psql -h ${_hostname} -U ${_username} -q -d ${_database} -c 'SELECT 1' >/dev/null 2>&1; then
 					return 0
 				else
 					return 1
