@@ -1182,6 +1182,18 @@ function startServer(){
 		    #echo "Mongo DB using default port 27017"
       export MONGODB_ADMIN_PASSWORD="${DATABASE_PASSWORD}"
 			/usr/bin/run-mongod >/dev/null 2>&1 &
+
+      mkfifo /tmp/fifo || exit
+      trap 'rm -f /tmp/fifo' 0
+
+      /usr/bin/run-mongod &> /tmp/fifo &
+
+while read line; do
+    case $line in
+        "waiting for connections on port 27017") echo "Y found, breaking out."; break;;
+        *) printf "." ;;
+    esac
+done < /tmp/fifo
 			;;
 		 *) 
 		    _configurationError=1
