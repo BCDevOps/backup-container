@@ -505,7 +505,7 @@
     {
       "name": "VERIFICATION_VOLUME_MOUNT_PATH",
       "displayName": "Verification Volume Mount Path",
-      "description": "The path on which to mount the verification volume.  This is used by the database server to contain the database configuration and data files. For Mongo, we suggest /data/db",
+      "description": "The path on which to mount the verification volume.  This is used by the database server to contain the database configuration and data files. For Mongo, please use /var/lib/mongodb/data",
       "required": true,
       "value": "/var/lib/pgsql/data"
     },

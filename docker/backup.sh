@@ -1223,11 +1223,11 @@ function stopServer(){
          "mongodb") 
 		    #echo "Mongo DB using default port 27017"
 			sleep 10
-			mongod --dbpath /data/db --shutdown
+			mongod --dbpath=/var/lib/mongodb/data --shutdown
 			
 			# Delete the database files and configuration
 			echo -e "Cleaning up ...\n" >&2
-			rm -rf /data/db/*		
+			rm -rf  /var/lib/mongodb/data*		
 			;;
 		 *) 
 		    _configurationError=1
@@ -1539,6 +1539,7 @@ export DATABASE_SERVICE_NAME=${DATABASE_SERVICE_NAME:-postgresql}
 export POSTGRESQL_DATABASE=${POSTGRESQL_DATABASE:-my_postgres_db}
 export MONGODB_AUTHENTICATION_DATABASE=${MONGODB_AUTHENTICATION_DATABASE:-admin}
 export TABLE_SCHEMA=${TABLE_SCHEMA:-public}
+export MONGODB_ADMIN_PASSWORD="${DATABASE_PASSWORD}"
 
 
 # Supports:
