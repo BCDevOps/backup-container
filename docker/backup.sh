@@ -782,7 +782,7 @@ function restoreDatabase(){
          "mongodb") 
 		    # drop database
 			echo "Restoring from backup ..."
-			mongorestore --drop --gzip --archive=${_fileName} --nsInclude="sbc*"
+			mongorestore -u ${DATABASE_USER} -p ${DATABASE_PASSWORD} --authenticationDatabase=${MONGODB_AUTHENTICATION_DATABASE} --drop --gzip --archive=${_fileName} --nsInclude="sbc*"
 			_rtnCd=${?}
 			if (( ${_rtnCd} == 0 )); then
 			    local duration=$(($SECONDS - $startTime))
