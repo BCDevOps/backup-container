@@ -1444,6 +1444,10 @@ function verifyBackup(){
     echo "confirm return code: ${rtnCd}"
     if (( ${rtnCd} == 0 )); then
       logInfo "Successfully verified backup: ${_fileName}${verificationLog}${restoreLog}${elapsedTime}"
+      echo ${_fileName}
+      echo ${verificationLog}
+      echo ${restoreLog}
+      echo ${elapsedTime}
       echo "Sent message"
     else
       logError "Backup verification failed: ${_fileName}${verificationLog}${restoreLog}${elapsedTime}"
