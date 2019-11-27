@@ -1378,6 +1378,7 @@ function verifyBackup(){
 
         if [ ! -z "${restoreLog}" ]; then
           restoreLog="\n\nThe following issues were encountered during backup verification;\n${restoreLog}"
+          echo ${rtnCd}
         fi
       fi
     fi
@@ -1442,10 +1443,10 @@ function verifyBackup(){
     local elapsedTime="\n\nElapsed time: $(($duration/3600))h:$(($duration%3600/60))m:$(($duration%60))s - Status Code: ${rtnCd}"
     echo "confirm return code: ${rtnCd}"
     if (( ${rtnCd} == 0 )); then
-      logInfo "Successfully verified backup; ${_fileName}${verificationLog}${restoreLog}${elapsedTime}"
+      logInfo "Successfully verified backup: ${_fileName}${verificationLog}${restoreLog}${elapsedTime}"
       echo "Sent message"
     else
-      logError "Backup verification failed; ${_fileName}${verificationLog}${restoreLog}${elapsedTime}"
+      logError "Backup verification failed: ${_fileName}${verificationLog}${restoreLog}${elapsedTime}"
     fi
     echo "RESTORE COMPLETED"
     return ${rtnCd}
