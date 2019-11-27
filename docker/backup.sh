@@ -1223,9 +1223,9 @@ function stopServer(){
 		  #echo "Mongo DB using default port 27017"
       # These commands cause [mongod] <defunct>
 			#mongod --dbpath=/var/lib/mongodb/data --shutdown
-      sleep 10
       echo "shutting down..."
-			mongo admin --authenticationDatabase "${MONGODB_AUTHENTICATION_DATABASE}" -u "${_username}" -p "${_password}" --eval "db.shutdownServer()"
+			mongo admin --authenticationDatabase "${MONGODB_AUTHENTICATION_DATABASE}" -u "${_username}" -p "${_password}" --eval "db.shutdownServer()" &
+      sleep 30
       #pkill mongod
 			# Delete the database files and configuration
 			echo -e "Cleaning up ...\n" >&2
