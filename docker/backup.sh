@@ -1446,7 +1446,7 @@ function verifyBackup(){
     else
       logError "Backup verification failed; ${_fileName}${verificationLog}${restoreLog}${elapsedTime}"
     fi
-
+    echo "RESTORE COMPLETED"
     return ${rtnCd}
   )
 }
