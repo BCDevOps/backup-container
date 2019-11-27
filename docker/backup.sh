@@ -783,7 +783,7 @@ function restoreDatabase(){
       # drop database
       sleep 25
 			echo "Restoring from backup ..."
-			mongorestore --drop -u "${_username}" -p "${DATABASE_PASSWORD}" --authenticationDatabase="${MONGODB_AUTHENTICATION_DATABASE}" -d "${_database}" --gzip --archive=${_fileName} --nsInclude="sbc*"
+			mongorestore --drop -u "${_username}" -p "${DATABASE_PASSWORD}" --authenticationDatabase="${MONGODB_AUTHENTICATION_DATABASE}" -d "${_database}" --quiet --gzip --archive=${_fileName} --nsInclude="sbc*"
 			_rtnCd=${?}
 			if (( ${_rtnCd} == 0 )); then
 			    local duration=$(($SECONDS - $startTime))
