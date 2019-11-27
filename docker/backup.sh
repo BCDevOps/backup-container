@@ -1224,7 +1224,7 @@ function stopServer(){
       # These commands cause [mongod] <defunct>
 			#mongod --dbpath=/var/lib/mongodb/data --shutdown
       sleep 10
-      echo shutting down...
+      echo "shutting down..."
 			mongo admin --authenticationDatabase "${MONGODB_AUTHENTICATION_DATABASE}" -u "${_username}" -p "${_password}" --eval "db.shutdownServer()"
       #pkill mongod
 			# Delete the database files and configuration
@@ -1426,6 +1426,7 @@ function verifyBackup(){
 				if [[ ! -z "${collections}" ]] && (( numResults >= 1 )); then
 					# All good
 					verificationLog="\nThe restored database contained ${numResults} collections, and is ${size} in size."
+					echo $verificationLog
 				else
 					# Not so good
 					verificationLog="\nNo collections were found in the restored database {_database}."
@@ -1445,6 +1446,7 @@ function verifyBackup(){
     if (( ${rtnCd} == 0 )); then
       logInfo "Successfully verified backup: ${_fileName}${verificationLog}${restoreLog}${elapsedTime}"
       echo "Sent message"
+      logInfo "test message when verify doesnt output"
     else
       logError "Backup verification failed: ${_fileName}${verificationLog}${restoreLog}${elapsedTime}"
     fi
