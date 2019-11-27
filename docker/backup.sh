@@ -1381,7 +1381,7 @@ function verifyBackup(){
         fi
       fi
     fi
-
+    echo "PRE Collections: ${rtnCd}"
     # Ensure there are tables in the databse and general queries work
     if (( ${rtnCd} == 0 )); then
 	    _hostname="127.0.0.1"
@@ -1440,9 +1440,10 @@ function verifyBackup(){
 	  stopServer "${_databaseSpec}"
     local duration=$(($SECONDS - $startTime))
     local elapsedTime="\n\nElapsed time: $(($duration/3600))h:$(($duration%3600/60))m:$(($duration%60))s - Status Code: ${rtnCd}"
-
+    echo "confirm return code: ${rtnCd}"
     if (( ${rtnCd} == 0 )); then
       logInfo "Successfully verified backup; ${_fileName}${verificationLog}${restoreLog}${elapsedTime}"
+      echo "Sent message"
     else
       logError "Backup verification failed; ${_fileName}${verificationLog}${restoreLog}${elapsedTime}"
     fi
