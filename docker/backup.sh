@@ -1436,9 +1436,8 @@ function verifyBackup(){
 		esac	  
     fi
 
-
-function stopServer "${_databaseSpec}"
-    #Stop the database server
+	#Stop the database server
+	  stopServer "${_databaseSpec}"
     local duration=$(($SECONDS - $startTime))
     local elapsedTime="\n\nElapsed time: $(($duration/3600))h:$(($duration%3600/60))m:$(($duration%60))s - Status Code: ${rtnCd}"
 
