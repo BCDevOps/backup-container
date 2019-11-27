@@ -781,7 +781,7 @@ function restoreDatabase(){
 			;;
     "mongodb") 
       # drop database
-      sleep 15
+      sleep 25
 			echo "Restoring from backup ..."
 			mongorestore --drop -u "${_username}" -p "${DATABASE_PASSWORD}" --authenticationDatabase="${MONGODB_AUTHENTICATION_DATABASE}" -d "${_database}" --gzip --archive=${_fileName} --nsInclude="sbc*"
 			_rtnCd=${?}
@@ -1225,7 +1225,7 @@ function stopServer(){
 			
 			# Delete the database files and configuration
 			echo -e "Cleaning up ...\n" >&2
-			rm -rf  /var/lib/mongodb/data/*
+			rm -rf /var/lib/mongodb/data/*
 			;;
 		*) 
 		  _configurationError=1
