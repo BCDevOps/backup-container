@@ -1171,32 +1171,27 @@ function startServer(){
 	_databasetype=$(getDatabaseType ${_databaseSpec})
 	
 	case ${_databasetype} in
-	     "postgres") 
+	  "postgres") 
 			# Start a local PostgreSql instance
 			POSTGRESQL_DATABASE=$(getDatabaseName "${_databaseSpec}") \
 			POSTGRESQL_USER=$(getUsername "${_databaseSpec}") \
 			POSTGRESQL_PASSWORD=$(getPassword "${_databaseSpec}") \
 			run-postgresql >/dev/null 2>&1 &
 			;;
-         "mongodb") 
-		    #echo "Mongo DB using default port 27017"
-      export MONGODB_ADMIN_PASSWORD="${DATABASE_PASSWORD}"
-			/usr/bin/run-mongod >/dev/null 2>&1 &
-
-      mkfifo /tmp/fifo || exit
+    "mongodb") 
+	    #echo "Mongo DB using default port 27017"
+	    mkfifo /tmp/fifo || exit
       trap 'rm -f /tmp/fifo' 0
-
-      /usr/bin/run-mongod &> /tmp/fifo &
-
-while read line; do
-    case $line in
-        "waiting for connections on port 27017") echo "Y found, breaking out."; break;;
-        *) printf "." ;;
-    esac
-done < /tmp/fifo
+      MONGODB_ADMIN_PASSWORD="${DATABASE_PASSWORD}" /usr/bin/run-mongod &> /tmp/fifo &
+      while read line; do
+        case $line in
+          "waiting for connections on port 27017") echo "Y found, breaking out."; break;;
+          *) printf "." ;;
+        esac
+      done < /tmp/fifo
 			;;
-		 *) 
-		    _configurationError=1
+		*) 
+		  _configurationError=1
 			echoRed "- Unknown Database Type database cannot be started, script will exit"
 			;;  
 	esac
