@@ -1222,14 +1222,14 @@ function stopServer(){
     "mongodb") 
 		  #echo "Mongo DB using default port 27017"
       # These commands cause [mongod] <defunct>
-			#mongod --dbpath=/var/lib/mongodb/data --shutdown
+			# mongod --dbpath=/var/lib/mongodb/data --shutdown &
       echo "shutting down..."
-			# mongo admin --authenticationDatabase "${MONGODB_AUTHENTICATION_DATABASE}" -u "${_username}" -p "${_password}" --eval "db.shutdownServer()"
+			mongo admin --authenticationDatabase "${MONGODB_AUTHENTICATION_DATABASE}" -u "${_username}" -p "${_password}" --eval "db.shutdownServer()"
       sleep 30
       #pkill mongod
 			# Delete the database files and configuration
 			echo -e "Cleaning up ...\n" >&2
-			#rm -rf /var/lib/mongodb/data/*
+			rm -rf /var/lib/mongodb/data/*
 
 			;;
 		*) 
@@ -1382,7 +1382,6 @@ function verifyBackup(){
         fi
       fi
     fi
-    echo "PRE Collections: ${rtnCd}"
     # Ensure there are tables in the databse and general queries work
     if (( ${rtnCd} == 0 )); then
 	    _hostname="127.0.0.1"
@@ -1392,7 +1391,6 @@ function verifyBackup(){
 			    tables=$(psql -h "${_hostname}" -p "${_port}" -d "${_database}" -t -c "SELECT table_name FROM information_schema.tables WHERE table_schema='${TABLE_SCHEMA}' AND table_type='BASE TABLE';")
 			    ;;
         "mongodb") 
-          echo "TESTING COLLECTIONS"
 			    collections=$(mongo ${_hostname}/${_database} --authenticationDatabase "${MONGODB_AUTHENTICATION_DATABASE}" -u "${_username}" -p "${_password}" --quiet --eval 'var dbs = [];dbs = db.getCollectionNames();for (i in dbs){ print(db.dbs[i]);}';)
 			    ;;			
 		    *) 
@@ -1442,18 +1440,11 @@ function verifyBackup(){
 	  stopServer "${_databaseSpec}"
     local duration=$(($SECONDS - $startTime))
     local elapsedTime="\n\nElapsed time: $(($duration/3600))h:$(($duration%3600/60))m:$(($duration%60))s - Status Code: ${rtnCd}"
-    echo "confirm return code: ${rtnCd}"
     if (( ${rtnCd} == 0 )); then
       logInfo "Successfully verified backup: ${_fileName}${verificationLog}${restoreLog}${elapsedTime}"
-      echo ${_fileName}
-      echo ${verificationLog}
-      echo ${restoreLog}
-      echo ${elapsedTime}
-      echo "Sent message"
     else
       logError "Backup verification failed: ${_fileName}${verificationLog}${restoreLog}${elapsedTime}"
     fi
-    echo "RESTORE COMPLETED"
     return ${rtnCd}
   )
 }
@@ -1531,8 +1522,6 @@ function getDbSize(){
 	   *) 
 		;;  
 	esac
-
-    echo "${size}"
     return ${rtnCd}
   )
 }
