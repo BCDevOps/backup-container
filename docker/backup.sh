@@ -1499,7 +1499,7 @@ function getDbSize(){
 	case ${_databasetype} in
 	   "postgres") 
 		if isInstalled "psql"; then
-			size=$(PGPASSWORD=${_password} psql -h "${_hostname}" -p "${_port}" -U "${_username}" -t -c "SELECT pg_size_pretty(pg_database_size(current_database())) as size;")
+			size=$(PGPASSWORD=${_password} psql -h "${_hostname}" -p "${_port}" -U "${_username}" -d "{$_database}" -t -c "SELECT pg_size_pretty(pg_database_size(current_database())) as size;")
 			rtnCd=${?}
 		else
 			size="psql not found"
