@@ -57,11 +57,13 @@ function usage () {
       - Stop the local database server instance.
       - Delete the local database and configuration.
 
-    -v <DatabaseSpec/>; in the form <Hostname/>/<DatabaseName/>, or <Hostname/>:<Port/>/<DatabaseName/>
+    -v <DatabaseSpec/>; in the form <connectionSpec>=<Hostname/>/<DatabaseName/>, or <connectionSpec>=<Hostname/>:<Port/>/<DatabaseName/>
+                        where <connectionSpec> defaults to container database type if omitted
+                        <connectionSpec> must be one of "postgresql" or "mongodb" if provided
        Triggers verify mode and starts verify mode on the specified database.
 
       Example:
-        $0 -v postgresql:5432/TheOrgBook_Database/postgres
+        $0 -v postgresql=postgresql:5432/TheOrgBook_Database
           - Would start the verification process on the database using the most recent backup for the database.
 
         $0 -v all
@@ -89,7 +91,10 @@ function usage () {
     file you would want to use.  This functionality provides a convenient way to test your backups or migrate your
     database/data without affecting the original database.
 
-    -r <DatabaseSpec/>; in the form <Hostname/>/<DatabaseName/>, or <Hostname/>:<Port/>/<DatabaseName/>
+    -r <DatabaseSpec/>; in the form <connectionSpec>=<Hostname/>/<DatabaseName/>, or <connectionSpec>=<Hostname/>:<Port/>/<DatabaseName/>
+                        where <connectionSpec> defaults to container database type if omitted
+                        <connectionSpec> must be one of "postgresql" or "mongodb" if provided
+
        Triggers restore mode and starts restore mode on the specified database.
 
       Example:
@@ -102,7 +107,7 @@ function usage () {
        If not specified, the restore process attempts to locate the most recent backup file for the specified database.
 
       Examples:
-        $0 -r wallet-db/test_db/postgres -f wallet-db-tob_holder
+        $0 -r postgresql=wallet-db/test_db/postgres -f wallet-db-tob_holder
           - Would try to find the latest backup matching on the partial file name provided.
 
         $0 -r wallet-db/test_db/postgres -f /backups/daily/2018-11-07/wallet-db-tob_holder_2018-11-07_23-59-35.sql.gz
@@ -246,8 +251,13 @@ function getDatabaseName(){
 function getDatabaseType(){
   (
     _databaseSpec=${1}
-    _databaseType=$(echo ${_databaseSpec} | sed 's~^[^/]*/\(.*\)~\1~' | sed 's~\(.*\)/\(.*\)~\2~' | tr '[:upper:]' '[:lower:]')
+    if [[ ${_databaseSpec} == *"= "* ]]; then
+       _databaseType=$(echo ${_databaseSpec} | sed 's/=.*//' | tr '[:upper:]' '[:lower:]')
+    else 
+       _databaseType="${PODTYPE}"
+    fi
     echo "${_databaseType}"
+
   )
 }
 
@@ -414,7 +424,8 @@ function listExistingBackups(){
     local output="\nDatabase,Current Size"
 
     for database in ${databases}; do
-        if pingDbServer ${database}; then
+        
+        if [[ "$(getDatabaseType ${database})" == "${PODTYPE}" ]]; then
            output="${output}\n${database},$(getDbSize "${database}")"
         fi
     done
@@ -664,7 +675,7 @@ function restoreDatabase(){
     _fileName=${2}
     _fileName=$(findBackup "${_databaseSpec}" "${_fileName}")
 
-   if [[ "${_mode}" == ${RESTORE} ]] && (( ! pingDbServer ${_databaseSpec} )); then
+   if [[ "${_mode}" == ${RESTORE} ]] && [[ "$(getDatabaseType ${database})" == ${PODTYPE} ]]; then
         echoRed "*** Attempting to restore database ${_databaseSpec} from ${PODTYPE} POD ***\n"
         echoRed "*** Cannot continue with the restore. It must be initiated from the correct Backup Pod ***\n"     
         exit 0
@@ -1126,7 +1137,7 @@ function runBackups(){
 	
     for database in ${databases}; do
 
-      if pingDbServer ${database}; then
+       if [[ "$(getDatabaseType ${database})" == "${PODTYPE}" ]]; then
          local startTime=${SECONDS}
          filename=$(generateFilename "${backupDir}" "${database}")
          backupDatabase "${database}" "${filename}"
@@ -1147,7 +1158,7 @@ function runBackups(){
       fi
     done
 
-         listExistingBackups ${ROOT_BACKUP_DIR}
+    listExistingBackups ${ROOT_BACKUP_DIR}
   )
 }
 
@@ -1322,12 +1333,8 @@ function verifyBackups(){
     fi
 
     for database in ${databases}; do
-        if pingDbServer ${database}; then
+        if [[ "$(getDatabaseType ${database})" == "${PODTYPE}" ]]; then
            verifyBackup ${flags} "${database}" "${_fileName}"
-        else
-           echoRed "***Trying to verify backup in a ${PODTYPE} Pod for ${database}... ${PODTYPE} ping failed ***"
-           echoRed "***Verify for ${database} cannot be completed ***"
-           echo
         fi
     done
   )
