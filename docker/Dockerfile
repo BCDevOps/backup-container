@@ -26,9 +26,6 @@ ADD https://github.com/$SOURCE_REPO/go-crond/releases/download/$GOCROND_VERSION/
 
 USER root
 
-# REMOVE BEFORE PULL REQUEST TO PROD
-RUN chmod 777 /backup.sh
-
 RUN chmod ug+x /usr/bin/go-crond
 # ========================================================================================================
 
