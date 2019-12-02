@@ -59,7 +59,9 @@ function usage () {
 
     -v <DatabaseSpec/>; in the form <connectionSpec>=<Hostname/>/<DatabaseName/>, or <connectionSpec>=<Hostname/>:<Port/>/<DatabaseName/>
                         where <connectionSpec> defaults to container database type if omitted
-                        <connectionSpec> must be one of "postgresql" or "mongodb" if provided
+                        <connectionSpec> must be one of "postgres" or "mongodb" 
+                        <connectionSpec> must be specified in a mixed database container project
+                        
        Triggers verify mode and starts verify mode on the specified database.
 
       Example:
@@ -93,7 +95,8 @@ function usage () {
 
     -r <DatabaseSpec/>; in the form <connectionSpec>=<Hostname/>/<DatabaseName/>, or <connectionSpec>=<Hostname/>:<Port/>/<DatabaseName/>
                         where <connectionSpec> defaults to container database type if omitted
-                        <connectionSpec> must be one of "postgresql" or "mongodb" if provided
+                        <connectionSpec> must be one of "postgres" or "mongodb" 
+                        <connectionSpec> must be specified in a mixed database container project
 
        Triggers restore mode and starts restore mode on the specified database.
 
@@ -251,7 +254,7 @@ function getDatabaseName(){
 function getDatabaseType(){
   (
     _databaseSpec=${1}
-    if [[ ${_databaseSpec} == *"= "* ]]; then
+    if [[ ${_databaseSpec} == *"="* ]]; then
        _databaseType=$(echo ${_databaseSpec} | sed 's/=.*//' | tr '[:upper:]' '[:lower:]')
     else 
        _databaseType="${PODTYPE}"
@@ -264,9 +267,10 @@ function getDatabaseType(){
 function getPort(){
   (
     _databaseSpec=${1}
+    
     portsed="s~\(^.*:\)\(.*\)/\(.*$\)~\2~;s~${_databaseSpec}~~g;s~/.*~~" 
    	_port=$(echo ${_databaseSpec} | sed "${portsed}") 
-	
+	  
 	if [ -z ${_port} ]; then
 		case ${PODTYPE} in
 	       "postgres") 
@@ -289,7 +293,12 @@ function getPort(){
 function getHostname(){
   (
     _databaseSpec=${1}
-	_hostname=$(echo ${_databaseSpec} | sed 's~[:/].*~~') 
+
+    if [[ ${_databaseSpec} == *"="* ]]; then 
+       _hostname=$(echo ${_databaseSpec} | sed 's~[:/].*~~') | awk -F"=" '{print $2}'
+    else
+	    _hostname=$(echo ${_databaseSpec} | sed 's~[:/].*~~') 
+    fi
     echo "${_hostname}"
   )
 }
@@ -341,12 +350,12 @@ function readConf(){
       #  - Remove any lines that do not match the expected database spec format(s)
       #     - <Hostname/>/<DatabaseName/>
       #     - <Hostname/>:<Port/>/<DatabaseName/>
-      filters="${filters}/^[a-zA-Z0-9_/-]*\(:[0-9]*\)\?\/[a-zA-Z0-9_/-]*$/!d;"
+      filters="${filters}/^[a-zA-Z0-9=_/-]*\(:[0-9]*\)\?\/[a-zA-Z0-9_/-]*$/!d;"
     else
       # Read in the cron config ...
       #  - Remove any lines that MATCH expected database spec format(s),
       #    leaving, what should be, cron tabs.
-      filters="${filters}/^[a-zA-Z0-9_/-]*\(:[0-9]*\)\?\/[a-zA-Z0-9_/-]*$/d;"
+      filters="${filters}/^[a-zA-Z0-9=_/-]*\(:[0-9]*\)\?\/[a-zA-Z0-9_/-]*$/d;"
     fi
 
     if [ -f ${BACKUP_CONF} ]; then
@@ -425,7 +434,12 @@ function listExistingBackups(){
 
     for database in ${databases}; do
         
-        if [[ "$(getDatabaseType ${database})" == "${PODTYPE}" ]]; then
+        if [[ "$(getDatabaseType ${database})" == ${PODTYPE} ]]; then
+           echoYellow "listExisting database is ${database}"
+           echoYellow "listExisting database type is $(getDatabaseType ${database})"
+           echoYellow "listExisting Pod will process ${PODTYPE}"
+           echoYellow "listExisting Hostname is $(getHostname ${_databaseSpec})"
+           echoYellow "listExisting Port is $(getPort ${_databaseSpec})"
            output="${output}\n${database},$(getDbSize "${database}")"
         fi
     done
@@ -1137,7 +1151,7 @@ function runBackups(){
 	
     for database in ${databases}; do
 
-       if [[ "$(getDatabaseType ${database})" == "${PODTYPE}" ]]; then
+       if [[ "$(getDatabaseType ${database})" == ${PODTYPE} ]]; then
          local startTime=${SECONDS}
          filename=$(generateFilename "${backupDir}" "${database}")
          backupDatabase "${database}" "${filename}"
@@ -1333,7 +1347,7 @@ function verifyBackups(){
     fi
 
     for database in ${databases}; do
-        if [[ "$(getDatabaseType ${database})" == "${PODTYPE}" ]]; then
+        if [[ "$(getDatabaseType ${database})" == ${PODTYPE} ]]; then
            verifyBackup ${flags} "${database}" "${_fileName}"
         fi
     done
