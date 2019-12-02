@@ -295,7 +295,7 @@ function getHostname(){
     _databaseSpec=${1}
 
     if [[ ${_databaseSpec} == *"="* ]]; then 
-       _hostname=$(echo ${_databaseSpec} | sed 's~[:/].*~~') | awk -F"=" '{print $2}'
+       _hostname=$(echo ${_databaseSpec} | sed 's~[:/].*~~' | awk -F"=" '{print $2}')
     else
 	    _hostname=$(echo ${_databaseSpec} | sed 's~[:/].*~~') 
     fi
@@ -435,11 +435,6 @@ function listExistingBackups(){
     for database in ${databases}; do
         
         if [[ "$(getDatabaseType ${database})" == ${PODTYPE} ]]; then
-           echoYellow "listExisting database is ${database}"
-           echoYellow "listExisting database type is $(getDatabaseType ${database})"
-           echoYellow "listExisting Pod will process ${PODTYPE}"
-           echoYellow "listExisting Hostname is $(getHostname ${_databaseSpec})"
-           echoYellow "listExisting Port is $(getPort ${_databaseSpec})"
            output="${output}\n${database},$(getDbSize "${database}")"
         fi
     done
