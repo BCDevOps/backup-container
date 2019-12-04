@@ -111,6 +111,15 @@ function usage () {
         $0 -r wallet-db/test_db -f wallet-db-tob_holder_2018-11-07_23-59-35.sql.gz
           - Would use the specific backup file regardless of its location in the root backup folder.
 
+    -s OPTIONAL flag.  Use with caution.  Could cause unintentional data loss.
+       Run the restore in scripted/scheduled mode.  In this mode the restore will not ask you to confirm the settings,
+       nor will ask you for the 'Admin' password.  It will simply attempt to restore a database from a backup.
+       It's up to you to ensure it's targeting the correct database and using the correct backup file.
+
+    -a <AdminPassword/>; an OPTIONAL flag used to specify the 'Admin' password.
+       Use with the '-s' flag to specify the 'Admin' password.  Under normal usage conditions it's better to supply the
+       password when prompted so it is not visible on the console.
+
 EOF
 exit 1
 }
@@ -644,8 +653,8 @@ function restoreDatabase(){
 
     echo "Restoring to ${_hostname}:${_port} ..."
 
-    if [ -z "${quiet}" ]; then
-      # Ask for the Admin Password for the database
+    if [ -z "${quiet}" ] && [ -z "${_adminPassword}" ]; then
+      # Ask for the Admin Password for the database, if it has not already been provided.
       _msg="Admin password (${_databaseSpec}):"
       _yellow='\033[1;33m'
       _nc='\033[0m' # No Color
@@ -917,6 +926,16 @@ function cronMode(){
 }
 
 function isScheduled(){
+  (
+    if [ ! -z "${SCHEDULED_RUN}" ]; then
+      return 0
+    else
+      return 1
+    fi
+  )
+}
+
+function isScripted(){
   (
     if [ ! -z "${SCHEDULED_RUN}" ]; then
       return 0
@@ -1327,7 +1346,7 @@ export DATABASE_SERVER_TIMEOUT=${DATABASE_SERVER_TIMEOUT:-30}
 # =================================================================================================================
 # Initialization:
 # -----------------------------------------------------------------------------------------------------------------
-while getopts clr:v:f:1sph FLAG; do
+while getopts clr:v:f:1spha: FLAG; do
   case $FLAG in
     c)
       echoBlue "\nListing configuration settings ..."
@@ -1359,6 +1378,9 @@ while getopts clr:v:f:1sph FLAG; do
     p)
       export RUN_PRUNE=1
       ;;
+    a)
+      export _adminPassword=${OPTARG}
+      ;;
     h)
       usage
       ;;
@@ -1386,7 +1408,12 @@ case $(getMode) in
     ;;
 
   ${RESTORE})
-    restoreDatabase "${_restoreDatabase}" "${_fromBackup}"
+    unset restoreFlags
+    if isScripted; then
+      restoreFlags="-q"
+    fi
+
+    restoreDatabase ${restoreFlags} "${_restoreDatabase}" "${_fromBackup}"
     ;;
 
   ${VERIFY})
