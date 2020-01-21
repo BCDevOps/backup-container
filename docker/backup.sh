@@ -1,24 +1,116 @@
-#!/bin/bash
+  #!/bin/bash
 
 # =================================================================================================================
 # Usage:
 # -----------------------------------------------------------------------------------------------------------------
-usage () {
+function usage () {
   cat <<-EOF
 
-  Automated backup script for Postgresql databases
+  Automated backup script for Postgresql databases.
+
+  There are two modes of scheduling backups:
+    - Cron Mode:
+      - Allows one or more schedules to be defined as cron tabs in ${BACKUP_CONF}.
+      - If cron (go-crond) is installed (which is handled by the Docker file) and at least one cron tab is defined, the script will startup in Cron Mode,
+        otherwise it will default to Legacy Mode.
+      - Refer to ${BACKUP_CONF} for additional details and examples of using cron scheduling.
+
+    - Legacy Mode:
+      - Uses a simple sleep command to set the schedule based on the setting of BACKUP_PERIOD; defaults to ${BACKUP_PERIOD}
 
   Refer to the project documentation for additional details on how to use this script.
   - https://github.com/BCDevOps/backup-container
 
-  Usage: 
+  Usage:
     $0 [options]
 
-  Options:
-  ========
+  Standard Options:
+  =================
     -h prints this usage documentation.
+
+    -1 run once.
+       Performs a single set of backups and exits.
+
+    -s run in scheduled/silent (no questions asked) mode.
+       A flag to be used by cron scheduled backups to indicate they are being run on a schedule.
+       Requires cron (go-crond) to be installed and at least one cron tab to be defined in ${BACKUP_CONF}
+       Refer to ${BACKUP_CONF} for additional details and examples of using cron scheduling.
+
     -l lists existing backups.
+       Great for listing the available backups for a restore.
+
     -c lists the current configuration settings and exits.
+       Great for confirming the current settings, and listing the databases included in the backup schedule.
+
+    -p prune backups
+       Used to manually prune backups.
+       This can be used with the '-f' option, see below, to prune specific backups or sets of backups.
+       Use caution when using the '-f' option.
+
+  Verify Options:
+  ================
+    The verify process performs the following basic operations:
+      - Start a local database server instance.
+      - Restore the selected backup locally, watching for errors.
+      - Run a table query on the restored database as a simple test to ensure tables were restored
+        and queries against the database succeed without error.
+      - Stop the local database server instance.
+      - Delete the local database and configuration.
+
+    -v <DatabaseSpec/>; in the form <Hostname/>/<DatabaseName/>, or <Hostname/>:<Port/>/<DatabaseName/>
+       Triggers verify mode and starts verify mode on the specified database.
+
+      Example:
+        $0 -v postgresql:5432/TheOrgBook_Database
+          - Would start the verification process on the database using the most recent backup for the database.
+
+        $0 -v all
+          - Verify the most recent backup of all databases.
+
+    -f <BackupFileFilter/>; an OPTIONAL filter to use to find/identify the backup file to restore.
+       Refer to the same option under 'Restore Options' for details.
+
+  Restore Options:
+  ================
+    The restore process performs the following basic operations:
+      - Drop and recreate the selected database.
+      - Grant the database user access to the recreated database
+      - Restore the database from the selected backup file
+
+    Have the 'Admin' (postgres) password handy, the script will ask you for it during the restore.
+
+    When in restore mode, the script will list the settings it will use and wait for your confirmation to continue.
+    This provides you with an opportunity to ensure you have selected the correct database and backup file
+    for the job.
+
+    Restore mode will allow you to restore a database to a different location (host, and/or database name) provided
+    it can contact the host and you can provide the appropriate credentials.  If you choose to do this, you will need
+    to provide a file filter using the '-f' option, since the script will likely not be able to determine which backup
+    file you would want to use.  This functionality provides a convenient way to test your backups or migrate your
+    database/data without affecting the original database.
+
+    -r <DatabaseSpec/>; in the form <Hostname/>/<DatabaseName/>, or <Hostname/>:<Port/>/<DatabaseName/>
+       Triggers restore mode and starts restore mode on the specified database.
+
+      Example:
+        $0 -r postgresql:5432/TheOrgBook_Database
+          - Would start the restore process on the database using the most recent backup for the database.
+
+    -f <BackupFileFilter/>; an OPTIONAL filter to use to find/identify the backup file to restore.
+       This can be a full or partial file specification.  When only part of a filename is specified the restore process
+       attempts to find the most recent backup matching the filter.
+       If not specified, the restore process attempts to locate the most recent backup file for the specified database.
+
+      Examples:
+        $0 -r wallet-db/test_db -f wallet-db-tob_holder
+          - Would try to find the latest backup matching on the partial file name provided.
+
+        $0 -r wallet-db/test_db -f /backups/daily/2018-11-07/wallet-db-tob_holder_2018-11-07_23-59-35.sql.gz
+          - Would use  the specific backup file.
+
+        $0 -r wallet-db/test_db -f wallet-db-tob_holder_2018-11-07_23-59-35.sql.gz
+          - Would use the specific backup file regardless of its location in the root backup folder.
+
 EOF
 exit 1
 }
@@ -27,42 +119,123 @@ exit 1
 # =================================================================================================================
 # Funtions:
 # -----------------------------------------------------------------------------------------------------------------
-echoRed (){
+function echoRed (){
   _msg=${1}
   _red='\e[31m'
   _nc='\e[0m' # No Color
   echo -e "${_red}${_msg}${_nc}"
 }
 
-echoYellow (){
+function echoYellow (){
   _msg=${1}
   _yellow='\e[33m'
   _nc='\e[0m' # No Color
   echo -e "${_yellow}${_msg}${_nc}"
 }
 
-echoBlue (){
+function echoBlue (){
   _msg=${1}
   _blue='\e[34m'
   _nc='\e[0m' # No Color
   echo -e "${_blue}${_msg}${_nc}"
 }
 
-echoGreen (){
+function echoGreen (){
   _msg=${1}
   _green='\e[32m'
   _nc='\e[0m' # No Color
   echo -e "${_green}${_msg}${_nc}"
 }
 
-echoMagenta (){
+function echoMagenta (){
   _msg=${1}
   _magenta='\e[35m'
   _nc='\e[0m' # No Color
   echo -e "${_magenta}${_msg}${_nc}"
 }
 
-getDatabaseName(){
+function logInfo(){
+  (
+    infoMsg="${1}"
+    echo -e "${infoMsg}"
+    postMsgToWebhook "${ENVIRONMENT_FRIENDLY_NAME}" \
+                     "${ENVIRONMENT_NAME}" \
+                     "INFO" \
+                     "${infoMsg}"
+  )
+}
+
+function logWarn(){
+  (
+    warnMsg="${1}"
+    echoYellow "${warnMsg}"
+    postMsgToWebhook "${ENVIRONMENT_FRIENDLY_NAME}" \
+                     "${ENVIRONMENT_NAME}" \
+                     "WARN" \
+                     "${warnMsg}"
+  )
+}
+
+function logError(){
+  (
+    errorMsg="${1}"
+    echoRed "[!!ERROR!!] - ${errorMsg}" >&2
+    postMsgToWebhook "${ENVIRONMENT_FRIENDLY_NAME}" \
+                     "${ENVIRONMENT_NAME}" \
+                     "ERROR" \
+                     "${errorMsg}"
+  )
+}
+
+function getWebhookPayload(){
+  _payload=$(eval "cat <<-EOF
+$(<${WEBHOOK_TEMPLATE})
+EOF
+")
+  echo "${_payload}"
+}
+
+function formatWebhookMsg(){
+  (
+    # Escape all double quotes
+    # Escape all newlines
+    filters='s~"~\\"~g;:a;N;$!ba;s~\n~\\n~g;'
+    _value=$(echo "${1}" | sed "${filters}")
+    echo "${_value}"
+  )
+}
+
+function postMsgToWebhook(){
+  (
+    if [ -z "${WEBHOOK_URL}" ] && [ -f ${WEBHOOK_TEMPLATE} ]; then
+      return 0
+    fi
+
+    projectFriendlyName=${1}
+    projectName=${2}
+    statusCode=${3}
+    message=$(formatWebhookMsg "${4}")
+    curl -s -X POST -H 'Content-Type: application/json' --data "$(getWebhookPayload)" "${WEBHOOK_URL}" > /dev/null
+  )
+}
+
+function waitForAnyKey() {
+  read -n1 -s -r -p $'\e[33mWould you like to continue?\e[0m  Press Ctrl-C to exit, or any other key to continue ...' key
+  echo -e \\n
+
+  # If we get here the user did NOT press Ctrl-C ...
+  return 0
+}
+
+function runOnce() {
+  if [ ! -z "${RUN_ONCE}" ]; then
+    return 0
+  else
+    return 1
+  fi
+}
+
+function getDatabaseName(){
   (
     _databaseSpec=${1}
     _databaseName=$(echo ${_databaseSpec} | sed 's~^.*/\(.*$\)~\1~')
@@ -70,7 +243,7 @@ getDatabaseName(){
   )
 }
 
-getPort(){
+function getPort(){
   (
     _databaseSpec=${1}
     _port=$(echo ${_databaseSpec} | sed "s~\(^.*:\)\(.*\)/\(.*$\)~\2~;s~${_databaseSpec}~~g;")
@@ -81,7 +254,7 @@ getPort(){
   )
 }
 
-getHostname(){
+function getHostname(){
   (
     _databaseSpec=${1}
     _hostname=$(echo ${_databaseSpec} | sed 's~\(^.*\)/.*$~\1~;s~\(^.*\):.*$~\1~;')
@@ -89,7 +262,7 @@ getHostname(){
   )
 }
 
-getHostPrefix(){
+function getHostPrefix(){
   (
     _hostname=${1}
     _hostPrefix=$(echo ${_hostname} | tr '[:lower:]' '[:upper:]' | sed "s~-~_~g")
@@ -97,7 +270,7 @@ getHostPrefix(){
   )
 }
 
-getHostUserParam(){
+function getHostUserParam(){
   (
     _hostname=${1}
     _hostUser=$(getHostPrefix ${_hostname})_USER
@@ -105,7 +278,7 @@ getHostUserParam(){
   )
 }
 
-getHostPasswordParam(){
+function getHostPasswordParam(){
   (
     _hostname=${1}
     _hostPassword=$(getHostPrefix ${_hostname})_PASSWORD
@@ -113,50 +286,135 @@ getHostPasswordParam(){
   )
 }
 
-readConf(){
+function readConf(){
   (
-    if [ -f ${BACKUP_CONF} ]; then
-      # Read in the config minus any comments ...
-      echo "Reading backup config from ${BACKUP_CONF} ..." >&2
-      _value=$(sed '/^[[:blank:]]*#/d;s/#.*//' ${BACKUP_CONF})
+    local OPTIND
+    local readCron
+    local quiet
+    unset readCron
+    unset quiet
+    while getopts cq FLAG; do
+      case $FLAG in
+        c ) readCron=1 ;;
+        q ) quiet=1 ;;
+      esac
+    done
+    shift $((OPTIND-1))
+
+    # Remove all comments and any blank lines
+    filters="/^[[:blank:]]*$/d;/^[[:blank:]]*#/d;/#.*/d;"
+
+    if [ -z "${readCron}" ]; then
+      # Read in the database config ...
+      #  - Remove any lines that do not match the expected database spec format(s)
+      #     - <Hostname/>/<DatabaseName/>
+      #     - <Hostname/>:<Port/>/<DatabaseName/>
+      filters="${filters}/^[a-zA-Z0-9_/-]*\(:[0-9]*\)\?\/[a-zA-Z0-9_/-]*$/!d;"
+    else
+      # Read in the cron config ...
+      #  - Remove any lines that MATCH expected database spec format(s),
+      #    leaving, what should be, cron tabs.
+      filters="${filters}/^[a-zA-Z0-9_/-]*\(:[0-9]*\)\?\/[a-zA-Z0-9_/-]*$/d;"
     fi
 
-    if [ -z "${_value}" ]; then
+    if [ -f ${BACKUP_CONF} ]; then
+      if [ -z "${quiet}" ]; then
+        echo "Reading backup config from ${BACKUP_CONF} ..." >&2
+      fi
+      _value=$(sed "${filters}" ${BACKUP_CONF})
+    fi
+
+    if [ -z "${_value}" ] && [ -z "${readCron}" ]; then
       # Backward compatibility
-      echo "Reading backup config from environment variables ..." >&2
+      if [ -z "${quiet}" ]; then
+        echo "Reading backup config from environment variables ..." >&2
+      fi
       _value="${DATABASE_SERVICE_NAME}:${DEFAULT_PORT}/${POSTGRESQL_DATABASE}"
     fi
-  echo "${_value}"
+
+    echo "${_value}"
   )
 }
 
-finalizeBackup(){
+function makeDirectory()
+{
+  (
+    # Creates directories with permissions reclusively.
+    # ${1} is the directory to be created
+    # Inspired by https://unix.stackexchange.com/questions/49263/recursive-mkdir
+    directory="${1}"
+    test $# -eq 1 || { echo "Function 'makeDirectory' can create only one directory (with it's parent directories)."; exit 1; }
+    test -d "${directory}" && return 0
+    test -d "$(dirname "${directory}")" || { makeDirectory "$(dirname "${directory}")" || return 1; }
+    test -d "${directory}" || { mkdir --mode=g+w "${directory}" || return 1; }
+    return 0
+  )
+}
+
+function finalizeBackup(){
   (
     _filename=${1}
-    mv ${_filename}${IN_PROGRESS_BACKUP_FILE_EXTENSION} ${_filename}${BACKUP_FILE_EXTENSION}
-    echo "Backup written to ${_filename}${BACKUP_FILE_EXTENSION} ..."
+    _inProgressFilename="${_filename}${IN_PROGRESS_BACKUP_FILE_EXTENSION}"
+    _finalFilename="${_filename}${BACKUP_FILE_EXTENSION}"
+
+    if [ -f ${_inProgressFilename} ]; then
+      mv "${_inProgressFilename}" "${_finalFilename}"
+      echo "${_finalFilename}"
+    fi
   )
 }
 
-listExistingBackups(){
+function ftpBackup(){
   (
-    _backupDir=${1:-${ROOT_BACKUP_DIR}}
+    if [ -z "${FTP_URL}" ] ; then
+      return 0
+    fi
+
+    _filename=${1}
+    _filenameWithExtension="${_filename}${BACKUP_FILE_EXTENSION}"
+    echo "Transferring ${_filenameWithExtension} to ${FTP_URL}"
+    curl --ftp-ssl -T ${_filenameWithExtension} --user ${FTP_USER}:${FTP_PASSWORD} ${FTP_URL}
+
+    if [ ${?} -eq 0 ]; then
+      logInfo "Successfully transferred ${_filenameWithExtension} to the FTP server"
+    else
+      logError "Failed to transfer ${_filenameWithExtension} with the exit code ${?}"
+    fi
+  )
+}
+
+function listExistingBackups(){
+  (
+    local _backupDir=${1:-${ROOT_BACKUP_DIR}}
+    local database
+
+    local databases=$(readConf -q)
+    local output="\nDatabase,Current Size"
+    for database in ${databases}; do
+      output="${output}\n${database},$(getDbSize "${database}")"
+    done
+
     echoMagenta "\n================================================================================================================================"
     echoMagenta "Current Backups:"
+    echoMagenta "\n$(echo -ne "${output}" | column -t -s ,)"
+    echoMagenta "\n$(df -h ${_backupDir})"
     echoMagenta "--------------------------------------------------------------------------------------------------------------------------------"
     du -ah --time ${_backupDir}
     echoMagenta "================================================================================================================================\n"
   )
 }
 
-getNumBackupsToRetain(){
+function getNumBackupsToRetain(){
   (
     _count=0
-    _backupType=$(getBackupType)
+    _backupType=${1:-$(getBackupType)}
 
     case "${_backupType}" in
     daily)
       _count=${DAILY_BACKUPS}
+      if (( ${_count} <= 0 )) && (( ${WEEKLY_BACKUPS} <= 0 )) && (( ${MONTHLY_BACKUPS} <= 0 )); then
+        _count=1
+      fi
       ;;
     weekly)
       _count=${WEEKLY_BACKUPS}
@@ -173,25 +431,97 @@ getNumBackupsToRetain(){
   )
 }
 
-pruneBackups(){
+getDirectoryName(){
   (
-    _backupDir=${1}
-    _databaseSpec=${2}
-    _pruneDir="$(dirname "${_backupDir}")"
-    _numBackupsToRetain=$(getNumBackupsToRetain)
-    _coreFilename=$(generateCoreFilename ${_databaseSpec})
+    local path=${1}
+    path="${path%"${path##*[!/]}"}"
+    local name="${path##*/}"
+    echo "${name}"
+  )
+}
 
-    let _index=${_numBackupsToRetain}+1
-    _filesToPrune=$(find ${_pruneDir}* -type f -printf '%T@ %p\n' | grep ${_coreFilename} | sort -r | tail -n +${_index} | sed 's~^.* \(.*$\)~\1~')
+getBackupTypeFromPath(){
+  (
+    local path=${1}
+    path="${path%"${path##*[!/]}"}"
+    path="$(dirname "${path}")"
+    local backupType=$(getDirectoryName "${path}")
+    echo "${backupType}"
+  )
+}
 
-    if [ ! -z "${_filesToPrune}" ]; then
-      echoYellow "\nPruning ${_coreFilename} backups from ${_pruneDir} ..."
-      echo "${_filesToPrune}" | xargs rm -rfvd
+function prune(){
+  (
+    local database
+    local backupDirs
+    local backupDir
+    local backupType
+    local backupTypes
+    local pruneBackup
+    unset backupTypes
+    unset backupDirs
+    unset pruneBackup
+
+    local databases=$(readConf -q)
+    if rollingStrategy; then
+      backupTypes="daily weekly monthly"
+      for backupType in ${backupTypes}; do
+          backupDirs="${backupDirs} $(createBackupFolder -g ${backupType})"
+      done
+    else
+      backupDirs=$(createBackupFolder -g)
+    fi
+
+    if [ ! -z "${_fromBackup}" ]; then
+      pruneBackup="$(findBackup "" "${_fromBackup}")"
+      while [ ! -z "${pruneBackup}" ]; do
+        echoYellow "\nAbout to delete backup file: ${pruneBackup}"
+        waitForAnyKey
+        rm -rfvd "${pruneBackup}"
+
+        # Quietly delete any empty directories that are left behind ...
+        find ${ROOT_BACKUP_DIR} -type d -empty -delete > /dev/null 2>&1
+        pruneBackup="$(findBackup "" "${_fromBackup}")"
+      done
+    else
+      for backupDir in ${backupDirs}; do
+        for database in ${databases}; do
+          unset backupType
+          if rollingStrategy; then
+            backupType=$(getBackupTypeFromPath "${backupDir}")
+          fi
+          pruneBackups "${backupDir}" "${database}" "${backupType}"
+        done
+      done
     fi
   )
 }
 
-getUsername(){
+function pruneBackups(){
+  (
+    _backupDir=${1}
+    _databaseSpec=${2}
+    _backupType=${3:-''}
+    _pruneDir="$(dirname "${_backupDir}")"
+    _numBackupsToRetain=$(getNumBackupsToRetain "${_backupType}")
+    _coreFilename=$(generateCoreFilename ${_databaseSpec})
+
+    if [ -d ${_pruneDir} ]; then
+      let _index=${_numBackupsToRetain}+1
+      _filesToPrune=$(find ${_pruneDir}* -type f -printf '%T@ %p\n' | grep ${_coreFilename} | sort -r | tail -n +${_index} | sed 's~^.* \(.*$\)~\1~')
+
+      if [ ! -z "${_filesToPrune}" ]; then
+        echoYellow "\nPruning ${_coreFilename} backups from ${_pruneDir} ..."
+        echo "${_filesToPrune}" | xargs rm -rfvd
+
+        # Quietly delete any empty directories that are left behind ...
+        find ${ROOT_BACKUP_DIR} -type d -empty -delete > /dev/null 2>&1
+      fi
+    fi
+  )
+}
+
+function getUsername(){
   (
     _databaseSpec=${1}
     _hostname=$(getHostname ${_databaseSpec})
@@ -202,7 +532,7 @@ getUsername(){
   )
 }
 
-getPassword(){
+function getPassword(){
   (
     _databaseSpec=${1}
     _hostname=$(getHostname ${_databaseSpec})
@@ -213,7 +543,7 @@ getPassword(){
   )
 }
 
-backupDatabase(){
+function backupDatabase(){
   (
     _databaseSpec=${1}
     _fileName=${2}
@@ -223,28 +553,156 @@ backupDatabase(){
     _database=$(getDatabaseName ${_databaseSpec})
     _username=$(getUsername ${_databaseSpec})
     _password=$(getPassword ${_databaseSpec})
-    
+    _backupFile="${_fileName}${IN_PROGRESS_BACKUP_FILE_EXTENSION}"
+
     echoGreen "\nBacking up ${_databaseSpec} ..."
 
-    export PGPASSWORD=${_password}
-    SECONDS=0
-    touch "${_fileName}${IN_PROGRESS_BACKUP_FILE_EXTENSION}"
+    touchBackupFile "${_backupFile}"
+    PGPASSWORD=${_password} pg_dump -Fp -h "${_hostname}" -p "${_port}" -U "${_username}" "${_database}" | gzip > ${_backupFile}
+    # Get the status code from pg_dump.  ${?} would provide the status of the last command, gzip in this case.
+    _rtnCd=${PIPESTATUS[0]}
 
-    pg_dump -Fp -h "${_hostname}" -p "${_port}" -U "${_username}" "${_database}" | gzip > ${_fileName}${IN_PROGRESS_BACKUP_FILE_EXTENSION}
-    _rtnCd=$?
-
-    duration=$SECONDS
-    echo "Elapsed time: $(($duration / 3600))h:$(($duration / 60))m:$(($duration % 60))s"
+    if (( ${_rtnCd} != 0 )); then
+      rm -rfvd ${_backupFile}
+    fi
     return ${_rtnCd}
   )
 }
 
-isLastDayOfMonth(){
+function touchBackupFile() {
+  (
+    # For safety, make absolutely certain the directory and file exist.
+    # The pruning process removes empty directories, so if there is an error
+    # during a backup the backup directory could be deleted.
+    _backupFile=${1}
+    _backupDir="${_backupFile%/*}"
+    makeDirectory ${_backupDir} && touch ${_backupFile}
+  )
+}
+
+function findBackup(){
+  (
+    _databaseSpec=${1}
+    _fileName=${2}
+
+    # If no backup file was specified, find the most recent for the database.
+    # Otherwise treat the value provided as a filter to find the most recent backup file matching the filter.
+    if [ -z "${_fileName}" ]; then
+      _coreFilename=$(generateCoreFilename ${_databaseSpec})
+      _fileName=$(find ${ROOT_BACKUP_DIR}* -type f -printf '%T@ %p\n' | grep ${_coreFilename} | sort | tail -n 1 | sed 's~^.* \(.*$\)~\1~')
+    else
+      _fileName=$(find ${ROOT_BACKUP_DIR}* -type f -printf '%T@ %p\n' | grep ${_fileName} | sort | tail -n 1 | sed 's~^.* \(.*$\)~\1~')
+    fi
+
+    echo "${_fileName}"
+  )
+}
+
+function restoreDatabase(){
+  (
+    local OPTIND
+    local quiet
+    local localhost
+    unset quiet
+    unset localhost
+    while getopts ql FLAG; do
+      case $FLAG in
+        q ) quiet=1 ;;
+        l ) localhost=1 ;;
+      esac
+    done
+    shift $((OPTIND-1))
+
+    _databaseSpec=${1}
+    _fileName=${2}
+    _fileName=$(findBackup "${_databaseSpec}" "${_fileName}")
+
+    if [ -z "${quiet}" ]; then
+      echoBlue "\nRestoring database ..."
+      echo -e "\nSettings:"
+      echo "- Database: ${_databaseSpec}"
+
+      if [ ! -z "${_fileName}" ]; then
+        echo -e "- Backup file: ${_fileName}\n"
+      else
+        echoRed "- Backup file: No backup file found or specified.  Cannot continue with the restore.\n"
+        exit 0
+      fi
+      waitForAnyKey
+    fi
+
+    _database=$(getDatabaseName ${_databaseSpec})
+    _username=$(getUsername ${_databaseSpec})
+    _password=$(getPassword ${_databaseSpec})
+    if [ -z "${localhost}" ]; then
+      _hostname=$(getHostname ${_databaseSpec})
+      _port=$(getPort ${_databaseSpec})
+    else
+      _hostname="127.0.0.1"
+      _port="${DEFAULT_PORT}"
+    fi
+
+    echo "Restoring to ${_hostname}:${_port} ..."
+
+    if [ -z "${quiet}" ]; then
+      # Ask for the Admin Password for the database
+      _msg="Admin password (${_databaseSpec}):"
+      _yellow='\033[1;33m'
+      _nc='\033[0m' # No Color
+      _message=$(echo -e "${_yellow}${_msg}${_nc}")
+      read -r -s -p $"${_message}" _adminPassword
+      echo -e "\n"
+    fi
+
+    export PGPASSWORD=${_adminPassword}
+    local startTime=${SECONDS}
+
+    # Drop
+    psql -h "${_hostname}" -p "${_port}" -ac "DROP DATABASE \"${_database}\";"
+    _rtnCd=${?}
+    echo
+
+    # Create
+    if (( ${_rtnCd} == 0 )); then
+      psql -h "${_hostname}" -p "${_port}" -ac "CREATE DATABASE \"${_database}\";"
+      _rtnCd=${?}
+      echo
+    fi
+
+    # Grant User Access
+    if (( ${_rtnCd} == 0 )); then
+      psql -h "${_hostname}" -p "${_port}" -ac "GRANT ALL ON DATABASE \"${_database}\" TO \"${_username}\";"
+      _rtnCd=${?}
+      echo
+    fi
+
+    # Restore
+    if (( ${_rtnCd} == 0 )); then
+      echo "Restoring from backup ..."
+      gunzip -c "${_fileName}" | psql -v ON_ERROR_STOP=1 -x -h "${_hostname}" -p "${_port}" -d "${_database}"
+      # Get the status code from psql specifically.  ${?} would only provide the status of the last command, psql in this case.
+      _rtnCd=${PIPESTATUS[1]}
+    fi
+
+    local duration=$(($SECONDS - $startTime))
+    echo -e "Restore complete - Elapsed time: $(($duration/3600))h:$(($duration%3600/60))m:$(($duration%60))s"\\n
+
+    # List tables
+    if [ -z "${quiet}" ] && (( ${_rtnCd} == 0 )); then
+      psql -h "${_hostname}" -p "${_port}" -d "${_database}" -c "\d"
+      _rtnCd=${?}
+    fi
+
+    return ${_rtnCd}
+  )
+}
+
+function isLastDayOfMonth(){
   (
     _date=${1:-$(date)}
-    _day=$(date -d "${_date}" +%d)
-    _month=$(date -d "${_date}" +%m)
-    _lastDayOfMonth=$(date -d "${_month}/1 + 1 month - 1 day" "+%d")
+    _day=$(date -d "${_date}" +%-d)
+    _month=$(date -d "${_date}" +%-m)
+    _lastDayOfMonth=$(date -d "${_month}/1 + 1 month - 1 day" "+%-d")
 
     if (( ${_day} == ${_lastDayOfMonth} )); then
       return 0
@@ -254,7 +712,7 @@ isLastDayOfMonth(){
   )
 }
 
-isLastDayOfWeek(){
+function isLastDayOfWeek(){
   (
     # We're calling Sunday the last dayt of the week in this case.
     _date=${1:-$(date)}
@@ -268,7 +726,7 @@ isLastDayOfWeek(){
   )
 }
 
-getBackupType(){
+function getBackupType(){
   (
     _backupType=""
     if rollingStrategy; then
@@ -284,20 +742,30 @@ getBackupType(){
   )
 }
 
-createBackupFolder(){
+function createBackupFolder(){
   (
-    _backupTypeDir="$(getBackupType)"
+    local OPTIND
+    local genOnly
+    unset genOnly
+    while getopts g FLAG; do
+      case $FLAG in
+        g ) genOnly=1 ;;
+      esac
+    done
+    shift $((OPTIND-1))
+
+    _backupTypeDir="${1:-$(getBackupType)}"
     if [ ! -z "${_backupTypeDir}" ]; then
       _backupTypeDir=${_backupTypeDir}/
     fi
 
     _backupDir="${ROOT_BACKUP_DIR}${_backupTypeDir}`date +\%Y-\%m-\%d`/"
 
-    # Don't actually create the folder if we're just printing the configuation.
-    if [ -z "${PRINT_CONFIG}" ]; then
+    # Don't actually create the folder if we're just generating it for printing the configuation.
+    if [ -z "${genOnly}" ]; then
       echo "Making backup directory ${_backupDir} ..." >&2
-      if ! mkdir -p ${_backupDir}; then
-        echo $(echoRed "[!!ERROR!!] - Failed to create backup directory ${_backupDir}.") >&2
+      if ! makeDirectory ${_backupDir}; then
+        logError "Failed to create backup directory ${_backupDir}."
         exit 1;
       fi;
     fi
@@ -306,7 +774,7 @@ createBackupFolder(){
   )
 }
 
-generateFilename(){
+function generateFilename(){
   (
     _backupDir=${1}
     _databaseSpec=${2}
@@ -316,7 +784,7 @@ generateFilename(){
   )
 }
 
-generateCoreFilename(){
+function generateCoreFilename(){
   (
     _databaseSpec=${1}
     _hostname=$(getHostname ${_databaseSpec})
@@ -326,26 +794,40 @@ generateCoreFilename(){
   )
 }
 
-rollingStrategy(){
-  if [[ "${BACKUP_STRATEGY}" == "rolling" ]] && (( "${WEEKLY_BACKUPS}" > 0 )) && (( "${MONTHLY_BACKUPS}" >= 0 )); then
+function rollingStrategy(){
+  if [[ "${BACKUP_STRATEGY}" == "rolling" ]] && (( "${WEEKLY_BACKUPS}" >= 0 )) && (( "${MONTHLY_BACKUPS}" >= 0 )); then
     return 0
   else
     return 1
   fi
 }
 
-dailyStrategy(){
-  if [[ "${BACKUP_STRATEGY}" == "daily" ]] || (( "${WEEKLY_BACKUPS}" <= 0 )); then
+function dailyStrategy(){
+  if [[ "${BACKUP_STRATEGY}" == "daily" ]] || (( "${WEEKLY_BACKUPS}" < 0 )); then
     return 0
   else
     return 1
   fi
 }
 
-listSettings(){
-  _backupDirectory=${1}
-  _databaseList=${2}
+function formatList(){
+  (
+    filters='s~^~  - ~;'
+    _value=$(echo "${1}" | sed "${filters}")
+    echo "${_value}"
+  )
+}
+
+function listSettings(){
+  _backupDirectory=${1:-$(createBackupFolder -g)}
+  _databaseList=${2:-$(readConf -q)}
+  _yellow='\e[33m'
+  _nc='\e[0m' # No Color
+  _notConfigured="${_yellow}not configured${_nc}"
+
   echo -e \\n"Settings:"
+  _mode=$(getMode 2>/dev/null)
+  echo "- Run mode: ${_mode}"
   if rollingStrategy; then
     echo "- Backup strategy: rolling"
   fi
@@ -358,22 +840,438 @@ listSettings(){
   fi
   backupType=$(getBackupType)
   if [ -z "${backupType}" ]; then
-    echo "- Backup type: flat daily"
+    echo "- Current backup type: flat daily"
   else
-    echo "- Backup type: ${backupType}"
+    echo "- Current backup type: ${backupType}"
   fi
-  echo "- Number of each backup to retain: $(getNumBackupsToRetain)"
+  echo "- Backups to retain:"
+  if rollingStrategy; then
+    echo "  - Daily: $(getNumBackupsToRetain daily)"
+    echo "  - Weekly: $(getNumBackupsToRetain weekly)"
+    echo "  - Monthly: $(getNumBackupsToRetain monthly)"
+  else
+    echo "  - Total: $(getNumBackupsToRetain)"
+  fi
   echo "- Backup folder: ${_backupDirectory}"
+  if [[ "${_mode}" != ${ONCE} ]]; then
+    if [[ "${_mode}" == ${CRON} ]] || [[ "${_mode}" == ${SCHEDULED} ]]; then
+      _backupSchedule=$(readConf -cq)
+      echo "- Time Zone: $(date +"%Z %z")"
+    fi
+    _backupSchedule=$(formatList "${_backupSchedule:-${BACKUP_PERIOD}}")
+    echo "- Schedule:"
+    echo "${_backupSchedule}"
+  fi
+  _databaseList=$(formatList "${_databaseList}")
   echo "- Databases:"
-  for _db in ${_databaseList}; do
-    echo "  - ${_db}"
-  done
+  echo "${_databaseList}"
+  echo
+  if [ -z "${FTP_URL}" ]; then
+    echo -e "- FTP server: ${_notConfigured}"
+  else
+    echo "- FTP server: ${FTP_URL}"
+  fi
+  if [ -z "${WEBHOOK_URL}" ]; then
+    echo -e "- Webhook Endpoint: ${_notConfigured}"
+  else
+    echo "- Webhook Endpoint: ${WEBHOOK_URL}"
+  fi
+  if [ -z "${ENVIRONMENT_FRIENDLY_NAME}" ]; then
+    echo -e "- Environment Friendly Name: ${_notConfigured}"
+  else
+    echo -e "- Environment Friendly Name: ${ENVIRONMENT_FRIENDLY_NAME}"
+  fi
+  if [ -z "${ENVIRONMENT_NAME}" ]; then
+    echo -e "- Environment Name (Id): ${_notConfigured}"
+  else
+    echo "- Environment Name (Id): ${ENVIRONMENT_NAME}"
+  fi
 
   if [ ! -z "${_configurationError}" ]; then
-    echoRed "\nConfiguration error!  The script will exit."
+    logError "\nConfiguration error!  The script will exit."
     sleep 5
     exit 1
   fi
+  echo
+}
+
+function isInstalled(){
+  rtnVal=$(type "$1" >/dev/null 2>&1)
+  rtnCd=$?
+  if [ ${rtnCd} -ne 0 ]; then
+    return 1
+  else
+    return 0
+  fi
+}
+
+function cronMode(){
+  (
+    cronTabs=$(readConf -cq)
+    if isInstalled "go-crond" && [ ! -z "${cronTabs}" ]; then
+      return 0
+    else
+      return 1
+    fi
+  )
+}
+
+function isScheduled(){
+  (
+    if [ ! -z "${SCHEDULED_RUN}" ]; then
+      return 0
+    else
+      return 1
+    fi
+  )
+}
+
+function restoreMode(){
+  (
+    if [ ! -z "${_restoreDatabase}" ]; then
+      return 0
+    else
+      return 1
+    fi
+  )
+}
+
+function verifyMode(){
+  (
+    if [ ! -z "${_verifyBackup}" ]; then
+      return 0
+    else
+      return 1
+    fi
+  )
+}
+
+function pruneMode(){
+  (
+    if [ ! -z "${RUN_PRUNE}" ]; then
+      return 0
+    else
+      return 1
+    fi
+  )
+}
+
+function getMode(){
+  (
+    unset _mode
+
+    if pruneMode; then
+      _mode="${PRUNE}"
+    fi
+
+    if [ -z "${_mode}" ] && restoreMode; then
+      _mode="${RESTORE}"
+    fi
+
+    if [ -z "${_mode}" ] && verifyMode; then
+      # Determine if this is a scheduled verification or a manual one.
+      if isScheduled; then
+        if cronMode; then
+          _mode="${SCHEDULED_VERIFY}"
+        else
+          _mode="${ERROR}"
+          logError "Scheduled mode cannot be used without cron being installed and at least one cron tab being defined in ${BACKUP_CONF}."
+        fi
+      else
+        _mode="${VERIFY}"
+      fi
+    fi
+
+    if [ -z "${_mode}" ] && runOnce; then
+      _mode="${ONCE}"
+    fi
+
+    if [ -z "${_mode}" ] && isScheduled; then
+      if cronMode; then
+        _mode="${SCHEDULED}"
+      else
+        _mode="${ERROR}"
+        logError "Scheduled mode cannot be used without cron being installed and at least one cron tab being defined in ${BACKUP_CONF}."
+      fi
+    fi
+
+    if [ -z "${_mode}" ] && cronMode; then
+      _mode="${CRON}"
+    fi
+
+    if [ -z "${_mode}" ]; then
+      _mode="${LEGACY}"
+    fi
+
+    echo "${_mode}"
+  )
+}
+
+function runBackups(){
+  (
+    echoBlue "\nStarting backup process ..."
+    databases=$(readConf)
+    backupDir=$(createBackupFolder)
+    listSettings "${backupDir}" "${databases}"
+
+    for database in ${databases}; do
+
+      local startTime=${SECONDS}
+      filename=$(generateFilename "${backupDir}" "${database}")
+      backupDatabase "${database}" "${filename}"
+      rtnCd=${?}
+      local duration=$(($SECONDS - $startTime))
+      local elapsedTime="\n\nElapsed time: $(($duration/3600))h:$(($duration%3600/60))m:$(($duration%60))s - Status Code: ${rtnCd}"
+
+      if (( ${rtnCd} == 0 )); then
+        backupPath=$(finalizeBackup "${filename}")
+        dbSize=$(getDbSize "${database}")
+        backupSize=$(getFileSize "${backupPath}")
+        logInfo "Successfully backed up ${database}.\nBackup written to ${backupPath}.\nDatabase Size: ${dbSize}\nBackup Size: ${backupSize}${elapsedTime}"
+        ftpBackup "${filename}"
+        pruneBackups "${backupDir}" "${database}"
+      else
+        logError "Failed to backup ${database}.${elapsedTime}"
+      fi
+    done
+
+    listExistingBackups ${ROOT_BACKUP_DIR}
+  )
+}
+
+function startCron(){
+  logInfo "Starting backup server in cron mode ..."
+  listSettings
+  echoBlue "Starting go-crond as a forground task ...\n"
+  CRON_CMD="go-crond -v --allow-unprivileged ${BACKUP_CONF}"
+  exec ${CRON_CMD}
+}
+
+function startLegacy(){
+  (
+    while true; do
+      runBackups
+
+      echoYellow "Sleeping for ${BACKUP_PERIOD} ...\n"
+      sleep ${BACKUP_PERIOD}
+    done
+  )
+}
+
+function startServer(){
+  (
+    _databaseSpec=${1}
+
+    # Start a local PostgreSql instance
+    POSTGRESQL_DATABASE=$(getDatabaseName "${_databaseSpec}") \
+    POSTGRESQL_USER=$(getUsername "${_databaseSpec}") \
+    POSTGRESQL_PASSWORD=$(getPassword "${_databaseSpec}") \
+    run-postgresql >/dev/null 2>&1 &
+
+    # Wait for server to start ...
+    local startTime=${SECONDS}
+    rtnCd=0
+    printf "waiting for server to start"
+    while ! pingDbServer ${_databaseSpec}; do
+      printf "."
+      local duration=$(($SECONDS - $startTime))
+      if (( ${duration} >= ${DATABASE_SERVER_TIMEOUT} )); then
+        echoRed "\nThe server failed to start within ${duration} seconds.\n"
+        rtnCd=1
+        break
+      fi
+      sleep 1
+    done
+
+    return ${rtnCd}
+  )
+}
+
+function stopServer(){
+  (
+    # Stop the local PostgreSql instance
+    pg_ctl stop -D /var/lib/pgsql/data/userdata
+
+    # Delete the database files and configuration
+    echo -e "Cleaning up ...\n"
+    rm -rf /var/lib/pgsql/data/userdata
+  )
+}
+
+function pingDbServer(){
+  (
+    _databaseSpec=${1}
+    _database=$(getDatabaseName "${_databaseSpec}")
+    _user=$(getUsername "${_databaseSpec}")
+    if psql -h 127.0.0.1 -U ${_user} -q -d ${_database} -c 'SELECT 1' >/dev/null 2>&1; then
+      return 0
+    else
+      return 1
+    fi
+  )
+}
+
+function verifyBackups(){
+  (
+    local OPTIND
+    local flags
+    unset flags
+    while getopts q FLAG; do
+      case $FLAG in
+        * ) flags+="-${FLAG} " ;;
+      esac
+    done
+    shift $((OPTIND-1))
+
+    _databaseSpec=${1}
+    _fileName=${2}
+    if [[ "${_databaseSpec}" == "all" ]]; then
+      databases=$(readConf -q)
+    else
+      databases=${_databaseSpec}
+    fi
+
+    for database in ${databases}; do
+      verifyBackup ${flags} "${database}" "${_fileName}"
+    done
+  )
+}
+
+function verifyBackup(){
+  (
+    local OPTIND
+    local quiet
+    unset quiet
+    while getopts q FLAG; do
+      case $FLAG in
+        q ) quiet=1 ;;
+      esac
+    done
+    shift $((OPTIND-1))
+
+    _databaseSpec=${1}
+    _fileName=${2}
+    _fileName=$(findBackup "${_databaseSpec}" "${_fileName}")
+
+    echoBlue "\nVerifying backup ..."
+    echo -e "\nSettings:"
+    echo "- Database: ${_databaseSpec}"
+
+    if [ ! -z "${_fileName}" ]; then
+      echo -e "- Backup file: ${_fileName}\n"
+    else
+      echoRed "- Backup file: No backup file found or specified.  Cannot continue with the backup verification.\n"
+      exit 0
+    fi
+
+    if [ -z "${quiet}" ]; then
+      waitForAnyKey
+    fi
+
+    local startTime=${SECONDS}
+    startServer "${_databaseSpec}"
+    rtnCd=${?}
+
+    # Restore the database
+    if (( ${rtnCd} == 0 )); then
+      echo
+      echo "Restoring from backup ..."
+      if [ -z "${quiet}" ]; then
+        restoreDatabase -ql "${_databaseSpec}" "${_fileName}"
+        rtnCd=${?}
+      else
+        # Filter out stdout, keep stderr
+        restoreLog=$(restoreDatabase -ql "${_databaseSpec}" "${_fileName}" 2>&1 >/dev/null)
+        rtnCd=${?}
+
+        if [ ! -z "${restoreLog}" ]; then
+          restoreLog="\n\nThe following issues were encountered during backup verification;\n${restoreLog}"
+        fi
+      fi
+    fi
+
+    # Ensure there are tables in the databse and general queries work
+    if (( ${rtnCd} == 0 )); then
+      _hostname="127.0.0.1"
+      _port="${DEFAULT_PORT}"
+      _database=$(getDatabaseName ${_databaseSpec})
+      tables=$(psql -h "${_hostname}" -p "${_port}" -d "${_database}" -t -c "SELECT table_name FROM information_schema.tables WHERE table_schema='${TABLE_SCHEMA}' AND table_type='BASE TABLE';")
+      rtnCd=${?}
+    fi
+
+    # Get the size of the restored database
+    if (( ${rtnCd} == 0 )); then
+      size=$(getDbSize -l "${_databaseSpec}")
+      rtnCd=${?}
+    fi
+
+    if (( ${rtnCd} == 0 )); then
+      numResults=$(echo "${tables}"| wc -l)
+      if [[ ! -z "${tables}" ]] && (( numResults >= 1 )); then
+        # All good
+        verificationLog="\nThe restored database contained ${numResults} tables, and is ${size} in size."
+      else
+        # Not so good
+        verificationLog="\nNo tables were found in the restored database."
+        rtnCd="3"
+      fi
+    fi
+
+    stopServer
+    local duration=$(($SECONDS - $startTime))
+    local elapsedTime="\n\nElapsed time: $(($duration/3600))h:$(($duration%3600/60))m:$(($duration%60))s - Status Code: ${rtnCd}"
+
+    if (( ${rtnCd} == 0 )); then
+      logInfo "Successfully verified backup; ${_fileName}${verificationLog}${restoreLog}${elapsedTime}"
+    else
+      logError "Backup verification failed; ${_fileName}${verificationLog}${restoreLog}${elapsedTime}"
+    fi
+
+    return ${rtnCd}
+  )
+}
+
+function getFileSize(){
+  (
+    _filename=${1}
+    echo $(du -h "${_filename}" | awk '{print $1}')
+  )
+}
+
+function getDbSize(){
+  (
+    local OPTIND
+    local localhost
+    unset localhost
+    while getopts l FLAG; do
+      case $FLAG in
+        l ) localhost=1 ;;
+      esac
+    done
+    shift $((OPTIND-1))
+
+    _databaseSpec=${1}
+    _database=$(getDatabaseName ${_databaseSpec})
+    _username=$(getUsername ${_databaseSpec})
+    _password=$(getPassword ${_databaseSpec})
+    if [ -z "${localhost}" ]; then
+      _hostname=$(getHostname ${_databaseSpec})
+      _port=$(getPort ${_databaseSpec})
+    else
+      _hostname="127.0.0.1"
+      _port="${DEFAULT_PORT}"
+    fi
+
+    if isInstalled "psql"; then
+      size=$(PGPASSWORD=${_password} psql -h "${_hostname}" -p "${_port}" -U "${_username}" -d "${_database}" -t -c "SELECT pg_size_pretty(pg_database_size(current_database())) as size;")
+      rtnCd=${?}
+    else
+      size="not found"
+      rtnCd=1
+    fi
+    echo "${size}"
+    return ${rtnCd}
+  )
 }
 # ======================================================================================
 
@@ -385,6 +1283,7 @@ export IN_PROGRESS_BACKUP_FILE_EXTENSION=".sql.gz.in_progress"
 export DEFAULT_PORT=${POSTGRESQL_PORT_NUM:-5432}
 export DATABASE_SERVICE_NAME=${DATABASE_SERVICE_NAME:-postgresql}
 export POSTGRESQL_DATABASE=${POSTGRESQL_DATABASE:-my_postgres_db}
+export TABLE_SCHEMA=${TABLE_SCHEMA:-public}
 
 # Supports:
 # - daily
@@ -406,21 +1305,61 @@ export NUM_BACKUPS=${NUM_BACKUPS:-31}
 export DAILY_BACKUPS=${DAILY_BACKUPS:-6}
 export WEEKLY_BACKUPS=${WEEKLY_BACKUPS:-4}
 export MONTHLY_BACKUPS=${MONTHLY_BACKUPS:-1}
+
+# Webhook defaults
+WEBHOOK_TEMPLATE=${WEBHOOK_TEMPLATE:-webhook-template.json}
+
+# Modes:
+export ONCE="once"
+export SCHEDULED="scheduled"
+export RESTORE="restore"
+export VERIFY="verify"
+export CRON="cron"
+export LEGACY="legacy"
+export ERROR="error"
+export SCHEDULED_VERIFY="scheduled-verify"
+export PRUNE="prune"
+
+# Other:
+export DATABASE_SERVER_TIMEOUT=${DATABASE_SERVER_TIMEOUT:-30}
 # ======================================================================================
 
 # =================================================================================================================
 # Initialization:
 # -----------------------------------------------------------------------------------------------------------------
-while getopts clh FLAG; do
+while getopts clr:v:f:1sph FLAG; do
   case $FLAG in
     c)
-      export PRINT_CONFIG=1
+      echoBlue "\nListing configuration settings ..."
+      listSettings
+      exit 0
       ;;
     l)
       listExistingBackups ${ROOT_BACKUP_DIR}
       exit 0
       ;;
-    h) 
+    r)
+      # Trigger restore mode ...
+      export _restoreDatabase=${OPTARG}
+      ;;
+    v)
+      # Trigger verify mode ...
+      export _verifyBackup=${OPTARG}
+      ;;
+    f)
+      # Optionally specify the backup file to verify or restore from ...
+      export _fromBackup=${OPTARG}
+      ;;
+    1)
+      export RUN_ONCE=1
+      ;;
+    s)
+      export SCHEDULED_RUN=1
+      ;;
+    p)
+      export RUN_PRUNE=1
+      ;;
+    h)
       usage
       ;;
     \?)
@@ -435,34 +1374,48 @@ shift $((OPTIND-1))
 # =================================================================================================================
 # Main Script
 # -----------------------------------------------------------------------------------------------------------------
-while true; do
-  if [ -z "${PRINT_CONFIG}" ]; then
-    echoBlue "\nStarting backup process ..."
-  else
-    echoBlue "\nListing configuration settings ..."
-  fi
+case $(getMode) in
+  ${ONCE})
+    runBackups
+    echoGreen "Single backup run complete.\n"
+    ;;
 
-  databases=$(readConf)
-  backupDir=$(createBackupFolder)
-  listSettings "${backupDir}" "${databases}"
+  ${SCHEDULED})
+    runBackups
+    echoGreen "Scheduled backup run complete.\n"
+    ;;
 
-  if [ ! -z "${PRINT_CONFIG}" ]; then
-    exit 0
-  fi
+  ${RESTORE})
+    restoreDatabase "${_restoreDatabase}" "${_fromBackup}"
+    ;;
 
-  for database in ${databases}; do
-    filename=$(generateFilename "${backupDir}" "${database}")
-    if backupDatabase "${database}" "${filename}"; then
-      finalizeBackup "${filename}"
-      pruneBackups "${backupDir}" "${database}"
-    else
-      echoRed "\n[!!ERROR!!] - Failed to backup ${database}.\n"
-    fi
-  done
+  ${VERIFY})
+    verifyBackups "${_verifyBackup}" "${_fromBackup}"
+    ;;
 
-  listExistingBackups ${ROOT_BACKUP_DIR}
+  ${SCHEDULED_VERIFY})
+    verifyBackups -q "${_verifyBackup}" "${_fromBackup}"
+    ;;
 
-  echoYellow "Sleeping for ${BACKUP_PERIOD} ...\n"
-  sleep ${BACKUP_PERIOD}
-done
+  ${CRON})
+    startCron
+    ;;
+
+  ${LEGACY})
+    startLegacy
+    ;;
+
+  ${PRUNE})
+    prune
+    ;;
+
+  ${ERROR})
+    echoYellow "A configuration error has occurred, review the details above."
+    usage
+    ;;
+  *)
+    echoYellow "Unrecognized operational mode; ${_mode}"
+    usage
+    ;;
+esac
 # =================================================================================================================
