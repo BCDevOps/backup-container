@@ -1061,9 +1061,10 @@ function runBackups(){
 function startCron(){
   logInfo "Starting backup server in cron mode ..."
   listSettings
-  echoBlue "Starting go-crond as a forground task ...\n"
-  CRON_CMD="go-crond -v --allow-unprivileged ${BACKUP_CONF}"
-  exec ${CRON_CMD}
+  echoBlue "Starting go-crond as a background task ...\n"
+  CRON_CMD="go-crond -v --default-user=${UID} --allow-unprivileged ${BACKUP_CONF}"
+  exec ${CRON_CMD} &
+  wait
 }
 
 function startLegacy(){
@@ -1292,6 +1293,16 @@ function getDbSize(){
     return ${rtnCd}
   )
 }
+
+function shutDown() {
+  for jobId in $(jobs | awk -F '[][]' '{print $2}' ) ; do 
+    echo "Shutting down background job '${jobId}' ..."
+    kill %${jobId}
+  done
+
+  echo "Waiting for any background jobs to complete ..."
+  wait
+}
 # ======================================================================================
 
 # ======================================================================================
@@ -1346,6 +1357,8 @@ export DATABASE_SERVER_TIMEOUT=${DATABASE_SERVER_TIMEOUT:-30}
 # =================================================================================================================
 # Initialization:
 # -----------------------------------------------------------------------------------------------------------------
+trap shutDown EXIT INT TERM
+
 while getopts clr:v:f:1spha: FLAG; do
   case $FLAG in
     c)
