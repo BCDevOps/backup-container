@@ -280,10 +280,10 @@ function getPort(){
 
     if [ -z ${_port} ]; then
       case ${PODTYPE} in
-        "postgres")
+        ${POSTGRE_DB})
           _port=${DEFAULT_PORT_PG}
           ;;
-        "mongodb")
+        ${MONGO_DB})
           _port=${DEFAULT_PORT_MD}
           ;;
         *)
@@ -617,12 +617,12 @@ function backupDatabase(){
     touchBackupFile "${_backupFile}"
 
     case ${PODTYPE} in
-      "postgres")
+      ${POSTGRE_DB})
         echoGreen "starting Postgres backup using pg_dump....."
         PGPASSWORD=${_password} pg_dump -Fp -h "${_hostname}" -p "${_port}" -U "${_username}" "${_database}" | gzip > ${_backupFile}
         _rtnCd=${PIPESTATUS[0]}
         ;;
-      "mongodb")
+      ${MONGO_DB})
         echoGreen "starting Mongo DB backup using mongodump....."
         mongodump --authenticationDatabase="${MONGODB_AUTHENTICATION_DATABASE}" -h "${_hostname}" -u "${_username}" -p "${_password}" -d "${_database}" --quiet --gzip --archive=${_backupFile}
         _rtnCd=${?}
@@ -720,10 +720,10 @@ function restoreDatabase(){
     else
       _hostname="127.0.0.1"
       case ${PODTYPE} in
-        "postgres")
+        ${POSTGRE_DB})
           _port=${DEFAULT_PORT_PG}
           ;;
-        "mongodb")
+        ${MONGO_DB})
           _port=${DEFAULT_PORT_MD}
           ;;
         *)
@@ -754,7 +754,7 @@ function restoreDatabase(){
 
     local startTime=${SECONDS}
     case ${PODTYPE} in
-      "postgres")
+      ${POSTGRE_DB})
         export PGPASSWORD=${_adminPassword}
         # Wait for server ...
         _rtnCd=0
@@ -808,7 +808,7 @@ function restoreDatabase(){
           _rtnCd=${?}
         fi
         ;;
-      "mongodb")
+      ${MONGO_DB})
         # drop database
         sleep 25
         echo "Restoring from backup ..."
@@ -959,6 +959,7 @@ function listSettings(){
   _notConfigured="${_yellow}not configured${_nc}"
 
   echo -e \\n"Settings:"
+  echo -e "- Database Type: ${PODTYPE}"\\n
   _mode=$(getMode 2>/dev/null)
   echo "- Run mode: ${_mode}"
   if rollingStrategy; then
@@ -992,11 +993,11 @@ function listSettings(){
       echo "- Time Zone: $(date +"%Z %z")"
     fi
     _backupSchedule=$(formatList "${_backupSchedule:-${BACKUP_PERIOD}}")
-    echo "- Schedule:"
+    echo -e \\n"- Schedule:"
     echo "${_backupSchedule}"
   fi
   _databaseList=$(formatList "${_databaseList}")
-  echo "- Databases:"
+  echo -e \\n"- Databases:"
   echo "${_databaseList}"
   echo
   if [ -z "${FTP_URL}" ]; then
@@ -1208,14 +1209,14 @@ function startServer(){
     _databaseSpec=${1}
 
     case ${PODTYPE} in
-      "postgres")
+      ${POSTGRE_DB})
         # Start a local PostgreSql instance
         POSTGRESQL_DATABASE=$(getDatabaseName "${_databaseSpec}") \
         POSTGRESQL_USER=$(getUsername "${_databaseSpec}") \
         POSTGRESQL_PASSWORD=$(getPassword "${_databaseSpec}") \
         run-postgresql >/dev/null 2>&1 &
         ;;
-      "mongodb")
+      ${MONGO_DB})
         #echo "Mongo DB using default port 27017"
         MONGODB_ADMIN_PASSWORD="${DATABASE_PASSWORD}" /usr/bin/run-mongod >/dev/null 2>&1 &
         ;;
@@ -1248,7 +1249,7 @@ function stopServer(){
     _databaseSpec=${1}
 
     case ${PODTYPE} in
-      "postgres")
+      ${POSTGRE_DB})
         # Stop the local PostgreSql instance
         pg_ctl stop -D /var/lib/pgsql/data/userdata
 
@@ -1256,7 +1257,7 @@ function stopServer(){
         echo -e "Cleaning up ...\n" >&2
         rm -rf /var/lib/pgsql/data/userdata
         ;;
-      "mongodb")
+      ${MONGO_DB})
         #echo "Mongo DB using default port 27017"
         # These commands cause [mongod] <defunct>
         # mongod --dbpath=/var/lib/mongodb/data --shutdown &
@@ -1291,10 +1292,10 @@ function pingDbServer(){
     else
       _hostname="127.0.0.1"
       case ${PODTYPE} in
-        "postgres")
+        ${POSTGRE_DB})
           _port=${DEFAULT_PORT_PG}
           ;;
-        "mongodb")
+        ${MONGO_DB})
           _port=${DEFAULT_PORT_MD}
           ;;
         *)
@@ -1308,14 +1309,14 @@ function pingDbServer(){
 
     if [ -z "${_configurationError}" ]; then
       case ${PODTYPE} in
-        "postgres")
+        ${POSTGRE_DB})
           if PGPASSWORD=${_password} psql -h ${_hostname} -U ${_username} -q -d ${_database} -c 'SELECT 1' >/dev/null 2>&1; then
             return 0
           else
             return 1
           fi
           ;;
-        "mongodb")
+        ${MONGO_DB})
           if mongo --host "${_hostname}" --authenticationDatabase "${MONGODB_AUTHENTICATION_DATABASE}" -u "${_username}" -p "${_password}" --port "${_port}" --quiet --eval 'db.runCommand({ connectionStatus: 1 })' >/dev/null 2>&1; then
             return 0
           else
@@ -1422,11 +1423,11 @@ function verifyBackup(){
     if (( ${rtnCd} == 0 )); then
       _hostname="127.0.0.1"
       case ${PODTYPE} in
-        "postgres")
+        ${POSTGRE_DB})
           _port="${DEFAULT_PORT_PG}"
           tables=$(psql -h "${_hostname}" -p "${_port}" -d "${_database}" -t -c "SELECT table_name FROM information_schema.tables WHERE table_schema='${TABLE_SCHEMA}' AND table_type='BASE TABLE';")
           ;;
-        "mongodb")
+        ${MONGO_DB})
           collections=$(mongo ${_hostname}/${_database} --authenticationDatabase "${MONGODB_AUTHENTICATION_DATABASE}" -u "${_username}" -p "${_password}" --quiet --eval 'var dbs = [];dbs = db.getCollectionNames();for (i in dbs){ print(db.dbs[i]);}';)
           ;;
         *)
@@ -1443,7 +1444,7 @@ function verifyBackup(){
 
     if (( ${rtnCd} == 0 )); then
      case ${PODTYPE} in
-      "postgres")
+      ${POSTGRE_DB})
         numResults=$(echo "${tables}"| wc -l)
         if [[ ! -z "${tables}" ]] && (( numResults >= 1 )); then
           # All good
@@ -1454,7 +1455,7 @@ function verifyBackup(){
           rtnCd="3"
         fi
         ;;
-      "mongodb")
+      ${MONGO_DB})
         numResults=$(echo "${collections}"| wc -l)
         if [[ ! -z "${collections}" ]] && (( numResults >= 1 )); then
           # All good
@@ -1514,10 +1515,10 @@ function getDbSize(){
     else
       _hostname="127.0.0.1"
       case ${PODTYPE} in
-        "postgres")
+        ${POSTGRE_DB})
           _port=${DEFAULT_PORT_PG}
           ;;
-        "mongodb")
+        ${MONGO_DB})
           _port=${DEFAULT_PORT_MD}
           ;;
         *)
@@ -1530,11 +1531,11 @@ function getDbSize(){
 
     # Run the sql query based on each database type
     case ${PODTYPE} in
-      "postgres")
+      ${POSTGRE_DB})
         size=$(PGPASSWORD=${_password} psql -h "${_hostname}" -p "${_port}" -U "${_username}" -d "$_database" -t -c "SELECT pg_size_pretty(pg_database_size(current_database())) as size;")
         rtnCd=${?}
         ;;
-      "mongodb")
+      ${MONGO_DB})
         #_username=${DATABASE_USER}
         #_password=${DATABASE_PASSWORD}
         size=$(mongo ${_hostname}/${_database} --authenticationDatabase "${MONGODB_AUTHENTICATION_DATABASE}" -u "${_username}" -p "${_password}" --quiet --eval 'printjson(db.stats().fsTotalSize)')
@@ -1559,15 +1560,37 @@ function shutDown() {
   wait
 }
 
+function isPostgres(){
+  (
+    if isInstalled "psql"; then
+      return 0
+    else
+      return 1
+    fi
+  )
+}
+
+function isMongo(){
+  (
+    if isInstalled "mongo"; then
+      return 0
+    else
+      return 1
+    fi
+  )
+}
+
 function getPodType(){
   (
-    local _PodType="postgres"
-    if isInstalled "psql"; then
-      _PodType="postgres"
-    elif isInstalled "mongo"; then
-      _PodType="mongodb"
+    local _podType=${POSTGRE_DB}
+   
+    if isPostgres; then
+      _podType=${POSTGRE_DB}
+    elif isMongo; then
+      _podType=${MONGO_DB}
     fi
-    echo "${_PodType}"
+
+    echo "${_podType}"
   )
 }
 # ======================================================================================
@@ -1619,6 +1642,10 @@ export ERROR="error"
 export SCHEDULED_VERIFY="scheduled-verify"
 export PRUNE="prune"
 
+# Supported Databes
+export MONGO_DB="mongo"
+export POSTGRE_DB="postgres"
+
 # Other:
 export DATABASE_SERVER_TIMEOUT=${DATABASE_SERVER_TIMEOUT:-60}
 export PODTYPE="$(getPodType)"
@@ -1629,8 +1656,6 @@ export PODTYPE="$(getPodType)"
 # -----------------------------------------------------------------------------------------------------------------
 trap shutDown EXIT INT TERM
 
-echoYellow "Starting backup.sh.........."
-echoYellow "Pod Type is for database type ${PODTYPE} \n\n"
 while getopts clr:v:f:1spha: FLAG; do
   case $FLAG in
     c)
