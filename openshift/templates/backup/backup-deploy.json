@@ -17,9 +17,7 @@
       },
       "spec": {
         "storageClassName": "${BACKUP_VOLUME_CLASS}",
-        "accessModes": [
-          "ReadWriteOnce"
-        ],
+        "accessModes": ["ReadWriteOnce"],
         "resources": {
           "requests": {
             "storage": "${BACKUP_VOLUME_SIZE}"
@@ -39,9 +37,7 @@
       },
       "spec": {
         "storageClassName": "${VERIFICATION_VOLUME_CLASS}",
-        "accessModes": [
-          "ReadWriteOnce"
-        ],
+        "accessModes": ["ReadWriteOnce"],
         "resources": {
           "requests": {
             "storage": "${VERIFICATION_VOLUME_SIZE}"
@@ -85,9 +81,7 @@
             "type": "ImageChange",
             "imageChangeParams": {
               "automatic": true,
-              "containerNames": [
-                "${NAME}"
-              ],
+              "containerNames": ["${NAME}"],
               "from": {
                 "kind": "ImageStreamTag",
                 "namespace": "${IMAGE_NAMESPACE}",
@@ -173,15 +167,19 @@
                     "value": "${DATABASE_SERVICE_NAME}"
                   },
                   {
-                    "name": "POSTGRESQL_DATABASE",
+                    "name": "DATABASE_NAME",
                     "value": "${DATABASE_NAME}"
+                  },
+                  {
+                    "name": "MONGODB_AUTHENTICATION_DATABASE",
+                    "value": "${MONGODB_AUTHENTICATION_DATABASE}"
                   },
                   {
                     "name": "TABLE_SCHEMA",
                     "value": "${TABLE_SCHEMA}"
                   },
                   {
-                    "name": "POSTGRESQL_USER",
+                    "name": "DATABASE_USER",
                     "valueFrom": {
                       "secretKeyRef": {
                         "name": "${DATABASE_DEPLOYMENT_NAME}",
@@ -190,7 +188,7 @@
                     }
                   },
                   {
-                    "name": "POSTGRESQL_PASSWORD",
+                    "name": "DATABASE_PASSWORD",
                     "valueFrom": {
                       "secretKeyRef": {
                         "name": "${DATABASE_DEPLOYMENT_NAME}",
@@ -271,14 +269,14 @@
       "displayName": "Name",
       "description": "The name assigned to all of the resources defined in this template.",
       "required": true,
-      "value": "backup"
+      "value": "pgbackup"
     },
     {
       "name": "SOURCE_IMAGE_NAME",
       "displayName": "Source Image Name",
       "description": "The name of the image to use for this resource.",
       "required": true,
-      "value": "backup"
+      "value": "pgbackup"
     },
     {
       "name": "IMAGE_NAMESPACE",
@@ -307,6 +305,13 @@
       "description": "The name of the database.",
       "required": true,
       "value": "MyDatabase"
+    },
+    {
+      "name": "MONGODB_AUTHENTICATION_DATABASE",
+      "displayName": "MongoDB Authentication Database",
+      "description": "Value required if you are backing up MongoDB",
+      "required": false,
+      "value": "admin"
     },
     {
       "name": "DATABASE_DEPLOYMENT_NAME",
@@ -347,7 +352,7 @@
       "name": "FTP_SECRET_KEY",
       "displayName": "FTP Secret Key",
       "description": "The FTP secret key is used to wire up the credentials associated to the FTP.",
-      "required": true,
+      "required": false,
       "value": "ftp-secret"
     },
     {
@@ -500,7 +505,7 @@
     {
       "name": "VERIFICATION_VOLUME_MOUNT_PATH",
       "displayName": "Verification Volume Mount Path",
-      "description": "The path on which to mount the verification volume.  This is used by the database server to contain the database configuration and data files.",
+      "description": "The path on which to mount the verification volume.  This is used by the database server to contain the database configuration and data files. For Mongo, please use /var/lib/mongodb/data",
       "required": true,
       "value": "/var/lib/pgsql/data"
     },
