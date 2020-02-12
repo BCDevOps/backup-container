@@ -21,7 +21,7 @@ COPY webhook-template.json /
 #  - https://blog.danman.eu/cron-jobs-in-openshift/
 # --------------------------------------------------------------------------------------------------------
 ARG SOURCE_REPO=BCDevOps
-ARG GOCROND_VERSION=0.6.2
+ARG GOCROND_VERSION=0.6.3
 ADD https://github.com/$SOURCE_REPO/go-crond/releases/download/$GOCROND_VERSION/go-crond-64-linux /usr/bin/go-crond
 
 USER root
