@@ -6,7 +6,7 @@
 function usage () {
   cat <<-EOF
 
-  Automated backup script for Postgresql and MongoDB databases.
+  Automated backup script for PostgreSQL and MongoDB databases.
 
   There are two modes of scheduling backups:
     - Cron Mode:
@@ -59,7 +59,7 @@ function usage () {
 
     -v <DatabaseSpec/>; in the form <connectionSpec>=<Hostname/>/<DatabaseName/>, or <connectionSpec>=<Hostname/>:<Port/>/<DatabaseName/>
                         where <connectionSpec> defaults to container database type if omitted
-                        <connectionSpec> must be one of "postgres" or "mongodb"
+                        <connectionSpec> must be one of "postgres" or "mongo"
                         <connectionSpec> must be specified in a mixed database container project
 
        Triggers verify mode and starts verify mode on the specified database.
@@ -81,7 +81,7 @@ function usage () {
       - Grant the database user access to the recreated database
       - Restore the database from the selected backup file
 
-    Have the 'Admin' (postgres or mongodb) password handy, the script will ask you for it during the restore.
+    Have the 'Admin' (postgres or mongo) password handy, the script will ask you for it during the restore.
 
     When in restore mode, the script will list the settings it will use and wait for your confirmation to continue.
     This provides you with an opportunity to ensure you have selected the correct database and backup file
