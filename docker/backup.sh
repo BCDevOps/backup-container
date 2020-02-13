@@ -255,7 +255,7 @@ function runOnce() {
 function getDatabaseName(){
   (
     _databaseSpec=${1}
-    _databaseName=$(echo ${_databaseSpec} | sed 's~^[^/]*/\(.*\)~\1~' | sed 's~\(.*\)/\(.*\)~\1~')
+    _databaseName=$(echo ${_databaseSpec} | sed -n 's~^.*/\(.*$\)~\1~p')
     echo "${_databaseName}"
   )
 }
@@ -263,11 +263,7 @@ function getDatabaseName(){
 function getDatabaseType(){
   (
     _databaseSpec=${1}
-    if [[ ${_databaseSpec} == *"="* ]]; then
-       _databaseType=$(echo ${_databaseSpec} | sed 's/=.*//' | tr '[:upper:]' '[:lower:]')
-    else
-       _databaseType="${PODTYPE}"
-    fi
+    _databaseType=$(echo ${_databaseSpec} | sed -n 's~^\(.*\)=.*$~\1~p' | tr '[:upper:]' '[:lower:]')
     echo "${_databaseType}"
   )
 }
@@ -275,11 +271,19 @@ function getDatabaseType(){
 function getPort(){
   (
     _databaseSpec=${1}
-    portsed="s~\(^.*:\)\(.*\)/\(.*$\)~\2~;s~${_databaseSpec}~~g;s~/.*~~"
-    _port=$(echo ${_databaseSpec} | sed "${portsed}")
+    portsed="s~^.*:\([[:digit:]]\+\)/.*$~\1~p"
+    _port=$(echo ${_databaseSpec} | sed -n "${portsed}")
 
+    # ToDo:
+    # - Determine whether we actually need the port number if not specified.
+    # - Allowing the database services to use the default when not specified would be much easier.
     if [ -z ${_port} ]; then
-      case ${PODTYPE} in
+      databaseType=$(getDatabaseType ${_databaseSpec})
+      if [ -z "${databaseType}" ]; then
+        databaseType=${CONTAINER_TYPE}
+      fi
+
+      case ${databaseType} in
         ${POSTGRE_DB})
           _port=${DEFAULT_PORT_PG}
           ;;
@@ -293,6 +297,7 @@ function getPort(){
           ;;
       esac
     fi
+
     echo "${_port}"
   )
 }
@@ -300,11 +305,7 @@ function getPort(){
 function getHostname(){
   (
     _databaseSpec=${1}
-    if [[ ${_databaseSpec} == *"="* ]]; then
-       _hostname=$(echo ${_databaseSpec} | sed 's~[:/].*~~' | awk -F"=" '{print $2}')
-    else
-      _hostname=$(echo ${_databaseSpec} | sed 's~[:/].*~~')
-    fi
+    _hostname=$(echo ${_databaseSpec} | sed 's~^.\+[=]~~;s~[:/].*~~')
     echo "${_hostname}"
   )
 }
@@ -333,6 +334,9 @@ function getHostPasswordParam(){
   )
 }
 
+# ToDo:
+# Should only return database configuration that is relavent to the current pod type; postgres or mongo.
+# - Include a '-a' option that will return all database configurations.
 function readConf(){
   (
     local OPTIND
@@ -382,7 +386,6 @@ function readConf(){
     echo "${_value}"
   )
 }
-
 
 function makeDirectory()
 {
@@ -439,7 +442,7 @@ function listExistingBackups(){
     local output="\nDatabase,Current Size"
 
     for database in ${databases}; do
-      if [[ "$(getDatabaseType ${database})" == ${PODTYPE} ]]; then
+      if isForContainerType ${database}; then
         output="${output}\n${database},$(getDbSize "${database}")"
       fi
     done
@@ -616,7 +619,7 @@ function backupDatabase(){
 
     touchBackupFile "${_backupFile}"
 
-    case ${PODTYPE} in
+    case ${CONTAINER_TYPE} in
       ${POSTGRE_DB})
         echoGreen "starting Postgres backup using pg_dump....."
         PGPASSWORD=${_password} pg_dump -Fp -h "${_hostname}" -p "${_port}" -U "${_username}" "${_database}" | gzip > ${_backupFile}
@@ -628,7 +631,7 @@ function backupDatabase(){
         _rtnCd=${?}
         ;;
       *)
-        echoRed "- Unknown Database Type: ${PODTYPE}"
+        echoRed "- Unknown Database Type: ${CONTAINER_TYPE}"
         _rtnCd=1
         ;;
     esac
@@ -689,8 +692,8 @@ function restoreDatabase(){
     _fileName=${2}
     _fileName=$(findBackup "${_databaseSpec}" "${_fileName}")
 
-    if [[ "${_mode}" == ${RESTORE} ]] && [[ "$(getDatabaseType ${database})" == ${PODTYPE} ]]; then
-      echoRed "*** Attempting to restore database ${_databaseSpec} from ${PODTYPE} POD ***\n"
+    if [[ "${_mode}" == ${RESTORE} ]] && isForContainerType ${_databaseSpec}; then
+      echoRed "*** Attempting to restore database ${_databaseSpec} from ${CONTAINER_TYPE} POD ***\n"
       echoRed "*** Cannot continue with the restore. It must be initiated from the correct Backup Pod ***\n"
       exit 0
     fi
@@ -719,19 +722,7 @@ function restoreDatabase(){
       _port=$(getPort ${_databaseSpec})
     else
       _hostname="127.0.0.1"
-      case ${PODTYPE} in
-        ${POSTGRE_DB})
-          _port=${DEFAULT_PORT_PG}
-          ;;
-        ${MONGO_DB})
-          _port=${DEFAULT_PORT_MD}
-          ;;
-        *)
-          _configurationError=1
-          _port="UNKNOWN"
-          echoRed "- Unknown Database Type default port cannot be set, script will exit"
-        ;;
-      esac
+      _port=$(getPort ${_hostname})
     fi
 
     if [ ! -z "${_configurationError}" ]; then
@@ -753,7 +744,7 @@ function restoreDatabase(){
     fi
 
     local startTime=${SECONDS}
-    case ${PODTYPE} in
+    case ${CONTAINER_TYPE} in
       ${POSTGRE_DB})
         export PGPASSWORD=${_adminPassword}
         # Wait for server ...
@@ -959,7 +950,7 @@ function listSettings(){
   _notConfigured="${_yellow}not configured${_nc}"
 
   echo -e \\n"Settings:"
-  echo -e "- Database Type: ${PODTYPE}"\\n
+  echo -e "- Database Type: ${CONTAINER_TYPE}"\\n
   _mode=$(getMode 2>/dev/null)
   echo "- Run mode: ${_mode}"
   if rollingStrategy; then
@@ -1159,7 +1150,7 @@ function runBackups(){
     #listSettings "${backupDir}" "${databases}"
 
     for database in ${databases}; do
-      if [[ "$(getDatabaseType ${database})" == ${PODTYPE} ]]; then
+      if isForContainerType ${database}; then
         local startTime=${SECONDS}
         filename=$(generateFilename "${backupDir}" "${database}")
         backupDatabase "${database}" "${filename}"
@@ -1208,7 +1199,7 @@ function startServer(){
   (
     _databaseSpec=${1}
 
-    case ${PODTYPE} in
+    case ${CONTAINER_TYPE} in
       ${POSTGRE_DB})
         # Start a local PostgreSql instance
         POSTGRESQL_DATABASE=$(getDatabaseName "${_databaseSpec}") \
@@ -1248,7 +1239,7 @@ function stopServer(){
   (
     _databaseSpec=${1}
 
-    case ${PODTYPE} in
+    case ${CONTAINER_TYPE} in
       ${POSTGRE_DB})
         # Stop the local PostgreSql instance
         pg_ctl stop -D /var/lib/pgsql/data/userdata
@@ -1291,24 +1282,11 @@ function pingDbServer(){
       _port=$(getPort ${_databaseSpec})
     else
       _hostname="127.0.0.1"
-      case ${PODTYPE} in
-        ${POSTGRE_DB})
-          _port=${DEFAULT_PORT_PG}
-          ;;
-        ${MONGO_DB})
-          _port=${DEFAULT_PORT_MD}
-          ;;
-        *)
-          _configurationError=1
-          _port="UNKNOWN"
-          echoRed "- Unknown Database Type default port cannot be set, script will exit" >&2
-          return 1
-          ;;
-      esac
+      _port=$(getPort ${_hostname})
     fi
 
     if [ -z "${_configurationError}" ]; then
-      case ${PODTYPE} in
+      case ${CONTAINER_TYPE} in
         ${POSTGRE_DB})
           if PGPASSWORD=${_password} psql -h ${_hostname} -U ${_username} -q -d ${_database} -c 'SELECT 1' >/dev/null 2>&1; then
             return 0
@@ -1354,7 +1332,7 @@ function verifyBackups(){
     fi
 
     for database in ${databases}; do
-      if [[ "$(getDatabaseType ${database})" == ${PODTYPE} ]]; then
+      if isForContainerType ${database}; then
         verifyBackup ${flags} "${database}" "${_fileName}"
       fi
     done
@@ -1422,7 +1400,7 @@ function verifyBackup(){
     # Ensure there are tables in the databse and general queries work
     if (( ${rtnCd} == 0 )); then
       _hostname="127.0.0.1"
-      case ${PODTYPE} in
+      case ${CONTAINER_TYPE} in
         ${POSTGRE_DB})
           _port="${DEFAULT_PORT_PG}"
           tables=$(psql -h "${_hostname}" -p "${_port}" -d "${_database}" -t -c "SELECT table_name FROM information_schema.tables WHERE table_schema='${TABLE_SCHEMA}' AND table_type='BASE TABLE';")
@@ -1443,7 +1421,7 @@ function verifyBackup(){
     fi
 
     if (( ${rtnCd} == 0 )); then
-     case ${PODTYPE} in
+     case ${CONTAINER_TYPE} in
       ${POSTGRE_DB})
         numResults=$(echo "${tables}"| wc -l)
         if [[ ! -z "${tables}" ]] && (( numResults >= 1 )); then
@@ -1514,23 +1492,11 @@ function getDbSize(){
       _port=$(getPort ${_databaseSpec})
     else
       _hostname="127.0.0.1"
-      case ${PODTYPE} in
-        ${POSTGRE_DB})
-          _port=${DEFAULT_PORT_PG}
-          ;;
-        ${MONGO_DB})
-          _port=${DEFAULT_PORT_MD}
-          ;;
-        *)
-          _configurationError=1
-          _port="UNKNOWN"
-          echoRed "- Unknown Database Type default port cannot be set, script will exit" >&2
-          ;;
-      esac
+      _port=$(getPort ${_hostname})
     fi
 
     # Run the sql query based on each database type
-    case ${PODTYPE} in
+    case ${CONTAINER_TYPE} in
       ${POSTGRE_DB})
         size=$(PGPASSWORD=${_password} psql -h "${_hostname}" -p "${_port}" -U "${_username}" -d "$_database" -t -c "SELECT pg_size_pretty(pg_database_size(current_database())) as size;")
         rtnCd=${?}
@@ -1558,6 +1524,7 @@ function shutDown() {
 
   echo "Waiting for any background jobs to complete ..."
   wait
+  exit 0
 }
 
 function isPostgres(){
@@ -1580,17 +1547,31 @@ function isMongo(){
   )
 }
 
-function getPodType(){
+function getContainerType(){
   (
-    local _podType=${POSTGRE_DB}
+    local _containerType=${POSTGRE_DB}
    
     if isPostgres; then
-      _podType=${POSTGRE_DB}
+      _containerType=${POSTGRE_DB}
     elif isMongo; then
-      _podType=${MONGO_DB}
+      _containerType=${MONGO_DB}
     fi
 
-    echo "${_podType}"
+    echo "${_containerType}"
+  )
+}
+
+function isForContainerType(){
+  (
+    _databaseSpec=${1}
+    _databaseType=$(getDatabaseType ${database})
+
+    # If the database type has not been defined, assume the database spec is valid for the current databse container type.
+    if [ -z "${_databaseType}" ] || [[ "${_databaseType}" == "${CONTAINER_TYPE}" ]]; then
+      return 0
+    else
+      return 1
+    fi
   )
 }
 # ======================================================================================
@@ -1610,7 +1591,7 @@ export TABLE_SCHEMA=${TABLE_SCHEMA:-public}
 # Supports:
 # - daily
 # - rolling
-export BACKUP_STRATEGY=$(echo "${BACKUP_STRATEGY:-daily}" | tr '[:upper:]' '[:lower:]')
+export BACKUP_STRATEGY=$(echo "${BACKUP_STRATEGY:-rolling}" | tr '[:upper:]' '[:lower:]')
 export BACKUP_PERIOD=${BACKUP_PERIOD:-1d}
 export ROOT_BACKUP_DIR=${ROOT_BACKUP_DIR:-${BACKUP_DIR:-/backups/}}
 export BACKUP_CONF=${BACKUP_CONF:-backup.conf}
@@ -1642,13 +1623,13 @@ export ERROR="error"
 export SCHEDULED_VERIFY="scheduled-verify"
 export PRUNE="prune"
 
-# Supported Databes
+# Supported Database Containers
 export MONGO_DB="mongo"
 export POSTGRE_DB="postgres"
 
 # Other:
 export DATABASE_SERVER_TIMEOUT=${DATABASE_SERVER_TIMEOUT:-60}
-export PODTYPE="$(getPodType)"
+export CONTAINER_TYPE="$(getContainerType)"
 # ======================================================================================
 
 # =================================================================================================================
