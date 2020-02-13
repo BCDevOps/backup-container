@@ -95,7 +95,7 @@ function usage () {
 
     -r <DatabaseSpec/>; in the form <connectionSpec>=<Hostname/>/<DatabaseName/>, or <connectionSpec>=<Hostname/>:<Port/>/<DatabaseName/>
                         where <connectionSpec> defaults to container database type if omitted
-                        <connectionSpec> must be one of "postgres" or "mongodb"
+                        <connectionSpec> must be one of "postgres" or "mongo"
                         <connectionSpec> must be specified in a mixed database container project
 
        Triggers restore mode and starts restore mode on the specified database.
@@ -342,12 +342,14 @@ function readConf(){
     local OPTIND
     local readCron
     local quiet
+    local all
     unset readCron
     unset quiet
-    while getopts cq FLAG; do
+    while getopts cqa FLAG; do
       case $FLAG in
         c ) readCron=1 ;;
         q ) quiet=1 ;;
+        a ) all=1 ;;
       esac
     done
     shift $((OPTIND-1))
@@ -358,14 +360,19 @@ function readConf(){
     if [ -z "${readCron}" ]; then
       # Read in the database config ...
       #  - Remove any lines that do not match the expected database spec format(s)
-      #     - <Hostname/>/<DatabaseName/>
-      #     - <Hostname/>:<Port/>/<DatabaseName/>
-      filters="${filters}/^[a-zA-Z0-9=_/-]*\(:[0-9]*\)\?\/[a-zA-Z0-9_/-]*$/!d;"
+      #     - [<DatabaseType>=]<Hostname/>/<DatabaseName/>
+      #     - [<DatabaseType>=]<Hostname/>:<Port/>/<DatabaseName/>
+      filters+="/^[a-zA-Z0-9=_/-]*\(:[0-9]*\)\?\/[a-zA-Z0-9_/-]*$/!d;"
+      if [ -z "${all}" ]; then
+        # Remove any database config that are not for the current container type
+        # Database specs that do not define the database type are assumed to be for the current container type
+        filters+="/\(^[a-zA-Z0-9_/-]*\(:[0-9]*\)\?\/[a-zA-Z0-9_/-]*$\)\|\(^${CONTAINER_TYPE}=\)/!d;"
+      fi
     else
       # Read in the cron config ...
       #  - Remove any lines that MATCH expected database spec format(s),
       #    leaving, what should be, cron tabs.
-      filters="${filters}/^[a-zA-Z0-9=_/-]*\(:[0-9]*\)\?\/[a-zA-Z0-9_/-]*$/d;"
+      filters+="/^[a-zA-Z0-9=_/-]*\(:[0-9]*\)\?\/[a-zA-Z0-9_/-]*$/d;"
     fi
 
     if [ -f ${BACKUP_CONF} ]; then
