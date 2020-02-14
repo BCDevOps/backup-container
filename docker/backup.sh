@@ -957,9 +957,9 @@ function listSettings(){
   _notConfigured="${_yellow}not configured${_nc}"
 
   echo -e \\n"Settings:"
-  echo -e "- Database Type: ${CONTAINER_TYPE}"\\n
   _mode=$(getMode 2>/dev/null)
-  echo "- Run mode: ${_mode}"
+  echo -e "- Run mode: ${_mode}"\\n
+
   if rollingStrategy; then
     echo "- Backup strategy: rolling"
   fi
@@ -984,7 +984,8 @@ function listSettings(){
   else
     echo "  - Total: $(getNumBackupsToRetain)"
   fi
-  echo "- Backup folder: ${_backupDirectory}"
+  echo "- Current backup folder: ${_backupDirectory}"
+
   if [[ "${_mode}" != ${ONCE} ]]; then
     if [[ "${_mode}" == ${CRON} ]] || [[ "${_mode}" == ${SCHEDULED} ]]; then
       _backupSchedule=$(readConf -cq)
@@ -994,20 +995,25 @@ function listSettings(){
     echo -e \\n"- Schedule:"
     echo "${_backupSchedule}"
   fi
+
+  echo -e \\n"- Container Type: ${CONTAINER_TYPE}"
   _databaseList=$(formatList "${_databaseList}")
-  echo -e \\n"- Databases:"
+  echo "- Databases (filtered by container type):"
   echo "${_databaseList}"
   echo
+  
   if [ -z "${FTP_URL}" ]; then
     echo -e "- FTP server: ${_notConfigured}"
   else
     echo "- FTP server: ${FTP_URL}"
   fi
+  
   if [ -z "${WEBHOOK_URL}" ]; then
     echo -e "- Webhook Endpoint: ${_notConfigured}"
   else
     echo "- Webhook Endpoint: ${WEBHOOK_URL}"
   fi
+  
   if [ -z "${ENVIRONMENT_FRIENDLY_NAME}" ]; then
     echo -e "- Environment Friendly Name: ${_notConfigured}"
   else
@@ -1524,13 +1530,17 @@ function getDbSize(){
 }
 
 function shutDown() {
-  for jobId in $(jobs | awk -F '[][]' '{print $2}' ) ; do
+  jobIds=$(jobs | awk -F '[][]' '{print $2}' )
+  for jobId in ${jobIds} ; do
     echo "Shutting down background job '${jobId}' ..."
     kill %${jobId}
   done
 
-  echo "Waiting for any background jobs to complete ..."
+  if [ ! -z "${jobIds}" ]; then
+    echo "Waiting for any background jobs to complete ..."
+  fi
   wait
+
   exit 0
 }
 
@@ -1557,7 +1567,7 @@ function isMongo(){
 function getContainerType(){
   (
     local _containerType=${POSTGRE_DB}
-   
+
     if isPostgres; then
       _containerType=${POSTGRE_DB}
     elif isMongo; then
@@ -1633,10 +1643,10 @@ export PRUNE="prune"
 # Supported Database Containers
 export MONGO_DB="mongo"
 export POSTGRE_DB="postgres"
+export CONTAINER_TYPE="$(getContainerType)"
 
 # Other:
 export DATABASE_SERVER_TIMEOUT=${DATABASE_SERVER_TIMEOUT:-60}
-export CONTAINER_TYPE="$(getContainerType)"
 # ======================================================================================
 
 # =================================================================================================================
