@@ -276,7 +276,7 @@ function getPort(){
 
     # ToDo:
     # - Determine whether we actually need the port number if not specified.
-    # - Allowing the database services to use the default when not specified would be much easier.
+    # - Allowing the database services to use the default port when not specified would be much easier.
     if [ -z ${_port} ]; then
       databaseType=$(getDatabaseType ${_databaseSpec})
       if [ -z "${databaseType}" ]; then
@@ -334,9 +334,6 @@ function getHostPasswordParam(){
   )
 }
 
-# ToDo:
-# Should only return database configuration that is relavent to the current pod type; postgres or mongo.
-# - Include a '-a' option that will return all database configurations.
 function readConf(){
   (
     local OPTIND
@@ -364,8 +361,8 @@ function readConf(){
       #     - [<DatabaseType>=]<Hostname/>:<Port/>/<DatabaseName/>
       filters+="/^[a-zA-Z0-9=_/-]*\(:[0-9]*\)\?\/[a-zA-Z0-9_/-]*$/!d;"
       if [ -z "${all}" ]; then
-        # Remove any database config that are not for the current container type
-        # Database specs that do not define the database type are assumed to be for the current container type
+        # Remove any database configs that are not for the current container type
+        # Database configs that do not define the database type are assumed to be for the current container type
         filters+="/\(^[a-zA-Z0-9_/-]*\(:[0-9]*\)\?\/[a-zA-Z0-9_/-]*$\)\|\(^${CONTAINER_TYPE}=\)/!d;"
       fi
     else
@@ -625,29 +622,43 @@ function backupDatabase(){
     fi
 
     touchBackupFile "${_backupFile}"
-
-    case ${CONTAINER_TYPE} in
-      ${POSTGRE_DB})
-        echoGreen "starting Postgres backup using pg_dump....."
-        PGPASSWORD=${_password} pg_dump -Fp -h "${_hostname}" -p "${_port}" -U "${_username}" "${_database}" | gzip > ${_backupFile}
-        _rtnCd=${PIPESTATUS[0]}
-        ;;
-      ${MONGO_DB})
-        echoGreen "starting Mongo DB backup using mongodump....."
-        mongodump --authenticationDatabase="${MONGODB_AUTHENTICATION_DATABASE}" -h "${_hostname}" -u "${_username}" -p "${_password}" -d "${_database}" --quiet --gzip --archive=${_backupFile}
-        _rtnCd=${?}
-        ;;
-      *)
-        echoRed "- Unknown Database Type: ${CONTAINER_TYPE}"
-        _rtnCd=1
-        ;;
-    esac
+    eval "${CONTAINER_TYPE}_backupDatabase \"${_hostname}\" \"${_database}\" \"${_port}\" \"${_username}\" \"${_password}\" \"${_backupFile}\""
 
     if (( ${_rtnCd} != 0 )); then
       rm -rfvd ${_backupFile}
     fi
 
     return ${_rtnCd}
+  )
+}
+
+function postgres_backupDatabase(){
+  (
+    _hostname=${1}
+    _database=${2}
+    _port=${3}
+    _username=${4}
+    _password=${5}
+    _backupFile=${6}
+
+    echoGreen "Starting Postgres backup using pg_dump ..."
+    PGPASSWORD=${_password} pg_dump -Fp -h "${_hostname}" -p "${_port}" -U "${_username}" "${_database}" | gzip > ${_backupFile}
+    return ${PIPESTATUS[0]}
+  )
+}
+
+function mongo_backupDatabase(){
+  (
+    _hostname=${1}
+    _database=${2}
+    _port=${3}
+    _username=${4}
+    _password=${5}
+    _backupFile=${6}
+
+    echoGreen "Starting Mongo backup using mongodump ..."
+    mongodump --authenticationDatabase="${MONGODB_AUTHENTICATION_DATABASE}" -h "${_hostname}" -u "${_username}" -p "${_password}" -d "${_database}" --quiet --gzip --archive=${_backupFile}
+    return ${?}
   )
 }
 
@@ -1564,17 +1575,24 @@ function isMongo(){
   )
 }
 
+# ToDo:
+#   - UNKNOWN_DB container type should cause a configuration error.
 function getContainerType(){
   (
     local _containerType=${POSTGRE_DB}
+    _rtnCd=0
 
     if isPostgres; then
       _containerType=${POSTGRE_DB}
     elif isMongo; then
       _containerType=${MONGO_DB}
+    else
+      _containerType=${UNKNOWN_DB}
+      _rtnCd=1
     fi
 
     echo "${_containerType}"
+    return ${_rtnCd}
   )
 }
 
@@ -1641,6 +1659,7 @@ export SCHEDULED_VERIFY="scheduled-verify"
 export PRUNE="prune"
 
 # Supported Database Containers
+export UNKNOWN_DB="unknown_db_type"
 export MONGO_DB="mongo"
 export POSTGRE_DB="postgres"
 export CONTAINER_TYPE="$(getContainerType)"
