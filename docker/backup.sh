@@ -745,14 +745,6 @@ function restoreDatabase(){
     _fileName=${2}
     _fileName=$(findBackup "${_databaseSpec}" "${_fileName}")
 
-    # ToDo;
-    #   - Should not be able to get to this point if the user is trying to restore the wrong database type; i.e. Validation should happen before this function is called.
-    if [[ "${_mode}" == ${RESTORE} ]] && isForContainerType ${_databaseSpec}; then
-      echoRed "*** Attempting to restore database ${_databaseSpec} from ${CONTAINER_TYPE} POD ***\n"
-      echoRed "*** Cannot continue with the restore. It must be initiated from the correct Backup Pod ***\n"
-      exit 0
-    fi
-
     if [ -z "${quiet}" ]; then
       echoBlue "\nRestoring database ..."
       echo -e "\nSettings:"
@@ -762,7 +754,7 @@ function restoreDatabase(){
         echo -e "- Backup file: ${_fileName}\n"
       else
         echoRed "- Backup file: No backup file found or specified.  Cannot continue with the restore.\n"
-        exit 0
+        exit 1
       fi
       waitForAnyKey
     fi
@@ -1678,7 +1670,7 @@ function getContainerType(){
 function isForContainerType(){
   (
     _databaseSpec=${1}
-    _databaseType=$(getDatabaseType ${database})
+    _databaseType=$(getDatabaseType ${_databaseSpec})
 
     # If the database type has not been defined, assume the database spec is valid for the current databse container type.
     if [ -z "${_databaseType}" ] || [[ "${_databaseType}" == "${CONTAINER_TYPE}" ]]; then
@@ -1686,6 +1678,22 @@ function isForContainerType(){
     else
       return 1
     fi
+  )
+}
+
+function validateOperation(){
+  (
+    _databaseSpec=${1}
+    _mode=${2}
+    _rtnCd=0
+
+    if [[ "${_mode}" == ${RESTORE} ]] && ! isForContainerType ${_databaseSpec}; then
+      echoRed "\nYou are attempting to restore database '${_databaseSpec}' from a ${CONTAINER_TYPE} container."
+      echoRed "Cannot continue with the restore.  It must be initiated from the matching container type."
+      _rtnCd=1
+    fi
+
+    return ${_rtnCd}
   )
 }
 # ======================================================================================
@@ -1819,7 +1827,9 @@ case $(getMode) in
       restoreFlags="-q"
     fi
 
-    restoreDatabase ${restoreFlags} "${_restoreDatabase}" "${_fromBackup}"
+    if validateOperation "${_restoreDatabase}" "${RESTORE}"; then
+      restoreDatabase ${restoreFlags} "${_restoreDatabase}" "${_fromBackup}"
+    fi
     ;;
 
   ${VERIFY})
