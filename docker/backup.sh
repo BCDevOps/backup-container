@@ -271,8 +271,21 @@ function getDatabaseType(){
 function getPort(){
   (
     _databaseSpec=${1}
-    portsed="s~^.*:\([[:digit:]]\+\)/.*$~\1~p"
-    _port=$(echo ${_databaseSpec} | sed -n "${portsed}")
+
+    local OPTIND
+    local localhost
+    unset localhost
+    while getopts l FLAG; do
+      case $FLAG in
+        l ) localhost=1 ;;
+      esac
+    done
+    shift $((OPTIND-1))
+
+    if [ -z "${localhost}" ]; then
+      portsed="s~^.*:\([[:digit:]]\+\)/.*$~\1~p"
+      _port=$(echo ${_databaseSpec} | sed -n "${portsed}")
+    fi
 
     # ToDo:
     # - Determine whether we actually need the port number if not specified.
@@ -305,7 +318,23 @@ function getPort(){
 function getHostname(){
   (
     _databaseSpec=${1}
-    _hostname=$(echo ${_databaseSpec} | sed 's~^.\+[=]~~;s~[:/].*~~')
+
+    local OPTIND
+    local localhost
+    unset localhost
+    while getopts l FLAG; do
+      case $FLAG in
+        l ) localhost=1 ;;
+      esac
+    done
+    shift $((OPTIND-1))
+
+    if [ -z "${localhost}" ]; then
+      _hostname=$(echo ${_databaseSpec} | sed 's~^.\+[=]~~;s~[:/].*~~')
+    else
+      _hostname="127.0.0.1"
+    fi
+
     echo "${_hostname}"
   )
 }
@@ -697,12 +726,17 @@ function restoreDatabase(){
     local OPTIND
     local quiet
     local localhost
+    local localhost
     unset quiet
     unset localhost
+    unset flags
     while getopts ql FLAG; do
       case $FLAG in
-        q ) quiet=1 ;;
-        l ) localhost=1 ;;
+        q ) 
+          quiet=1
+          flags+="-${FLAG} "
+          ;;
+        * ) flags+="-${FLAG} ";;
       esac
     done
     shift $((OPTIND-1))
@@ -733,16 +767,11 @@ function restoreDatabase(){
       waitForAnyKey
     fi
 
+    _hostname=$(getHostname ${flags} ${_databaseSpec})
     _database=$(getDatabaseName ${_databaseSpec})
+    _port=$(getPort ${flags} ${_databaseSpec})
     _username=$(getUsername ${_databaseSpec})
     _password=$(getPassword ${_databaseSpec})
-    if [ -z "${localhost}" ]; then
-      _hostname=$(getHostname ${_databaseSpec})
-      _port=$(getPort ${_databaseSpec})
-    else
-      _hostname="127.0.0.1"
-      _port=$(getPort ${_hostname})
-    fi
 
     echo "Restoring to ${_hostname}:${_port} ..."
 
@@ -1302,29 +1331,23 @@ function mongo_stopServer(){
 
 function pingDbServer(){
   (
+    _databaseSpec=${1}
+
     local OPTIND
     local localhost
     unset localhost
     while getopts l FLAG; do
       case $FLAG in
-        l ) localhost=1 ;;
+        * ) flags+="-${FLAG} " ;;
       esac
     done
     shift $((OPTIND-1))
 
-    _databaseSpec=${1}
-    _database=$(getDatabaseName "${_databaseSpec}")
+    _hostname=$(getHostname ${flags} ${_databaseSpec})
+    _database=$(getDatabaseName ${_databaseSpec})
+    _port=$(getPort ${flags} ${_databaseSpec})
     _username=$(getUsername ${_databaseSpec})
     _password=$(getPassword ${_databaseSpec})
-
-    #Set the port based on the database type
-    if [ -z "${localhost}" ]; then
-      _hostname=$(getHostname ${_databaseSpec})
-      _port=$(getPort ${_databaseSpec})
-    else
-      _hostname="127.0.0.1"
-      _port=$(getPort ${_hostname})
-    fi
 
     eval "${CONTAINER_TYPE}_pingDbServer \"${_hostname}\" \"${_database}\" \"${_port}\" \"${_username}\" \"${_password}\""
     return ${?}
@@ -1474,12 +1497,12 @@ function verifyBackup(){
 function postgres_verifyBackup(){
   (
     _databaseSpec=${1}
-    _hostname="127.0.0.1"
+    _hostname=$(getHostname -l ${_databaseSpec})
     _database=$(getDatabaseName ${_databaseSpec})
+    _port=$(getPort -l ${_databaseSpec})
     _username=$(getUsername ${_databaseSpec})
     _password=$(getPassword ${_databaseSpec})
 
-    _port="${DEFAULT_PORT_PG}"
     tables=$(psql -h "${_hostname}" -p "${_port}" -d "${_database}" -t -c "SELECT table_name FROM information_schema.tables WHERE table_schema='${TABLE_SCHEMA}' AND table_type='BASE TABLE';")
     rtnCd=${?}
 
@@ -1503,8 +1526,9 @@ function postgres_verifyBackup(){
 function mongo_verifyBackup(){
   (
     _databaseSpec=${1}
-    _hostname="127.0.0.1"
+    _hostname=$(getHostname -l ${_databaseSpec})
     _database=$(getDatabaseName ${_databaseSpec})
+    _port=$(getPort -l ${_databaseSpec})
     _username=$(getUsername ${_databaseSpec})
     _password=$(getPassword ${_databaseSpec})
 
@@ -1537,29 +1561,23 @@ function getFileSize(){
 
 function getDbSize(){
   (
+    _databaseSpec=${1}
+
     local OPTIND
     local localhost
     unset localhost
     while getopts l FLAG; do
       case $FLAG in
-        l ) localhost=1 ;;
+        * ) flags+="-${FLAG} " ;;
       esac
     done
     shift $((OPTIND-1))
 
-    _databaseSpec=${1}
+    _hostname=$(getHostname ${flags} ${_databaseSpec})
     _database=$(getDatabaseName ${_databaseSpec})
+    _port=$(getPort ${flags} ${_databaseSpec})
     _username=$(getUsername ${_databaseSpec})
     _password=$(getPassword ${_databaseSpec})
-
-    # Set the port based on the database type
-    if [ -z "${localhost}" ]; then
-      _hostname=$(getHostname ${_databaseSpec})
-      _port=$(getPort ${_databaseSpec})
-    else
-      _hostname="127.0.0.1"
-      _port=$(getPort ${_hostname})
-    fi
 
     size=$(eval "${CONTAINER_TYPE}_getDbSize \"${_hostname}\" \"${_database}\" \"${_port}\" \"${_username}\" \"${_password}\"")
     rtnCd=${?}
