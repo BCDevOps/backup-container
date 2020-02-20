@@ -20,8 +20,6 @@ function getDatabaseType(){
 
 function getPort(){
   (
-    _databaseSpec=${1}
-
     local OPTIND
     local localhost
     unset localhost
@@ -31,6 +29,8 @@ function getPort(){
       esac
     done
     shift $((OPTIND-1))
+
+    _databaseSpec=${1}
 
     if [ -z "${localhost}" ]; then
       portsed="s~^.*:\([[:digit:]]\+\)/.*$~\1~p"
@@ -67,8 +67,6 @@ function getPort(){
 
 function getHostname(){
   (
-    _databaseSpec=${1}
-
     local OPTIND
     local localhost
     unset localhost
@@ -78,6 +76,8 @@ function getHostname(){
       esac
     done
     shift $((OPTIND-1))
+
+    _databaseSpec=${1}
 
     if [ -z "${localhost}" ]; then
       _hostname=$(echo ${_databaseSpec} | sed 's~^.\+[=]~~;s~[:/].*~~')
@@ -337,7 +337,13 @@ function listSettings(){
     echo "${_backupSchedule}"
   fi
 
-  echo -e \\n"- Container Type: ${CONTAINER_TYPE}"
+  if [[ "${CONTAINER_TYPE}" == "${UNKNOWN_DB}" ]]; then
+    echoRed "\n- Container Type: ${CONTAINER_TYPE}"
+    _configurationError=1
+  else
+    echo -e "\n- Container Type: ${CONTAINER_TYPE}"
+  fi
+  
   _databaseList=$(formatList "${_databaseList}")
   echo "- Databases (filtered by container type):"
   echo "${_databaseList}"
@@ -367,7 +373,8 @@ function listSettings(){
   fi
 
   if [ ! -z "${_configurationError}" ]; then
-    logError "\nConfiguration error!  The script will exit."
+    echo
+    logError "Configuration error!  The script will exit."
     sleep 5
     exit 1
   fi
@@ -491,63 +498,6 @@ function getMode(){
     fi
 
     echo "${_mode}"
-  )
-}
-
-# ToDo:
-#  - Should database sellection go into it's own file?  Thinking so.
-function isPostgres(){
-  (
-    if isInstalled "psql"; then
-      return 0
-    else
-      return 1
-    fi
-  )
-}
-
-function isMongo(){
-  (
-    if isInstalled "mongo"; then
-      return 0
-    else
-      return 1
-    fi
-  )
-}
-
-# ToDo:
-#   - UNKNOWN_DB container type should cause a configuration error.
-function getContainerType(){
-  (
-    local _containerType=${POSTGRE_DB}
-    _rtnCd=0
-
-    if isPostgres; then
-      _containerType=${POSTGRE_DB}
-    elif isMongo; then
-      _containerType=${MONGO_DB}
-    else
-      _containerType=${UNKNOWN_DB}
-      _rtnCd=1
-    fi
-
-    echo "${_containerType}"
-    return ${_rtnCd}
-  )
-}
-
-function isForContainerType(){
-  (
-    _databaseSpec=${1}
-    _databaseType=$(getDatabaseType ${_databaseSpec})
-
-    # If the database type has not been defined, assume the database spec is valid for the current databse container type.
-    if [ -z "${_databaseType}" ] || [[ "${_databaseType}" == "${CONTAINER_TYPE}" ]]; then
-      return 0
-    else
-      return 1
-    fi
   )
 }
 

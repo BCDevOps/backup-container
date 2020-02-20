@@ -53,12 +53,22 @@ function listExistingBackups(){
   )
 }
 
-getDirectoryName(){
+function getDirectoryName(){
   (
     local path=${1}
     path="${path%"${path##*[!/]}"}"
     local name="${path##*/}"
     echo "${name}"
+  )
+}
+
+function getBackupTypeFromPath(){
+  (
+    local path=${1}
+    path="${path%"${path##*[!/]}"}"
+    path="$(dirname "${path}")"
+    local backupType=$(getDirectoryName "${path}")
+    echo "${backupType}"
   )
 }
 
