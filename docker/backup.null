@@ -12,6 +12,7 @@ function onBackupDatabase(){
     _hostname=$(getHostname ${_databaseSpec})
     _database=$(getDatabaseName ${_databaseSpec})
     _port=$(getPort ${_databaseSpec})
+    _port=${_port:+"--port ${_port}"}
     _username=$(getUsername ${_databaseSpec})
     _password=$(getPassword ${_databaseSpec})
 
@@ -49,6 +50,7 @@ function onRestoreDatabase(){
     _hostname=$(getHostname ${flags} ${_databaseSpec})
     _database=$(getDatabaseName ${_databaseSpec})
     _port=$(getPort ${flags} ${_databaseSpec})
+    _port=${_port:+"--port ${_port}"}
     _username=$(getUsername ${_databaseSpec})
     _password=$(getPassword ${_databaseSpec})
 
@@ -103,6 +105,7 @@ function onPingDbServer(){
     _hostname=$(getHostname ${flags} ${_databaseSpec})
     _database=$(getDatabaseName ${_databaseSpec})
     _port=$(getPort ${flags} ${_databaseSpec})
+    _port=${_port:+"--port ${_port}"}
     _username=$(getUsername ${_databaseSpec})
     _password=$(getPassword ${_databaseSpec})
 
@@ -123,6 +126,7 @@ function onVerifyBackup(){
     _hostname=$(getHostname -l ${_databaseSpec})
     _database=$(getDatabaseName ${_databaseSpec})
     _port=$(getPort -l ${_databaseSpec})
+    _port=${_port:+"--port ${_port}"}
     _username=$(getUsername ${_databaseSpec})
     _password=$(getPassword ${_databaseSpec})
 
@@ -151,6 +155,7 @@ function onGetDbSize(){
     _hostname=$(getHostname ${flags} ${_databaseSpec})
     _database=$(getDatabaseName ${_databaseSpec})
     _port=$(getPort ${flags} ${_databaseSpec})
+    _port=${_port:+"--port ${_port}"}
     _username=$(getUsername ${_databaseSpec})
     _password=$(getPassword ${_databaseSpec})
     

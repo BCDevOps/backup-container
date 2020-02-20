@@ -37,30 +37,6 @@ function getPort(){
       _port=$(echo ${_databaseSpec} | sed -n "${portsed}")
     fi
 
-    # ToDo:
-    # - Determine whether we actually need the port number if not specified.
-    # - Allowing the database services to use the default port when not specified would be much easier.
-    if [ -z ${_port} ]; then
-      databaseType=$(getDatabaseType ${_databaseSpec})
-      if [ -z "${databaseType}" ]; then
-        databaseType=${CONTAINER_TYPE}
-      fi
-
-      case ${databaseType} in
-        ${POSTGRE_DB})
-          _port=${DEFAULT_PORT_PG}
-          ;;
-        ${MONGO_DB})
-          _port=${DEFAULT_PORT_MD}
-          ;;
-        *)
-          _configurationError=1
-          _port="UNKNOWN"
-          echoRed "- Unknown Database Type default port cannot be set, script will exit" >&2
-          ;;
-      esac
-    fi
-
     echo "${_port}"
   )
 }

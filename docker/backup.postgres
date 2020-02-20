@@ -11,11 +11,12 @@ function onBackupDatabase(){
     _hostname=$(getHostname ${_databaseSpec})
     _database=$(getDatabaseName ${_databaseSpec})
     _port=$(getPort ${_databaseSpec})
+    _port=${_port:+"-p ${_port}"}
     _username=$(getUsername ${_databaseSpec})
     _password=$(getPassword ${_databaseSpec})
 
     echoGreen "Starting Postgres backup using pg_dump ..."
-    PGPASSWORD=${_password} pg_dump -Fp -h "${_hostname}" -p "${_port}" -U "${_username}" "${_database}" | gzip > ${_backupFile}
+    PGPASSWORD=${_password} pg_dump -Fp -h "${_hostname}" "${_port}" -U "${_username}" "${_database}" | gzip > ${_backupFile}
     return ${PIPESTATUS[0]}
   )
 }
@@ -47,6 +48,7 @@ function onRestoreDatabase(){
     _hostname=$(getHostname ${flags} ${_databaseSpec})
     _database=$(getDatabaseName ${_databaseSpec})
     _port=$(getPort ${flags} ${_databaseSpec})
+    _port=${_port:+"-p ${_port}"}
     _username=$(getUsername ${_databaseSpec})
     _password=$(getPassword ${_databaseSpec})
 
@@ -55,21 +57,21 @@ function onRestoreDatabase(){
 
     # Drop
     if (( ${_rtnCd} == 0 )); then
-      psql -h "${_hostname}" -p "${_port}" -ac "DROP DATABASE \"${_database}\";"
+      psql -h "${_hostname}" "${_port}" -ac "DROP DATABASE \"${_database}\";"
       _rtnCd=${?}
         echo
     fi
 
     # Create
     if (( ${_rtnCd} == 0 )); then
-      psql -h "${_hostname}" -p "${_port}" -ac "CREATE DATABASE \"${_database}\";"
+      psql -h "${_hostname}" "${_port}" -ac "CREATE DATABASE \"${_database}\";"
       _rtnCd=${?}
       echo
     fi
 
     # Grant User Access
     if (( ${_rtnCd} == 0 )); then
-      psql -h "${_hostname}" -p "${_port}" -ac "GRANT ALL ON DATABASE \"${_database}\" TO \"${_username}\";"
+      psql -h "${_hostname}" "${_port}" -ac "GRANT ALL ON DATABASE \"${_database}\" TO \"${_username}\";"
       _rtnCd=${?}
       echo
     fi
@@ -77,14 +79,14 @@ function onRestoreDatabase(){
     # Restore
     if (( ${_rtnCd} == 0 )); then
       echo "Restoring from backup ..."
-      gunzip -c "${_fileName}" | psql -v ON_ERROR_STOP=1 -x -h "${_hostname}" -p "${_port}" -d "${_database}"
+      gunzip -c "${_fileName}" | psql -v ON_ERROR_STOP=1 -x -h "${_hostname}" "${_port}" -d "${_database}"
       # Get the status code from psql specifically.  ${?} would only provide the status of the last command, psql in this case.
       _rtnCd=${PIPESTATUS[1]}
     fi
 
     # List tables
     if [ -z "${quiet}" ] && (( ${_rtnCd} == 0 )); then
-      psql -h "${_hostname}" -p "${_port}" -d "${_database}" -c "\d"
+      psql -h "${_hostname}" "${_port}" -d "${_database}" -c "\d"
       _rtnCd=${?}
     fi
 
@@ -134,10 +136,11 @@ function onPingDbServer(){
     _hostname=$(getHostname ${flags} ${_databaseSpec})
     _database=$(getDatabaseName ${_databaseSpec})
     _port=$(getPort ${flags} ${_databaseSpec})
+    _port=${_port:+"-p ${_port}"}
     _username=$(getUsername ${_databaseSpec})
     _password=$(getPassword ${_databaseSpec})
 
-    if PGPASSWORD=${_password} psql -h ${_hostname} -U ${_username} -q -d ${_database} -c 'SELECT 1' >/dev/null 2>&1; then
+    if PGPASSWORD=${_password} psql -h ${_hostname} -U ${_username} -q "${_port}" -d ${_database} -c 'SELECT 1' >/dev/null 2>&1; then
       return 0
     else
       return 1
@@ -152,10 +155,11 @@ function onVerifyBackup(){
     _hostname=$(getHostname -l ${_databaseSpec})
     _database=$(getDatabaseName ${_databaseSpec})
     _port=$(getPort -l ${_databaseSpec})
+    _port=${_port:+"-p ${_port}"}
     _username=$(getUsername ${_databaseSpec})
     _password=$(getPassword ${_databaseSpec})
 
-    tables=$(psql -h "${_hostname}" -p "${_port}" -d "${_database}" -t -c "SELECT table_name FROM information_schema.tables WHERE table_schema='${TABLE_SCHEMA}' AND table_type='BASE TABLE';")
+    tables=$(psql -h "${_hostname}" "${_port}" -d "${_database}" -t -c "SELECT table_name FROM information_schema.tables WHERE table_schema='${TABLE_SCHEMA}' AND table_type='BASE TABLE';")
     rtnCd=${?}
 
     if (( ${rtnCd} == 0 )); then    
@@ -192,10 +196,11 @@ function onGetDbSize(){
     _hostname=$(getHostname ${flags} ${_databaseSpec})
     _database=$(getDatabaseName ${_databaseSpec})
     _port=$(getPort ${flags} ${_databaseSpec})
+    _port=${_port:+"-p ${_port}"}
     _username=$(getUsername ${_databaseSpec})
     _password=$(getPassword ${_databaseSpec})
     
-    size=$(PGPASSWORD=${_password} psql -h "${_hostname}" -p "${_port}" -U "${_username}" -d "$_database" -t -c "SELECT pg_size_pretty(pg_database_size(current_database())) as size;")
+    size=$(PGPASSWORD=${_password} psql -h "${_hostname}" "${_port}" -U "${_username}" -d "$_database" -t -c "SELECT pg_size_pretty(pg_database_size(current_database())) as size;")
     rtnCd=${?}
 
     echo "${size}"
