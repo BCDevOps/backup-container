@@ -6,12 +6,14 @@
 # -----------------------------------------------------------------------------------------------------------------
 function onBackupDatabase(){
   (
-    _hostname=${1}
-    _database=${2}
-    _port=${3}
-    _username=${4}
-    _password=${5}
-    _backupFile=${6}
+    _databaseSpec=${1}
+    _backupFile=${2}
+
+    _hostname=$(getHostname ${_databaseSpec})
+    _database=$(getDatabaseName ${_databaseSpec})
+    _port=$(getPort ${_databaseSpec})
+    _username=$(getUsername ${_databaseSpec})
+    _password=$(getPassword ${_databaseSpec})
 
     echoRed "onBackupDatabase - Not Implemented"
     # echoGreen "Starting database backup ..."
@@ -22,14 +24,33 @@ function onBackupDatabase(){
 
 function onRestoreDatabase(){
   (
-    _hostname=${1}
-    _database=${2}
-    _port=${3}
-    _username=${4}
-    _password=${5}
-    _adminPassword=${6}
-    _fileName=${7}
-    quiet=${8}
+    local OPTIND
+    local quiet
+    local localhost
+    local localhost
+    unset quiet
+    unset localhost
+    unset flags
+    while getopts ql FLAG; do
+      case $FLAG in
+        q ) 
+          quiet=1
+          flags+="-${FLAG} "
+          ;;
+        * ) flags+="-${FLAG} ";;
+      esac
+    done
+    shift $((OPTIND-1))
+
+    _databaseSpec=${1}
+    _fileName=${2}
+    _adminPassword=${3}
+
+    _hostname=$(getHostname ${flags} ${_databaseSpec})
+    _database=$(getDatabaseName ${_databaseSpec})
+    _port=$(getPort ${flags} ${_databaseSpec})
+    _username=$(getUsername ${_databaseSpec})
+    _password=$(getPassword ${_databaseSpec})
 
     echoRed "onRestoreDatabase - Not Implemented"
     # echoGreen "Restoring from backup ..."
@@ -67,11 +88,23 @@ function onStopServer(){
 
 function onPingDbServer(){
   (
-    _hostname=${1}
-    _database=${2}
-    _port=${3}
-    _username=${4}
-    _password=${5}
+    local OPTIND
+    local localhost
+    unset localhost
+    while getopts l FLAG; do
+      case $FLAG in
+        * ) flags+="-${FLAG} " ;;
+      esac
+    done
+    shift $((OPTIND-1))
+
+    _databaseSpec=${1}
+
+    _hostname=$(getHostname ${flags} ${_databaseSpec})
+    _database=$(getDatabaseName ${_databaseSpec})
+    _port=$(getPort ${flags} ${_databaseSpec})
+    _username=$(getUsername ${_databaseSpec})
+    _password=$(getPassword ${_databaseSpec})
 
     echoRed "onPingDbServer - Not Implemented"
     # Add your database specific ping operation(s) here.
@@ -86,6 +119,7 @@ function onPingDbServer(){
 function onVerifyBackup(){
   (
     _databaseSpec=${1}
+
     _hostname=$(getHostname -l ${_databaseSpec})
     _database=$(getDatabaseName ${_databaseSpec})
     _port=$(getPort -l ${_databaseSpec})
@@ -102,12 +136,24 @@ function onVerifyBackup(){
 
 function onGetDbSize(){
   (
-    _hostname=${1}
-    _database=${2}
-    _port=${3}
-    _username=${4}
-    _password=${5}
+    local OPTIND
+    local localhost
+    unset localhost
+    while getopts l FLAG; do
+      case $FLAG in
+        * ) flags+="-${FLAG} " ;;
+      esac
+    done
+    shift $((OPTIND-1))
 
+    _databaseSpec=${1}
+
+    _hostname=$(getHostname ${flags} ${_databaseSpec})
+    _database=$(getDatabaseName ${_databaseSpec})
+    _port=$(getPort ${flags} ${_databaseSpec})
+    _username=$(getUsername ${_databaseSpec})
+    _password=$(getPassword ${_databaseSpec})
+    
     echoRed "onGetDbSize - Not Implemented"
     # Add your database specific get size operation(s) here.
 

@@ -5,12 +5,14 @@
 # -----------------------------------------------------------------------------------------------------------------
 function onBackupDatabase(){
   (
-    _hostname=${1}
-    _database=${2}
-    _port=${3}
-    _username=${4}
-    _password=${5}
-    _backupFile=${6}
+    _databaseSpec=${1}
+    _backupFile=${2}
+
+    _hostname=$(getHostname ${_databaseSpec})
+    _database=$(getDatabaseName ${_databaseSpec})
+    _port=$(getPort ${_databaseSpec})
+    _username=$(getUsername ${_databaseSpec})
+    _password=$(getPassword ${_databaseSpec})
 
     echoGreen "Starting Mongo backup using mongodump ..."
     mongodump --authenticationDatabase="${MONGODB_AUTHENTICATION_DATABASE}" -h "${_hostname}" -u "${_username}" -p "${_password}" -d "${_database}" --quiet --gzip --archive=${_backupFile}
@@ -20,15 +22,34 @@ function onBackupDatabase(){
 
 function onRestoreDatabase(){
   (
-    _hostname=${1}
-    _database=${2}
-    _port=${3}
-    _username=${4}
-    _password=${5}
-    _adminPassword=${6}
-    _fileName=${7}
-    quiet=${8}
-    
+    local OPTIND
+    local quiet
+    local localhost
+    local localhost
+    unset quiet
+    unset localhost
+    unset flags
+    while getopts ql FLAG; do
+      case $FLAG in
+        q ) 
+          quiet=1
+          flags+="-${FLAG} "
+          ;;
+        * ) flags+="-${FLAG} ";;
+      esac
+    done
+    shift $((OPTIND-1))
+
+    _databaseSpec=${1}
+    _fileName=${2}
+    _adminPassword=${3}
+
+    _hostname=$(getHostname ${flags} ${_databaseSpec})
+    _database=$(getDatabaseName ${_databaseSpec})
+    _port=$(getPort ${flags} ${_databaseSpec})
+    _username=$(getUsername ${_databaseSpec})
+    _password=$(getPassword ${_databaseSpec})
+
     # drop database
     echo "Restoring from backup ..."
     mongorestore --drop -u "${_username}" -p "${DATABASE_PASSWORD}" --authenticationDatabase="${MONGODB_AUTHENTICATION_DATABASE}" -d "${_database}" --quiet --gzip --archive=${_fileName} --nsInclude="sbc*"
@@ -63,11 +84,23 @@ function onStopServer(){
 
 function onPingDbServer(){
   (
-    _hostname=${1}
-    _database=${2}
-    _port=${3}
-    _username=${4}
-    _password=${5}
+    local OPTIND
+    local localhost
+    unset localhost
+    while getopts l FLAG; do
+      case $FLAG in
+        * ) flags+="-${FLAG} " ;;
+      esac
+    done
+    shift $((OPTIND-1))
+
+    _databaseSpec=${1}
+
+    _hostname=$(getHostname ${flags} ${_databaseSpec})
+    _database=$(getDatabaseName ${_databaseSpec})
+    _port=$(getPort ${flags} ${_databaseSpec})
+    _username=$(getUsername ${_databaseSpec})
+    _password=$(getPassword ${_databaseSpec})
 
     if mongo --host "${_hostname}" --authenticationDatabase "${MONGODB_AUTHENTICATION_DATABASE}" -u "${_username}" -p "${_password}" --port "${_port}" --quiet --eval 'db.runCommand({ connectionStatus: 1 })' >/dev/null 2>&1; then
       return 0
@@ -80,6 +113,7 @@ function onPingDbServer(){
 function onVerifyBackup(){
   (
     _databaseSpec=${1}
+
     _hostname=$(getHostname -l ${_databaseSpec})
     _database=$(getDatabaseName ${_databaseSpec})
     _port=$(getPort -l ${_databaseSpec})
@@ -108,12 +142,24 @@ function onVerifyBackup(){
 
 function onGetDbSize(){
   (
-    _hostname=${1}
-    _database=${2}
-    _port=${3}
-    _username=${4}
-    _password=${5}
+    local OPTIND
+    local localhost
+    unset localhost
+    while getopts l FLAG; do
+      case $FLAG in
+        * ) flags+="-${FLAG} " ;;
+      esac
+    done
+    shift $((OPTIND-1))
 
+    _databaseSpec=${1}
+
+    _hostname=$(getHostname ${flags} ${_databaseSpec})
+    _database=$(getDatabaseName ${_databaseSpec})
+    _port=$(getPort ${flags} ${_databaseSpec})
+    _username=$(getUsername ${_databaseSpec})
+    _password=$(getPassword ${_databaseSpec})
+    
     size=$(mongo ${_hostname}/${_database} --authenticationDatabase "${MONGODB_AUTHENTICATION_DATABASE}" -u "${_username}" -p "${_password}" --quiet --eval 'printjson(db.stats().fsTotalSize)')
     rtnCd=${?}
 
