@@ -1,0 +1,124 @@
+#!/bin/bash
+# =================================================================================================================
+# Mongo Backup and Restore Functions:
+# - Dynamically loaded as a plug-in
+# -----------------------------------------------------------------------------------------------------------------
+function onBackupDatabase(){
+  (
+    _hostname=${1}
+    _database=${2}
+    _port=${3}
+    _username=${4}
+    _password=${5}
+    _backupFile=${6}
+
+    echoGreen "Starting Mongo backup using mongodump ..."
+    mongodump --authenticationDatabase="${MONGODB_AUTHENTICATION_DATABASE}" -h "${_hostname}" -u "${_username}" -p "${_password}" -d "${_database}" --quiet --gzip --archive=${_backupFile}
+    return ${?}
+  )
+}
+
+function onRestoreDatabase(){
+  (
+    _hostname=${1}
+    _database=${2}
+    _port=${3}
+    _username=${4}
+    _password=${5}
+    _adminPassword=${6}
+    _fileName=${7}
+    quiet=${8}
+    
+    # drop database
+    echo "Restoring from backup ..."
+    mongorestore --drop -u "${_username}" -p "${DATABASE_PASSWORD}" --authenticationDatabase="${MONGODB_AUTHENTICATION_DATABASE}" -d "${_database}" --quiet --gzip --archive=${_fileName} --nsInclude="sbc*"
+    return ${?}
+  )
+}
+
+function onStartServer(){
+  (
+    _databaseSpec=${1}
+
+    #echo "Mongo DB using default port 27017"
+    MONGODB_ADMIN_PASSWORD="${DATABASE_PASSWORD}" /usr/bin/run-mongod >/dev/null 2>&1 &
+  )
+}
+
+function onStopServer(){
+  (
+    _databaseSpec=${1}
+    _username=$(getUsername ${_databaseSpec})
+    _password=$(getPassword ${_databaseSpec})
+
+    echo "shutting down..."
+    mongo admin --authenticationDatabase "${MONGODB_AUTHENTICATION_DATABASE}" -u "${_username}" -p "${_password}" --eval "db.shutdownServer()"
+    sleep 30
+
+    # Delete the database files and configuration
+    echo -e "Cleaning up ...\n" >&2
+    rm -rf /var/lib/mongodb/data/*
+  )
+}
+
+function onPingDbServer(){
+  (
+    _hostname=${1}
+    _database=${2}
+    _port=${3}
+    _username=${4}
+    _password=${5}
+
+    if mongo --host "${_hostname}" --authenticationDatabase "${MONGODB_AUTHENTICATION_DATABASE}" -u "${_username}" -p "${_password}" --port "${_port}" --quiet --eval 'db.runCommand({ connectionStatus: 1 })' >/dev/null 2>&1; then
+      return 0
+    else
+      return 1
+    fi
+  )
+}
+
+function onVerifyBackup(){
+  (
+    _databaseSpec=${1}
+    _hostname=$(getHostname -l ${_databaseSpec})
+    _database=$(getDatabaseName ${_databaseSpec})
+    _port=$(getPort -l ${_databaseSpec})
+    _username=$(getUsername ${_databaseSpec})
+    _password=$(getPassword ${_databaseSpec})
+
+    collections=$(mongo ${_hostname}/${_database} --authenticationDatabase "${MONGODB_AUTHENTICATION_DATABASE}" -u "${_username}" -p "${_password}" --quiet --eval 'var dbs = [];dbs = db.getCollectionNames();for (i in dbs){ print(db.dbs[i]);}';)
+    rtnCd=${?}
+
+    if (( ${rtnCd} == 0 )); then    
+      numResults=$(echo "${collections}"| wc -l)
+      if [[ ! -z "${collections}" ]] && (( numResults >= 1 )); then
+        # All good
+        verificationLog="\nThe restored database contained ${numResults} collections, and is ${size} in size."
+      else
+        # Not so good
+        verificationLog="\nNo collections were found in the restored database ${_database}."
+        rtnCd="3"
+      fi
+    fi
+
+    echo ${verificationLog}
+    return ${rtnCd}
+  )
+}
+
+function onGetDbSize(){
+  (
+    _hostname=${1}
+    _database=${2}
+    _port=${3}
+    _username=${4}
+    _password=${5}
+
+    size=$(mongo ${_hostname}/${_database} --authenticationDatabase "${MONGODB_AUTHENTICATION_DATABASE}" -u "${_username}" -p "${_password}" --quiet --eval 'printjson(db.stats().fsTotalSize)')
+    rtnCd=${?}
+
+    echo "${size}"
+    return ${rtnCd}
+  )
+}
+# =================================================================================================================

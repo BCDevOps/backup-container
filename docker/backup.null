@@ -1,0 +1,118 @@
+#!/bin/bash
+# =================================================================================================================
+# Null () Backup and Restore Functions:
+# - Dynamically loaded as a plug-in
+# - Refer to existing plug-ins for implementation examples.
+# -----------------------------------------------------------------------------------------------------------------
+function onBackupDatabase(){
+  (
+    _hostname=${1}
+    _database=${2}
+    _port=${3}
+    _username=${4}
+    _password=${5}
+    _backupFile=${6}
+
+    echoRed "onBackupDatabase - Not Implemented"
+    # echoGreen "Starting database backup ..."
+    # Add your database specific backup operation(s) here.
+    return ${?}
+  )
+}
+
+function onRestoreDatabase(){
+  (
+    _hostname=${1}
+    _database=${2}
+    _port=${3}
+    _username=${4}
+    _password=${5}
+    _adminPassword=${6}
+    _fileName=${7}
+    quiet=${8}
+
+    echoRed "onRestoreDatabase - Not Implemented"
+    # echoGreen "Restoring from backup ..."
+    # Add your database specific restore operation(s) here.
+    return ${?}
+  )
+}
+
+function onStartServer(){
+  (
+    _databaseSpec=${1}
+
+    echoRed "onStartServer - Not Implemented"
+    # Add your NON-BLOCKING database specific startup operation(s) here.
+    # - Start the database server as a background job.
+  )
+}
+
+function onStopServer(){
+  (
+    _databaseSpec=${1}
+    _username=$(getUsername ${_databaseSpec})
+    _password=$(getPassword ${_databaseSpec})
+
+    echoRed "onStopServer - Not Implemented"
+
+    # echo "Shutting down..."
+    # Add your database specific shutdown operation(s) here.
+
+    # Delete the database files and configuration
+    # echo -e "Cleaning up ...\n" >&2
+    # Add your database specific cleanup operation(s) here.
+  )
+}
+
+function onPingDbServer(){
+  (
+    _hostname=${1}
+    _database=${2}
+    _port=${3}
+    _username=${4}
+    _password=${5}
+
+    echoRed "onPingDbServer - Not Implemented"
+    # Add your database specific ping operation(s) here.
+    # if <ping you database here>; then
+    #   return 0
+    # else
+    #   return 1
+    # fi
+  )
+}
+
+function onVerifyBackup(){
+  (
+    _databaseSpec=${1}
+    _hostname=$(getHostname -l ${_databaseSpec})
+    _database=$(getDatabaseName ${_databaseSpec})
+    _port=$(getPort -l ${_databaseSpec})
+    _username=$(getUsername ${_databaseSpec})
+    _password=$(getPassword ${_databaseSpec})
+
+    echoRed "onVerifyBackup - Not Implemented"
+    # Add your database specific verification operation(s) here.
+
+    # echo ${verificationLog}
+    # return ${rtnCd}
+  )
+}
+
+function onGetDbSize(){
+  (
+    _hostname=${1}
+    _database=${2}
+    _port=${3}
+    _username=${4}
+    _password=${5}
+
+    echoRed "onGetDbSize - Not Implemented"
+    # Add your database specific get size operation(s) here.
+
+    # echo "${size}"
+    # return ${rtnCd}
+  )
+}
+# =================================================================================================================
