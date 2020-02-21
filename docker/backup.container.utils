@@ -24,7 +24,7 @@ function isMongo(){
 
 function getContainerType(){
   (
-    local _containerType=${POSTGRE_DB}
+    local _containerType=${UNKNOWN_DB}
     _rtnCd=0
 
     if isPostgres; then

@@ -13,8 +13,6 @@
 . ./backup.utils                # Primary Database Backup and Restore Functions
 . ./backup.server.utils         # Backup Server Utility Functions
 . ./backup.settings             # Default Settings
-
-. ./backup.${CONTAINER_TYPE}    # Load database plug-in based on the container type
 # ======================================================================================
 
 # ======================================================================================
@@ -22,8 +20,24 @@
 # --------------------------------------------------------------------------------------
 trap shutDown EXIT INT TERM
 
-while getopts clr:v:f:1spha: FLAG; do
+# Load database plug-in based on the container type ...
+. ./backup.${CONTAINER_TYPE}.plugin > /dev/null 2>&1
+if [[ ${?} != 0 ]]; then
+  echoRed "backup.${CONTAINER_TYPE}.plugin not found."
+  
+  # Default to null plugin.
+  export CONTAINER_TYPE=${UNKNOWN_DB}
+  . ./backup.${CONTAINER_TYPE}.plugin > /dev/null 2>&1
+fi
+
+while getopts nclr:v:f:1spha: FLAG; do
   case $FLAG in
+    n)
+      # Allow null database plugin ...
+      # Without this flag loading the null plugin is considered a configuration error.
+      # The null plugin can be used for testing.
+      export _allowNullPlugin=1
+      ;;
     c)
       echoBlue "\nListing configuration settings ..."
       listSettings

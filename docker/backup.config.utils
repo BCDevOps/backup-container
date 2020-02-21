@@ -303,7 +303,7 @@ function listSettings(){
     echo "${_backupSchedule}"
   fi
 
-  if [[ "${CONTAINER_TYPE}" == "${UNKNOWN_DB}" ]]; then
+  if [[ "${CONTAINER_TYPE}" == "${UNKNOWN_DB}" ]] && [ -z "${_allowNullPlugin}" ]; then
     echoRed "\n- Container Type: ${CONTAINER_TYPE}"
     _configurationError=1
   else

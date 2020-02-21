@@ -1,6 +1,6 @@
 #!/bin/bash
 # =================================================================================================================
-# Null () Backup and Restore Functions:
+# Null Backup and Restore Functions:
 # - Dynamically loaded as a plug-in
 # - Refer to existing plug-ins for implementation examples.
 # -----------------------------------------------------------------------------------------------------------------
@@ -16,7 +16,7 @@ function onBackupDatabase(){
     _username=$(getUsername ${_databaseSpec})
     _password=$(getPassword ${_databaseSpec})
 
-    echoRed "onBackupDatabase - Not Implemented"
+    echoRed "[backup.null.plugin] onBackupDatabase - Not Implemented"
     # echoGreen "Starting database backup ..."
     # Add your database specific backup operation(s) here.
     return ${?}
@@ -54,7 +54,7 @@ function onRestoreDatabase(){
     _username=$(getUsername ${_databaseSpec})
     _password=$(getPassword ${_databaseSpec})
 
-    echoRed "onRestoreDatabase - Not Implemented"
+    echoRed "[backup.null.plugin] onRestoreDatabase - Not Implemented"
     # echoGreen "Restoring from backup ..."
     # Add your database specific restore operation(s) here.
     return ${?}
@@ -65,7 +65,7 @@ function onStartServer(){
   (
     _databaseSpec=${1}
 
-    echoRed "onStartServer - Not Implemented"
+    echoRed "[backup.null.plugin] onStartServer - Not Implemented"
     # Add your NON-BLOCKING database specific startup operation(s) here.
     # - Start the database server as a background job.
   )
@@ -77,7 +77,7 @@ function onStopServer(){
     _username=$(getUsername ${_databaseSpec})
     _password=$(getPassword ${_databaseSpec})
 
-    echoRed "onStopServer - Not Implemented"
+    echoRed "[backup.null.plugin] onStopServer - Not Implemented"
 
     # echo "Shutting down..."
     # Add your database specific shutdown operation(s) here.
@@ -109,7 +109,7 @@ function onPingDbServer(){
     _username=$(getUsername ${_databaseSpec})
     _password=$(getPassword ${_databaseSpec})
 
-    echoRed "onPingDbServer - Not Implemented"
+    echoRed "[backup.null.plugin] onPingDbServer - Not Implemented"
     # Add your database specific ping operation(s) here.
     # if <ping you database here>; then
     #   return 0
@@ -130,7 +130,7 @@ function onVerifyBackup(){
     _username=$(getUsername ${_databaseSpec})
     _password=$(getPassword ${_databaseSpec})
 
-    echoRed "onVerifyBackup - Not Implemented"
+    echoRed "[backup.null.plugin] onVerifyBackup - Not Implemented"
     # Add your database specific verification operation(s) here.
 
     # echo ${verificationLog}
@@ -159,7 +159,7 @@ function onGetDbSize(){
     _username=$(getUsername ${_databaseSpec})
     _password=$(getPassword ${_databaseSpec})
     
-    echoRed "onGetDbSize - Not Implemented"
+    echoRed "[backup.null.plugin] onGetDbSize - Not Implemented"
     # Add your database specific get size operation(s) here.
 
     # echo "${size}"
