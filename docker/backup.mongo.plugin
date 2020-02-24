@@ -24,19 +24,10 @@ function onBackupDatabase(){
 function onRestoreDatabase(){
   (
     local OPTIND
-    local quiet
-    local localhost
-    local localhost
-    unset quiet
-    unset localhost
-    unset flags
-    while getopts ql FLAG; do
+    local unset flags
+    while getopts : FLAG; do
       case $FLAG in
-        q ) 
-          quiet=1
-          flags+="-${FLAG} "
-          ;;
-        * ) flags+="-${FLAG} ";;
+        ? ) flags+="-${OPTARG} ";;
       esac
     done
     shift $((OPTIND-1))
@@ -63,7 +54,6 @@ function onStartServer(){
   (
     _databaseSpec=${1}
 
-    #echo "Mongo DB using default port 27017"
     MONGODB_ADMIN_PASSWORD="${DATABASE_PASSWORD}" /usr/bin/run-mongod >/dev/null 2>&1 &
   )
 }
@@ -90,11 +80,10 @@ function onStopServer(){
 function onPingDbServer(){
   (
     local OPTIND
-    local localhost
-    unset localhost
-    while getopts l FLAG; do
+    local unset flags
+    while getopts : FLAG; do
       case $FLAG in
-        * ) flags+="-${FLAG} " ;;
+        ? ) flags+="-${OPTARG} ";;
       esac
     done
     shift $((OPTIND-1))
@@ -130,7 +119,7 @@ function onVerifyBackup(){
     collections=$(mongo ${_hostname}/${_database} --authenticationDatabase "${MONGODB_AUTHENTICATION_DATABASE}" -u "${_username}" -p "${_password}" "${_port}" --quiet --eval 'var dbs = [];dbs = db.getCollectionNames();for (i in dbs){ print(db.dbs[i]);}';)
     rtnCd=${?}
 
-    if (( ${rtnCd} == 0 )); then    
+    if (( ${rtnCd} == 0 )); then
       numResults=$(echo "${collections}"| wc -l)
       if [[ ! -z "${collections}" ]] && (( numResults >= 1 )); then
         # All good
@@ -150,11 +139,10 @@ function onVerifyBackup(){
 function onGetDbSize(){
   (
     local OPTIND
-    local localhost
-    unset localhost
-    while getopts l FLAG; do
+    local unset flags
+    while getopts : FLAG; do
       case $FLAG in
-        * ) flags+="-${FLAG} " ;;
+        ? ) flags+="-${OPTARG} ";;
       esac
     done
     shift $((OPTIND-1))
@@ -167,7 +155,7 @@ function onGetDbSize(){
     _port=${_port:+"--port ${_port}"}
     _username=$(getUsername ${_databaseSpec})
     _password=$(getPassword ${_databaseSpec})
-    
+
     size=$(mongo ${_hostname}/${_database} --authenticationDatabase "${MONGODB_AUTHENTICATION_DATABASE}" -u "${_username}" -p "${_password}" "${_port}" --quiet --eval 'printjson(db.stats().fsTotalSize)')
     rtnCd=${?}
 

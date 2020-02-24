@@ -129,7 +129,7 @@ function startServer(){
     local startTime=${SECONDS}
     rtnCd=0
     printf "waiting for server to start"
-    while ! pingDbServer ${_databaseSpec}; do
+    while ! pingDbServer ${@}; do
       printf "."
       local duration=$(($SECONDS - $startTime))
       if (( ${duration} >= ${DATABASE_SERVER_TIMEOUT} )); then
@@ -216,7 +216,7 @@ function verifyBackup(){
     fi
 
     local startTime=${SECONDS}
-    startServer "${_databaseSpec}"
+    startServer -l "${_databaseSpec}"
     rtnCd=${?}
 
     # Restore the database

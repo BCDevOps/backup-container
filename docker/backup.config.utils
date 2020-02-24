@@ -23,7 +23,7 @@ function getPort(){
     local OPTIND
     local localhost
     unset localhost
-    while getopts l FLAG; do
+    while getopts :l FLAG; do
       case $FLAG in
         l ) localhost=1 ;;
       esac
@@ -46,7 +46,7 @@ function getHostname(){
     local OPTIND
     local localhost
     unset localhost
-    while getopts l FLAG; do
+    while getopts :l FLAG; do
       case $FLAG in
         l ) localhost=1 ;;
       esac
