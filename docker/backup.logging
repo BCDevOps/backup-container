@@ -3,35 +3,35 @@
 # Logging Functions:
 # -----------------------------------------------------------------------------------------------------------------
 function echoRed (){
-  _msg=${1}
+  _msg=${@}
   _red='\e[31m'
   _nc='\e[0m' # No Color
   echo -e "${_red}${_msg}${_nc}"
 }
 
 function echoYellow (){
-  _msg=${1}
+  _msg=${@}
   _yellow='\e[33m'
   _nc='\e[0m' # No Color
   echo -e "${_yellow}${_msg}${_nc}"
 }
 
 function echoBlue (){
-  _msg=${1}
+  _msg=${@}
   _blue='\e[34m'
   _nc='\e[0m' # No Color
   echo -e "${_blue}${_msg}${_nc}"
 }
 
 function echoGreen (){
-  _msg=${1}
+  _msg=${@}
   _green='\e[32m'
   _nc='\e[0m' # No Color
   echo -e "${_green}${_msg}${_nc}"
 }
 
 function echoMagenta (){
-  _msg=${1}
+  _msg=${@}
   _magenta='\e[35m'
   _nc='\e[0m' # No Color
   echo -e "${_magenta}${_msg}${_nc}"
