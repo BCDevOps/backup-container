@@ -20,12 +20,12 @@ function onBackupDatabase(){
     _hostname=$(getHostname ${_databaseSpec})
     _database=$(getDatabaseName ${_databaseSpec})
     _port=$(getPort ${_databaseSpec})
-    _port=${_port:+"--port ${_port}"}
+    _portArg=${_port:+"--port ${_port}"}
     _username=$(getUsername ${_databaseSpec})
     _password=$(getPassword ${_databaseSpec})
 
     echoGreen "Starting Mongo backup using mongodump ..."
-    mongodump --authenticationDatabase="${MONGODB_AUTHENTICATION_DATABASE}" -h "${_hostname}" -u "${_username}" -p "${_password}" "${_port}" -d "${_database}" --quiet --gzip --archive=${_backupFile}
+    mongodump --authenticationDatabase="${MONGODB_AUTHENTICATION_DATABASE}" -h "${_hostname}" -u "${_username}" -p "${_password}" "${_portArg}" -d "${_database}" --quiet --gzip --archive=${_backupFile}
     return ${?}
   )
 }
@@ -48,12 +48,12 @@ function onRestoreDatabase(){
     _hostname=$(getHostname ${flags} ${_databaseSpec})
     _database=$(getDatabaseName ${_databaseSpec})
     _port=$(getPort ${flags} ${_databaseSpec})
-    _port=${_port:+"--port ${_port}"}
+    _portArg=${_port:+"--port ${_port}"}
     _username=$(getUsername ${_databaseSpec})
     _password=$(getPassword ${_databaseSpec})
     echo "Restoring '${_fileName}' to '${_hostname}${_port:+:${_port}}' ..."
 
-    mongorestore --drop -u "${_username}" -p "${DATABASE_PASSWORD}" "${_port}" --authenticationDatabase="${MONGODB_AUTHENTICATION_DATABASE}" -d "${_database}" --quiet --gzip --archive=${_fileName} --nsInclude="sbc*"
+    mongorestore --drop -u "${_username}" -p "${DATABASE_PASSWORD}" "${_portArg}" --authenticationDatabase="${MONGODB_AUTHENTICATION_DATABASE}" -d "${_database}" --quiet --gzip --archive=${_fileName} --nsInclude="sbc*"
     return ${?}
   )
 }
@@ -89,12 +89,12 @@ function onStopServer(){
     _databaseSpec=${1}
 
     _port=$(getPort ${_databaseSpec})
-    _port=${_port:+"--port ${_port}"}
+    _portArg=${_port:+"--port ${_port}"}
     _username=$(getUsername ${_databaseSpec})
     _password=$(getPassword ${_databaseSpec})
 
     echo "shutting down..."
-    mongo admin --authenticationDatabase "${MONGODB_AUTHENTICATION_DATABASE}" -u "${_username}" -p "${_password}" "${_port}" --eval "db.shutdownServer()"
+    mongo admin --authenticationDatabase "${MONGODB_AUTHENTICATION_DATABASE}" -u "${_username}" -p "${_password}" "${_portArg}" --eval "db.shutdownServer()"
     sleep 30
 
     # Delete the database files and configuration
@@ -119,11 +119,11 @@ function onPingDbServer(){
     _hostname=$(getHostname ${flags} ${_databaseSpec})
     _database=$(getDatabaseName ${_databaseSpec})
     _port=$(getPort ${flags} ${_databaseSpec})
-    _port=${_port:+"--port ${_port}"}
+    _portArg=${_port:+"--port ${_port}"}
     _username=$(getUsername ${_databaseSpec})
     _password=$(getPassword ${_databaseSpec})
 
-    if mongo --host "${_hostname}" --authenticationDatabase "${MONGODB_AUTHENTICATION_DATABASE}" -u "${_username}" -p "${_password}" "${_port}" --quiet --eval 'db.runCommand({ connectionStatus: 1 })' >/dev/null 2>&1; then
+    if mongo --host "${_hostname}" --authenticationDatabase "${MONGODB_AUTHENTICATION_DATABASE}" -u "${_username}" -p "${_password}" "${_portArg}" --quiet --eval 'db.runCommand({ connectionStatus: 1 })' >/dev/null 2>&1; then
       return 0
     else
       return 1
@@ -147,11 +147,11 @@ function onVerifyBackup(){
     _hostname=$(getHostname -l ${_databaseSpec})
     _database=$(getDatabaseName ${_databaseSpec})
     _port=$(getPort -l ${_databaseSpec})
-    _port=${_port:+"--port ${_port}"}
+    _portArg=${_port:+"--port ${_port}"}
     _username=$(getUsername ${_databaseSpec})
     _password=$(getPassword ${_databaseSpec})
 
-    collections=$(mongo ${_hostname}/${_database} --authenticationDatabase "${MONGODB_AUTHENTICATION_DATABASE}" -u "${_username}" -p "${_password}" "${_port}" --quiet --eval 'var dbs = [];dbs = db.getCollectionNames();for (i in dbs){ print(db.dbs[i]);}';)
+    collections=$(mongo ${_hostname}/${_database} --authenticationDatabase "${MONGODB_AUTHENTICATION_DATABASE}" -u "${_username}" -p "${_password}" "${_portArg}" --quiet --eval 'var dbs = [];dbs = db.getCollectionNames();for (i in dbs){ print(db.dbs[i]);}';)
     rtnCd=${?}
 
     if (( ${rtnCd} == 0 )); then
@@ -187,11 +187,11 @@ function onGetDbSize(){
     _hostname=$(getHostname ${flags} ${_databaseSpec})
     _database=$(getDatabaseName ${_databaseSpec})
     _port=$(getPort ${flags} ${_databaseSpec})
-    _port=${_port:+"--port ${_port}"}
+    _portArg=${_port:+"--port ${_port}"}
     _username=$(getUsername ${_databaseSpec})
     _password=$(getPassword ${_databaseSpec})
 
-    size=$(mongo ${_hostname}/${_database} --authenticationDatabase "${MONGODB_AUTHENTICATION_DATABASE}" -u "${_username}" -p "${_password}" "${_port}" --quiet --eval 'printjson(db.stats().fsTotalSize)')
+    size=$(mongo ${_hostname}/${_database} --authenticationDatabase "${MONGODB_AUTHENTICATION_DATABASE}" -u "${_username}" -p "${_password}" "${_portArg}" --quiet --eval 'printjson(db.stats().fsTotalSize)')
     rtnCd=${?}
 
     echo "${size}"
