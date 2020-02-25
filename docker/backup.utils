@@ -222,11 +222,13 @@ function verifyBackup(){
         rtnCd=${?}
       else
         # Filter out stdout, keep stderr
+        echo "Restoring from backup ..."
         restoreLog=$(restoreDatabase -ql "${_databaseSpec}" "${_fileName}" 2>&1 >/dev/null)
         rtnCd=${?}
 
         if [ ! -z "${restoreLog}" ] && (( ${rtnCd} == 0 )); then
           echo ${restoreLog}
+          unset restoreLog
         elif [ ! -z "${restoreLog}" ] && (( ${rtnCd} != 0 )); then
           restoreLog="\n\nThe following issues were encountered during backup verification;\n${restoreLog}"
         fi
