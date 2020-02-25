@@ -56,7 +56,7 @@ function onRestoreDatabase(){
     _portArg=${_port:+"-p ${_port}"}
     _username=$(getUsername ${_databaseSpec})
     _password=$(getPassword ${_databaseSpec})
-    echo -e "Restoring '${_fileName}' to '${_hostname}${_port:+:${_port}}' ...\n"
+    echo -e "Restoring '${_fileName}' to '${_hostname}${_port:+:${_port}}' ...\n" >&2
 
     export PGPASSWORD=${_adminPassword}
     _rtnCd=0
