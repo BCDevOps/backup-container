@@ -53,10 +53,9 @@ function onRestoreDatabase(){
     _portArg=${_port:+"--port ${_port}"}
     _username=$(getUsername ${_databaseSpec})
     _password=$(getPassword ${_databaseSpec})
-    echo "Restoring '${_fileName}' to '${_hostname}${_port:+:${_port}}' ..."
+    echo -e "Restoring '${_fileName}' to '${_hostname}${_port:+:${_port}}' ...\n"
 
     echoRed "[backup.null.plugin] onRestoreDatabase - Not Implemented"
-    # echoGreen "Restoring from backup ..."
     # Add your database specific restore operation(s) here.
     return ${?}
   )

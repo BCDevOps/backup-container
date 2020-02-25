@@ -51,7 +51,7 @@ function onRestoreDatabase(){
     _portArg=${_port:+"--port ${_port}"}
     _username=$(getUsername ${_databaseSpec})
     _password=$(getPassword ${_databaseSpec})
-    echo "Restoring '${_fileName}' to '${_hostname}${_port:+:${_port}}' ..."
+    echo -e "Restoring '${_fileName}' to '${_hostname}${_port:+:${_port}}' ...\n"
 
     mongorestore --drop -u "${_username}" -p "${DATABASE_PASSWORD}" "${_portArg}" --authenticationDatabase="${MONGODB_AUTHENTICATION_DATABASE}" -d "${_database}" --quiet --gzip --archive=${_fileName} --nsInclude="sbc*"
     return ${?}
@@ -159,7 +159,7 @@ function onVerifyBackup(){
       size=$(getDbSize -l "${_databaseSpec}")
       rtnCd=${?}
     fi
-    
+
     if (( ${rtnCd} == 0 )); then
       numResults=$(echo "${collections}"| wc -l)
       if [[ ! -z "${collections}" ]] && (( numResults >= 1 )); then

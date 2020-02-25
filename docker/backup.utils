@@ -134,6 +134,7 @@ function startServer(){
       fi
       sleep 1
     done
+    echo
     return ${rtnCd}
   )
 }
@@ -216,8 +217,6 @@ function verifyBackup(){
 
     # Restore the database
     if (( ${rtnCd} == 0 )); then
-      echo
-      echo "Restoring from backup ..."
       if [ -z "${quiet}" ]; then
         restoreDatabase -ql "${_databaseSpec}" "${_fileName}"
         rtnCd=${?}

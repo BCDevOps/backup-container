@@ -56,7 +56,7 @@ function onRestoreDatabase(){
     _portArg=${_port:+"-p ${_port}"}
     _username=$(getUsername ${_databaseSpec})
     _password=$(getPassword ${_databaseSpec})
-    echo "Restoring '${_fileName}' to '${_hostname}${_port:+:${_port}}' ..."
+    echo -e "Restoring '${_fileName}' to '${_hostname}${_port:+:${_port}}' ...\n"
 
     export PGPASSWORD=${_adminPassword}
     _rtnCd=0
@@ -84,7 +84,6 @@ function onRestoreDatabase(){
 
     # Restore
     if (( ${_rtnCd} == 0 )); then
-      echo "Restoring from backup ..."
       gunzip -c "${_fileName}" | psql -v ON_ERROR_STOP=1 -x -h "${_hostname}" "${_portArg}" -d "${_database}"
       # Get the status code from psql specifically.  ${?} would only provide the status of the last command, psql in this case.
       _rtnCd=${PIPESTATUS[1]}
