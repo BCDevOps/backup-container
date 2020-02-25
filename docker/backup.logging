@@ -5,7 +5,7 @@
 function debugMsg (){
   _msg=${@}
   if [ "${BACKUP_LOG_LEVEL}" == "debug" ]; then
-    echoGreen "${@}" >&2
+    echoGreen "$(date) - [DEBUG] - ${@}" >&2
   fi
 }
 

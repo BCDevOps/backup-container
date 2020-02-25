@@ -237,9 +237,17 @@ function onGetDbSize(){
     _username=$(getUsername ${_databaseSpec})
     _password=$(getPassword ${_databaseSpec})
     
-    debugMsg "backup.postgres.plugin - onGetDbSize"
+    debugMsg "backup.postgres.plugin - > onGetDbSize"
+    debugMsg "backup.postgres.plugin - _hostname: ${_hostname}"
+    debugMsg "backup.postgres.plugin - _database: ${_database}"
+    debugMsg "backup.postgres.plugin - _port: ${_port}"
+    debugMsg "backup.postgres.plugin - _portArg: ${_portArg}"
+    debugMsg "backup.postgres.plugin - _username: ${_username}"
+    debugMsg "backup.postgres.plugin - _password: ${_password}"
+
     size=$(PGPASSWORD=${_password} psql -h "${_hostname}" "${_portArg}" -U "${_username}" -d "$_database" -t -c "SELECT pg_size_pretty(pg_database_size(current_database())) as size;")
     rtnCd=${?}
+    debugMsg "backup.postgres.plugin - < onGetDbSize"
 
     echo "${size}"
     return ${rtnCd}
