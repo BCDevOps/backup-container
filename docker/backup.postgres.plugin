@@ -162,7 +162,7 @@ function onPingDbServer(){
     _username=$(getUsername ${_databaseSpec})
     _password=$(getPassword ${_databaseSpec})
 
-    if PGPASSWORD=${_password} psql -h ${_hostname} -U ${_username} -q "${_portArg}" -d ${_database} -c 'SELECT 1' >/dev/null 2>&1; then
+    if PGPASSWORD=${_password} psql -h ${_hostname} "${_portArg}" -U ${_username} -q -d ${_database} -c 'SELECT 1' >/dev/null 2>&1; then
       return 0
     else
       return 1
@@ -190,6 +190,7 @@ function onVerifyBackup(){
     _username=$(getUsername ${_databaseSpec})
     _password=$(getPassword ${_databaseSpec})
 
+    debugMsg "backup.postgres.plugin - onVerifyBackup"
     tables=$(psql -h "${_hostname}" "${_portArg}" -d "${_database}" -t -c "SELECT table_name FROM information_schema.tables WHERE table_schema='${TABLE_SCHEMA}' AND table_type='BASE TABLE';")
     rtnCd=${?}
 
@@ -236,6 +237,7 @@ function onGetDbSize(){
     _username=$(getUsername ${_databaseSpec})
     _password=$(getPassword ${_databaseSpec})
     
+    debugMsg "backup.postgres.plugin - onGetDbSize"
     size=$(PGPASSWORD=${_password} psql -h "${_hostname}" "${_portArg}" -U "${_username}" -d "$_database" -t -c "SELECT pg_size_pretty(pg_database_size(current_database())) as size;")
     rtnCd=${?}
 
