@@ -121,6 +121,7 @@ The following variables are supported in the first iteration of the backup cronj
 | ---- | -------------------- | ------- |
 | BACKUP_STRATEGY | daily | To control the backup strategy used for backups.  This is explained more below. |
 | BACKUP_DIR | /backups/ | The directory under which backups will be stored.  The deployment configuration mounts the persistent volume claim to this location when first deployed. |
+| SCHEDULE | 0 1 * * * | Cron Schedule to Execute the Job (using local cluster system TZ). |
 | NUM_BACKUPS | 31 | For backward compatibility this value is used with the daily backup strategy to set the number of backups to retain before pruning. |
 | DAILY_BACKUPS | 6 | When using the rolling backup strategy this value is used to determine the number of daily (Mon-Sat) backups to retain before pruning. |
 | WEEKLY_BACKUPS | 4 | When using the rolling backup strategy this value is used to determine the number of weekly (Sun) backups to retain before pruning. |
