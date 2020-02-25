@@ -61,11 +61,6 @@ function restoreDatabase(){
       waitForAnyKey
     fi
 
-    _hostname=$(getHostname ${flags} ${_databaseSpec})
-    _port=$(getPort ${flags} ${_databaseSpec})
-
-    echo "Restoring to ${_hostname}:${_port} ..."
-
     if [ -z "${quiet}" ] && [ -z "${_adminPassword}" ]; then
       # Ask for the Admin Password for the database, if it has not already been provided.
       _msg="Admin password (${_databaseSpec}):"
@@ -77,7 +72,7 @@ function restoreDatabase(){
     fi
 
     local startTime=${SECONDS}
-    onRestoreDatabase ${@} "${_adminPassword}"
+    onRestoreDatabase ${flags} "${_databaseSpec}" "${_fileName}" "${_adminPassword}"
     _rtnCd=${?}
 
     local duration=$(($SECONDS - $startTime))

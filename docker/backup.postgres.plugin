@@ -56,6 +56,7 @@ function onRestoreDatabase(){
     _port=${_port:+"-p ${_port}"}
     _username=$(getUsername ${_databaseSpec})
     _password=$(getPassword ${_databaseSpec})
+    echo "Restoring '${_fileName}' to '${_hostname}${_port:+:${_port}}' ..."
 
     export PGPASSWORD=${_adminPassword}
     _rtnCd=0
@@ -64,7 +65,7 @@ function onRestoreDatabase(){
     if (( ${_rtnCd} == 0 )); then
       psql -h "${_hostname}" "${_port}" -ac "DROP DATABASE \"${_database}\";"
       _rtnCd=${?}
-        echo
+      echo
     fi
 
     # Create
