@@ -5,6 +5,15 @@
 # -----------------------------------------------------------------------------------------------------------------
 function onBackupDatabase(){
   (
+    local OPTIND
+    local unset flags
+    while getopts : FLAG; do
+      case $FLAG in
+        ? ) flags+="-${OPTARG} ";;
+      esac
+    done
+    shift $((OPTIND-1))
+
     _databaseSpec=${1}
     _backupFile=${2}
 
@@ -52,6 +61,15 @@ function onRestoreDatabase(){
 
 function onStartServer(){
   (
+    local OPTIND
+    local unset flags
+    while getopts : FLAG; do
+      case $FLAG in
+        ? ) flags+="-${OPTARG} ";;
+      esac
+    done
+    shift $((OPTIND-1))
+
     _databaseSpec=${1}
 
     MONGODB_ADMIN_PASSWORD="${DATABASE_PASSWORD}" /usr/bin/run-mongod >/dev/null 2>&1 &
@@ -60,6 +78,15 @@ function onStartServer(){
 
 function onStopServer(){
   (
+    local OPTIND
+    local unset flags
+    while getopts : FLAG; do
+      case $FLAG in
+        ? ) flags+="-${OPTARG} ";;
+      esac
+    done
+    shift $((OPTIND-1))
+
     _databaseSpec=${1}
 
     _port=$(getPort ${_databaseSpec})
@@ -107,6 +134,15 @@ function onPingDbServer(){
 
 function onVerifyBackup(){
   (
+    local OPTIND
+    local unset flags
+    while getopts : FLAG; do
+      case $FLAG in
+        ? ) flags+="-${OPTARG} ";;
+      esac
+    done
+    shift $((OPTIND-1))
+
     _databaseSpec=${1}
 
     _hostname=$(getHostname -l ${_databaseSpec})
