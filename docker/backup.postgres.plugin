@@ -194,6 +194,12 @@ function onVerifyBackup(){
     tables=$(psql -h "${_hostname}" "${_portArg}" -d "${_database}" -t -c "SELECT table_name FROM information_schema.tables WHERE table_schema='${TABLE_SCHEMA}' AND table_type='BASE TABLE';")
     rtnCd=${?}
 
+    # Get the size of the restored database
+    if (( ${rtnCd} == 0 )); then
+      size=$(getDbSize -l "${_databaseSpec}")
+      rtnCd=${?}
+    fi
+
     if (( ${rtnCd} == 0 )); then    
       numResults=$(echo "${tables}"| wc -l)
       if [[ ! -z "${tables}" ]] && (( numResults >= 1 )); then

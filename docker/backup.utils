@@ -239,12 +239,6 @@ function verifyBackup(){
       rtnCd=${?}
     fi
 
-    # Get the size of the restored database
-    if (( ${rtnCd} == 0 )); then
-      size=$(getDbSize -l "${_databaseSpec}")
-      rtnCd=${?}
-    fi
-
     # Stop the database server
     stopServer "${_databaseSpec}"
     local duration=$(($SECONDS - $startTime))

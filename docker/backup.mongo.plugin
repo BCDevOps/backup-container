@@ -154,6 +154,12 @@ function onVerifyBackup(){
     collections=$(mongo ${_hostname}/${_database} --authenticationDatabase "${MONGODB_AUTHENTICATION_DATABASE}" -u "${_username}" -p "${_password}" "${_portArg}" --quiet --eval 'var dbs = [];dbs = db.getCollectionNames();for (i in dbs){ print(db.dbs[i]);}';)
     rtnCd=${?}
 
+    # Get the size of the restored database
+    if (( ${rtnCd} == 0 )); then
+      size=$(getDbSize -l "${_databaseSpec}")
+      rtnCd=${?}
+    fi
+    
     if (( ${rtnCd} == 0 )); then
       numResults=$(echo "${collections}"| wc -l)
       if [[ ! -z "${collections}" ]] && (( numResults >= 1 )); then
