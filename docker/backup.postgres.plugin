@@ -245,7 +245,7 @@ function onGetDbSize(){
     debugMsg "backup.postgres.plugin - _username: ${_username}"
     debugMsg "backup.postgres.plugin - _password: ${_password}"
 
-    size=$(PGPASSWORD=${_password} psql -h "${_hostname}" "${_portArg}" -U "${_username}" -d "$_database" -t -c "SELECT pg_size_pretty(pg_database_size(current_database())) as size;")
+    size=$(PGPASSWORD=${_password} psql -h "${_hostname}" ${_portArg} -U "${_username}" -d "${_database}" -t -c "SELECT pg_size_pretty(pg_database_size(current_database())) as size;")
     rtnCd=${?}
     debugMsg "backup.postgres.plugin - < onGetDbSize"
 
