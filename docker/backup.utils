@@ -9,8 +9,6 @@ function backupDatabase(){
 
     _backupFile="${_fileName}${IN_PROGRESS_BACKUP_FILE_EXTENSION}"
 
-    echoGreen "\nBacking up ${_databaseSpec} ..."
-
     touchBackupFile "${_backupFile}"
     onBackupDatabase "${_databaseSpec}" "${_backupFile}"
     _rtnCd=${?}
