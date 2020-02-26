@@ -260,7 +260,7 @@ function getDbSize(){
     size=$(onGetDbSize ${@})
     rtnCd=${?}
 
-    echo "${size}"
+    echo ${size}
     return ${rtnCd}
   )
 }

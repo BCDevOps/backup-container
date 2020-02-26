@@ -200,7 +200,7 @@ function onGetDbSize(){
     size=$(mongo ${_hostname}/${_database} --authenticationDatabase "${MONGODB_AUTHENTICATION_DATABASE}" -u "${_username}" -p "${_password}" "${_portArg}" --quiet --eval 'printjson(db.stats().fsTotalSize)')
     rtnCd=${?}
 
-    echo "${size}"
+    echo ${size}
     return ${rtnCd}
   )
 }

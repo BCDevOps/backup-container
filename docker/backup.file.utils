@@ -39,7 +39,7 @@ function listExistingBackups(){
 
     for database in ${databases}; do
       if isForContainerType ${database}; then
-        output="${output}\n${database},$(getDbSize "${database}")"
+        output+="\n${database},$(getDbSize "${database}")"
       fi
     done
 

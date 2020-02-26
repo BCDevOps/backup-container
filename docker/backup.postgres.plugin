@@ -249,7 +249,7 @@ function onGetDbSize(){
     rtnCd=${?}
     debugMsg "backup.postgres.plugin - < onGetDbSize"
 
-    echo "${size}"
+    echo ${size}
     return ${rtnCd}
   )
 }
