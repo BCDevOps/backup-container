@@ -4,12 +4,11 @@
 # --------------------------------------------------------------------------------------
 export BACKUP_FILE_EXTENSION=".sql.gz"
 export IN_PROGRESS_BACKUP_FILE_EXTENSION=".sql.gz.in_progress"
-export DEFAULT_PORT_PG=${POSTGRESQL_PORT_NUM:-5432}
-export DEFAULT_PORT_MD=${MONGO_PORT_NUM:-27017}
+export DEFAULT_PORT=${POSTGRESQL_PORT_NUM:-5432}
 export DATABASE_SERVICE_NAME=${DATABASE_SERVICE_NAME:-postgresql}
 export POSTGRESQL_DATABASE=${POSTGRESQL_DATABASE:-my_postgres_db}
-export MONGODB_AUTHENTICATION_DATABASE=${MONGODB_AUTHENTICATION_DATABASE:-admin}
 export TABLE_SCHEMA=${TABLE_SCHEMA:-public}
+export MONGODB_AUTHENTICATION_DATABASE=${MONGODB_AUTHENTICATION_DATABASE:-admin}
 
 # Supports:
 # - daily

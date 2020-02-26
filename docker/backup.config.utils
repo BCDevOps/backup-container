@@ -139,7 +139,7 @@ function readConf(){
       if [ -z "${quiet}" ]; then
         echo "Reading backup config from environment variables ..." >&2
       fi
-      _value="${DATABASE_SERVICE_NAME}:${DEFAULT_PORT_PG}/${POSTGRESQL_DATABASE}"
+      _value="${DATABASE_SERVICE_NAME}${DEFAULT_PORT:+:${DEFAULT_PORT}}${POSTGRESQL_DATABASE:+/${POSTGRESQL_DATABASE}}"
     fi
 
     echo "${_value}"
