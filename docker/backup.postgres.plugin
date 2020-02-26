@@ -23,8 +23,8 @@ function onBackupDatabase(){
     _portArg=${_port:+"-p ${_port}"}
     _username=$(getUsername ${_databaseSpec})
     _password=$(getPassword ${_databaseSpec})
+    echoGreen "Backing up '${_hostname}${_port:+:${_port}}${_database:+/${_database}}' to '${_backupFile}' ..."
 
-    echoGreen "Starting Postgres backup using pg_dump ..."
     PGPASSWORD=${_password} pg_dump -Fp -h "${_hostname}" "${_portArg}" -U "${_username}" "${_database}" | gzip > ${_backupFile}
     return ${PIPESTATUS[0]}
   )

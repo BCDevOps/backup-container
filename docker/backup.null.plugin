@@ -24,6 +24,7 @@ function onBackupDatabase(){
     _portArg=${_port:+"--port ${_port}"}
     _username=$(getUsername ${_databaseSpec})
     _password=$(getPassword ${_databaseSpec})
+    echoGreen "Backing up '${_hostname}${_port:+:${_port}}${_database:+/${_database}}' to '${_backupFile}' ..."
 
     echoRed "[backup.null.plugin] onBackupDatabase - Not Implemented"
     # echoGreen "Starting database backup ..."

@@ -23,8 +23,8 @@ function onBackupDatabase(){
     _portArg=${_port:+"--port ${_port}"}
     _username=$(getUsername ${_databaseSpec})
     _password=$(getPassword ${_databaseSpec})
+    echoGreen "Backing up '${_hostname}${_port:+:${_port}}${_database:+/${_database}}' to '${_backupFile}' ..."
 
-    echoGreen "Starting Mongo backup using mongodump ..."
     mongodump --authenticationDatabase="${MONGODB_AUTHENTICATION_DATABASE}" -h "${_hostname}" -u "${_username}" -p "${_password}" "${_portArg}" -d "${_database}" --quiet --gzip --archive=${_backupFile}
     return ${?}
   )
