@@ -3,42 +3,42 @@
 # Logging Functions:
 # -----------------------------------------------------------------------------------------------------------------
 function debugMsg (){
-  _msg=${@}
+  _msg="${@}"
   if [ "${BACKUP_LOG_LEVEL}" == "debug" ]; then
     echoGreen "$(date) - [DEBUG] - ${@}" >&2
   fi
 }
 
 function echoRed (){
-  _msg=${@}
+  _msg="${@}"
   _red='\e[31m'
   _nc='\e[0m' # No Color
   echo -e "${_red}${_msg}${_nc}"
 }
 
 function echoYellow (){
-  _msg=${@}
+  _msg="${@}"
   _yellow='\e[33m'
   _nc='\e[0m' # No Color
   echo -e "${_yellow}${_msg}${_nc}"
 }
 
 function echoBlue (){
-  _msg=${@}
+  _msg="${@}"
   _blue='\e[34m'
   _nc='\e[0m' # No Color
   echo -e "${_blue}${_msg}${_nc}"
 }
 
 function echoGreen (){
-  _msg=${@}
+  _msg="${@}"
   _green='\e[32m'
   _nc='\e[0m' # No Color
   echo -e "${_green}${_msg}${_nc}"
 }
 
 function echoMagenta (){
-  _msg=${@}
+  _msg="${@}"
   _magenta='\e[35m'
   _nc='\e[0m' # No Color
   echo -e "${_magenta}${_msg}${_nc}"
