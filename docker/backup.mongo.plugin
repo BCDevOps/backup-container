@@ -20,7 +20,7 @@ function onBackupDatabase(){
     _hostname=$(getHostname ${_databaseSpec})
     _database=$(getDatabaseName ${_databaseSpec})
     _port=$(getPort ${_databaseSpec})
-    _portArg=${_port:+"--port ${_port}"}
+    _portArg=${_port:+"--port=${_port}"}
     _username=$(getUsername ${_databaseSpec})
     _password=$(getPassword ${_databaseSpec})
     echoGreen "Backing up '${_hostname}${_port:+:${_port}}${_database:+/${_database}}' to '${_backupFile}' ..."
@@ -48,7 +48,7 @@ function onRestoreDatabase(){
     _hostname=$(getHostname ${flags} ${_databaseSpec})
     _database=$(getDatabaseName ${_databaseSpec})
     _port=$(getPort ${flags} ${_databaseSpec})
-    _portArg=${_port:+"--port ${_port}"}
+    _portArg=${_port:+"--port=${_port}"}
     _username=$(getUsername ${_databaseSpec})
     _password=$(getPassword ${_databaseSpec})
     echo -e "Restoring '${_fileName}' to '${_hostname}${_port:+:${_port}}${_database:+/${_database}}' ...\n" >&2
@@ -94,7 +94,7 @@ function onStopServer(){
     _password=$(getPassword ${_databaseSpec})
 
     echo "shutting down..."
-    mongo admin --authenticationDatabase "${MONGODB_AUTHENTICATION_DATABASE}" -u "${_username}" -p "${_password}" "${_portArg}" --eval "db.shutdownServer()"
+    mongo admin --authenticationDatabase "${MONGODB_AUTHENTICATION_DATABASE}" -u "${_username}" -p "${_password}" --eval "db.shutdownServer()"
     sleep 30
 
     # Delete the database files and configuration
