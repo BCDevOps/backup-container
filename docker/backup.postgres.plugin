@@ -37,7 +37,7 @@ function onRestoreDatabase(){
     local unset flags
     while getopts :q FLAG; do
       case $FLAG in
-        q ) 
+        q )
           quiet=1
           flags+="-${FLAG} "
           ;;
@@ -56,7 +56,7 @@ function onRestoreDatabase(){
     _portArg=${_port:+"-p ${_port}"}
     _username=$(getUsername ${_databaseSpec})
     _password=$(getPassword ${_databaseSpec})
-    echo -e "Restoring '${_fileName}' to '${_hostname}${_port:+:${_port}}' ...\n" >&2
+    echo -e "Restoring '${_fileName}' to '${_hostname}${_port:+:${_port}}${_database:+/${_database}}' ...\n" >&2
 
     export PGPASSWORD=${_adminPassword}
     _rtnCd=0
@@ -130,7 +130,7 @@ function onStopServer(){
       esac
     done
     shift $((OPTIND-1))
-    
+
     _databaseSpec=${1}
 
     # Stop the local PostgreSql instance
@@ -180,7 +180,7 @@ function onVerifyBackup(){
       esac
     done
     shift $((OPTIND-1))
-    
+
     _databaseSpec=${1}
 
     _hostname=$(getHostname -l ${_databaseSpec})
@@ -200,7 +200,7 @@ function onVerifyBackup(){
       rtnCd=${?}
     fi
 
-    if (( ${rtnCd} == 0 )); then    
+    if (( ${rtnCd} == 0 )); then
       numResults=$(echo "${tables}"| wc -l)
       if [[ ! -z "${tables}" ]] && (( numResults >= 1 )); then
         # All good
@@ -236,7 +236,7 @@ function onGetDbSize(){
     _portArg=${_port:+"-p ${_port}"}
     _username=$(getUsername ${_databaseSpec})
     _password=$(getPassword ${_databaseSpec})
-    
+
     size=$(PGPASSWORD=${_password} psql -h "${_hostname}" ${_portArg} -U "${_username}" -d "${_database}" -t -c "SELECT pg_size_pretty(pg_database_size(current_database())) as size;")
     rtnCd=${?}
 

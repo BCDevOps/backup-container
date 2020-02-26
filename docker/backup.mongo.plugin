@@ -51,7 +51,7 @@ function onRestoreDatabase(){
     _portArg=${_port:+"--port ${_port}"}
     _username=$(getUsername ${_databaseSpec})
     _password=$(getPassword ${_databaseSpec})
-    echo -e "Restoring '${_fileName}' to '${_hostname}${_port:+:${_port}}' ...\n" >&2
+    echo -e "Restoring '${_fileName}' to '${_hostname}${_port:+:${_port}}${_database:+/${_database}}' ...\n" >&2
 
     mongorestore --drop -u "${_username}" -p "${DATABASE_PASSWORD}" "${_portArg}" --authenticationDatabase="${MONGODB_AUTHENTICATION_DATABASE}" -d "${_database}" --quiet --gzip --archive=${_fileName} --nsInclude="sbc*"
     return ${?}
