@@ -18,7 +18,7 @@
 # ======================================================================================
 # Initialization:
 # --------------------------------------------------------------------------------------
-trap shutDown EXIT INT TERM
+trap shutDown EXIT TERM
 
 # Load database plug-in based on the container type ...
 . ./backup.${CONTAINER_TYPE}.plugin > /dev/null 2>&1
