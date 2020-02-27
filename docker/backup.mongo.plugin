@@ -97,12 +97,11 @@ function onStopServer(){
 
     _port=$(getPort ${_databaseSpec})
     _portArg=${_port:+"--port ${_port}"}
-    _username=$(getUsername ${_databaseSpec})
+    _username=admin
     _password=$(getPassword ${_databaseSpec})
 
     _authDbArg=${MONGODB_AUTHENTICATION_DATABASE:+"--authenticationDatabase ${MONGODB_AUTHENTICATION_DATABASE}"}
     mongo admin ${_authDbArg} ${_portArg} -u "${_username}" -p "${_password}" --eval "db.shutdownServer()"
-    sleep 30
 
     # Delete the database files and configuration
     echo -e "Cleaning up ...\n" >&2
