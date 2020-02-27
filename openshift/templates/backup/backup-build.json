@@ -61,7 +61,7 @@
       "displayName": "Name",
       "description": "The name assigned to all of the resources defined in this template.",
       "required": true,
-      "value": "pgbackup"
+      "value": "backup-postgres"
     },
     {
       "name": "GIT_REPO_URL",
