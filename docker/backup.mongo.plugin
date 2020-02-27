@@ -55,7 +55,7 @@ function onRestoreDatabase(){
     echo -e "Restoring '${_fileName}' to '${_hostname}${_port:+:${_port}}${_database:+/${_database}}' ...\n" >&2
 
     _authDbArg=${MONGODB_AUTHENTICATION_DATABASE:+"--authenticationDatabase ${MONGODB_AUTHENTICATION_DATABASE}"}
-    mongorestore --drop -h ${_hostname} -d "${_database}" ${_authDbArg} ${_portArg} -u "${_username}" -p "${DATABASE_PASSWORD}" --quiet --gzip --archive=${_fileName} --nsInclude="sbc*"
+    mongorestore --drop -h ${_hostname} -d "${_database}" ${_authDbArg} ${_portArg} -u "${_username}" -p "${_password}" --quiet --gzip --archive=${_fileName} --nsInclude="sbc*"
     return ${?}
   )
 }
@@ -77,6 +77,7 @@ function onStartServer(){
     MONGODB_DATABASE=$(getDatabaseName "${_databaseSpec}") \
     MONGODB_USER=$(getUsername "${_databaseSpec}") \
     MONGODB_PASSWORD=$(getPassword "${_databaseSpec}") \
+    MONGODB_ADMIN_PASSWORD=$(getPassword "${_databaseSpec}") \
     run-mongod >/dev/null 2>&1 &
   )
 }
