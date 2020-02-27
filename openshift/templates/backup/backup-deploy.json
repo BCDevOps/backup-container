@@ -331,9 +331,9 @@
     {
       "name": "MONGODB_AUTHENTICATION_DATABASE",
       "displayName": "MongoDB Authentication Database",
-      "description": "Value required if you are backing up MongoDB",
+      "description": "Value required if you are backing up mongo database with a separate authentication database.",
       "required": false,
-      "value": "admin"
+      "value": ""
     },
     {
       "name": "DATABASE_DEPLOYMENT_NAME",

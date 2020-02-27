@@ -25,7 +25,8 @@ function onBackupDatabase(){
     _password=$(getPassword ${_databaseSpec})
     echoGreen "Backing up '${_hostname}${_port:+:${_port}}${_database:+/${_database}}' to '${_backupFile}' ..."
 
-    mongodump --authenticationDatabase="${MONGODB_AUTHENTICATION_DATABASE}" -h "${_hostname}" -u "${_username}" -p "${_password}" "${_portArg}" -d "${_database}" --quiet --gzip --archive=${_backupFile}
+    _authDbArg=${MONGODB_AUTHENTICATION_DATABASE:+"--authenticationDatabase ${MONGODB_AUTHENTICATION_DATABASE}"}
+    mongodump -h "${_hostname}" -d "${_database}" "${_authDbArg}" "${_portArg}" -u "${_username}" -p "${_password}" --quiet --gzip --archive=${_backupFile}
     return ${?}
   )
 }
@@ -53,7 +54,8 @@ function onRestoreDatabase(){
     _password=$(getPassword ${_databaseSpec})
     echo -e "Restoring '${_fileName}' to '${_hostname}${_port:+:${_port}}${_database:+/${_database}}' ...\n" >&2
 
-    mongorestore --drop -u "${_username}" -p "${DATABASE_PASSWORD}" "${_portArg}" --authenticationDatabase="${MONGODB_AUTHENTICATION_DATABASE}" -d "${_database}" --quiet --gzip --archive=${_fileName} --nsInclude="sbc*"
+    _authDbArg=${MONGODB_AUTHENTICATION_DATABASE:+"--authenticationDatabase ${MONGODB_AUTHENTICATION_DATABASE}"}
+    mongorestore --drop -h ${_hostname} -d "${_database}" "${_authDbArg}" "${_portArg}" -u "${_username}" -p "${DATABASE_PASSWORD}" --quiet --gzip --archive=${_fileName} --nsInclude="sbc*"
     return ${?}
   )
 }
@@ -93,8 +95,8 @@ function onStopServer(){
     _username=$(getUsername ${_databaseSpec})
     _password=$(getPassword ${_databaseSpec})
 
-    echo "shutting down..."
-    mongo admin --authenticationDatabase "${MONGODB_AUTHENTICATION_DATABASE}" -u "${_username}" -p "${_password}" --eval "db.shutdownServer()"
+    _authDbArg=${MONGODB_AUTHENTICATION_DATABASE:+"--authenticationDatabase ${MONGODB_AUTHENTICATION_DATABASE}"}
+    mongo admin "${_authDbArg}" -u "${_username}" -p "${_password}" --eval "db.shutdownServer()"
     sleep 30
 
     # Delete the database files and configuration
@@ -123,7 +125,8 @@ function onPingDbServer(){
     _username=$(getUsername ${_databaseSpec})
     _password=$(getPassword ${_databaseSpec})
 
-    if mongo --host "${_hostname}" --authenticationDatabase "${MONGODB_AUTHENTICATION_DATABASE}" -u "${_username}" -p "${_password}" "${_portArg}" --quiet --eval 'db.runCommand({ connectionStatus: 1 })' >/dev/null 2>&1; then
+    _authDbArg=${MONGODB_AUTHENTICATION_DATABASE:+"--authenticationDatabase ${MONGODB_AUTHENTICATION_DATABASE}"}
+    if mongo --host "${_hostname}" "${_authDbArg}" "${_portArg}" -u "${_username}" -p "${_password}" --quiet --eval 'db.runCommand({ connectionStatus: 1 })' >/dev/null 2>&1; then
       return 0
     else
       return 1
@@ -151,7 +154,8 @@ function onVerifyBackup(){
     _username=$(getUsername ${_databaseSpec})
     _password=$(getPassword ${_databaseSpec})
 
-    collections=$(mongo ${_hostname}/${_database} --authenticationDatabase "${MONGODB_AUTHENTICATION_DATABASE}" -u "${_username}" -p "${_password}" "${_portArg}" --quiet --eval 'var dbs = [];dbs = db.getCollectionNames();for (i in dbs){ print(db.dbs[i]);}';)
+    _authDbArg=${MONGODB_AUTHENTICATION_DATABASE:+"--authenticationDatabase ${MONGODB_AUTHENTICATION_DATABASE}"}
+    collections=$(mongo ${_hostname}/${_database} "${_authDbArg}" "${_portArg}" -u "${_username}" -p "${_password}" --quiet --eval 'var dbs = [];dbs = db.getCollectionNames();for (i in dbs){ print(db.dbs[i]);}';)
     rtnCd=${?}
 
     # Get the size of the restored database
@@ -197,7 +201,8 @@ function onGetDbSize(){
     _username=$(getUsername ${_databaseSpec})
     _password=$(getPassword ${_databaseSpec})
 
-    size=$(mongo ${_hostname}/${_database} --authenticationDatabase "${MONGODB_AUTHENTICATION_DATABASE}" -u "${_username}" -p "${_password}" "${_portArg}" --quiet --eval 'printjson(db.stats().fsTotalSize)')
+    _authDbArg=${MONGODB_AUTHENTICATION_DATABASE:+"--authenticationDatabase ${MONGODB_AUTHENTICATION_DATABASE}"}
+    size=$(mongo ${_hostname}/${_database} "${_authDbArg}" "${_portArg}" -u "${_username}" -p "${_password}" --quiet --eval 'printjson(db.stats().fsTotalSize)')
     rtnCd=${?}
 
     echo ${size}
