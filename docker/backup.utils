@@ -75,9 +75,9 @@ function restoreDatabase(){
 
     local duration=$(($SECONDS - $startTime))
     if (( ${_rtnCd} == 0 )); then
-      echo -e "Restore complete - Elapsed time: $(($duration/3600))h:$(($duration%3600/60))m:$(($duration%60))s"\\n
+      echoGreen "\nRestore complete - Elapsed time: $(($duration/3600))h:$(($duration%3600/60))m:$(($duration%60))s\n"
     else
-      echoRed "Restore failed.\n" >&2
+      echoRed "\nRestore failed.\n" >&2
     fi
 
     return ${_rtnCd}
