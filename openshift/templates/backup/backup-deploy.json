@@ -46,13 +46,25 @@
       }
     },
     {
-      "apiVersion": "v1",
       "kind": "Secret",
+      "apiVersion": "v1",
+      "metadata": {
+        "name": "${NAME}"
+      },
+      "type": "Opaque",
+      "stringData": {
+        "webhook-url": "${WEBHOOK_URL}"
+      }
+    },
+    {
+      "kind": "Secret",
+      "apiVersion": "v1",
       "metadata": {
         "name": "${FTP_SECRET_KEY}"
       },
       "type": "Opaque",
       "stringData": {
+        "ftp-url": "${FTP_URL}",
         "ftp-user": "${FTP_USER}",
         "ftp-password": "${FTP_PASSWORD}"
       }
@@ -198,7 +210,12 @@
                   },
                   {
                     "name": "FTP_URL",
-                    "value": "${FTP_URL}"
+                    "valueFrom": {
+                      "secretKeyRef": {
+                        "name": "${FTP_SECRET_KEY}",
+                        "key": "ftp-url"
+                      }
+                    }
                   },
                   {
                     "name": "FTP_USER",
@@ -220,7 +237,12 @@
                   },
                   {
                     "name": "WEBHOOK_URL",
-                    "value": "${WEBHOOK_URL}"
+                    "valueFrom": {
+                      "secretKeyRef": {
+                        "name": "${NAME}",
+                        "key": "webhook-url"
+                      }
+                    }
                   },
                   {
                     "name": "ENVIRONMENT_FRIENDLY_NAME",
