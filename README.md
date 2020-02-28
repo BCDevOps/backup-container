@@ -256,7 +256,34 @@ Sample Error Message:
 
 For information on how setup a webhook in Rocket.Chat refer to [Incoming WebHook Scripting](https://rocket.chat/docs/administrator-guides/integrations/).  The **Webhook URL** created during this process is the URL you use for `WEBHOOK_URL` to enable the Webhook integration feature.
 
+## Database Plugin Support
+
+The backup container uses a plugin architecture to perform the database specific operations needed to support various database types.
+
+The plugins are loaded dynamically based on the container type.  By default the `backup.null.plugin` will be loaded when the container type is not recognized.
+
+To add support for a new database type:
+1) Update the `getContainerType` function in [backup.container.utils](./docker/backup.container.utils) to detect the new type of database.
+2) Using the existing plugins as reference, implement the database specific scripts for the new database type.
+3) Using the existing docker files as reference, create a new one to build the new container type.
+4) Update the build and deployment templates and their documentation as needed.
+5) Update the project documentation as needed.
+6) Test, test, test.
+7) Submit a PR.
+
+Plugin Examples:
+- [backup.postgres.plugin](./docker/backup.postgres.plugin)
+  - Postgres backup implementation.
+
+- [backup.mongo.plugin](./docker/backup.mongo.plugin)
+  - Mongo backup implementation.
+
+- [backup.null.plugin](./docker/backup.null.plugin)
+  - Sample/Template backup implementation that simply outputs log messages for the various operations.
+
 ## Backup
+
+*The following sections describes (some) postgres specific implementation, however the steps are generally the same between database implementations.*
 
 The purpose of the backup app is to do automatic backups.  Deploy the Backup app to do daily backups.  Viewing the Logs for the Backup App will show a record of backups that have been completed.
 
