@@ -54,6 +54,13 @@ function onRestoreDatabase(){
     _password=$(getPassword ${_databaseSpec})
     echo -e "Restoring '${_fileName}' to '${_hostname}${_port:+:${_port}}${_database:+/${_database}}' ...\n" >&2
 
+    # ToDo:
+    # - Add support for restoring to a different database.
+    #   The following implementation only supports restoring to a database of the same name, 
+    #   unlike the postgres implementation that allows the database to be restored to a database of a different
+    #   name for testing.
+    #   Ref: https://stackoverflow.com/questions/36321899/mongorestore-to-a-different-database
+
     _authDbArg=${MONGODB_AUTHENTICATION_DATABASE:+"--authenticationDatabase ${MONGODB_AUTHENTICATION_DATABASE}"}
     mongorestore --drop -h ${_hostname} -d "${_database}" ${_authDbArg} ${_portArg} -u "${_username}" -p "${_password}" --gzip --archive=${_fileName} --nsInclude="*"
     return ${?}
