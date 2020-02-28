@@ -59,7 +59,7 @@
     {
       "name": "NAME",
       "displayName": "Name",
-      "description": "The name assigned to all of the resources defined in this template.",
+      "description": "The name assigned to all of the resources.  Use 'backup-postgres' for Postgres builds or 'backup-mongo' for MongoDB builds.",
       "required": true,
       "value": "backup-postgres"
     },
@@ -87,7 +87,7 @@
     {
       "name": "DOCKER_FILE_PATH",
       "displayName": "Docker File",
-      "description": "The path and file of the docker file defining the build.  Choose either 'Dockerfile' for Postgres bulds or 'Dockerfile_Mongo' for MongoDB build",
+      "description": "The path and file of the docker file defining the build.  Choose either 'Dockerfile' for Postgres builds or 'Dockerfile_Mongo' for MongoDB builds.",
       "required": false,
       "value": "Dockerfile"
     },
