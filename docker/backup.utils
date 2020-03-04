@@ -26,7 +26,6 @@ function restoreDatabase(){
     local OPTIND
     local quiet
     local localhost
-    local localhost
     unset quiet
     unset localhost
     unset flags
