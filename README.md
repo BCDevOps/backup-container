@@ -349,6 +349,10 @@ Following are more detailed steps to perform a restore of a backup.
 
 Done!
 
+## Tip and Tricks
+
+Please refer to the [Tips and Tricks](./docs/TipsAndTricks.md) document for solutions to known issues.
+
 ## Getting Help or Reporting an Issue
 To report bugs/issues/feature requests, please file an [issue](../../issues).
 
