@@ -1,7 +1,5 @@
-# This image provides a postgres installation from which to run backups 
-
-# Tried to pass as variable but not supported in current version of docker-compose
-FROM docker-registry.default.svc:5000/openshift/mongodb:latest
+# This image provides a mongo installation from which to run backups 
+FROM registry.access.redhat.com/rhscl/mongodb-36-rhel7
 
 # Change timezone to PST for convenience
 ENV TZ=PST8PDT
@@ -9,8 +7,8 @@ ENV TZ=PST8PDT
 # Set the workdir to be root
 WORKDIR /
 
-# Load the backup script into the container (must be executable).
-COPY backup.sh /
+# Load the backup scripts into the container (must be executable).
+COPY backup.* /
 
 COPY webhook-template.json /
 
@@ -23,7 +21,7 @@ COPY webhook-template.json /
 #  - https://blog.danman.eu/cron-jobs-in-openshift/
 # --------------------------------------------------------------------------------------------------------
 ARG SOURCE_REPO=BCDevOps
-ARG GOCROND_VERSION=0.6.2
+ARG GOCROND_VERSION=0.6.3
 ADD https://github.com/$SOURCE_REPO/go-crond/releases/download/$GOCROND_VERSION/go-crond-64-linux /usr/bin/go-crond
 
 USER root

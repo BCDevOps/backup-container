@@ -1,0 +1,111 @@
+#!/bin/bash
+# =================================================================================================================
+# Logging Functions:
+# -----------------------------------------------------------------------------------------------------------------
+function debugMsg (){
+  _msg="${@}"
+  if [ "${BACKUP_LOG_LEVEL}" == "debug" ]; then
+    echoGreen "$(date) - [DEBUG] - ${@}" >&2
+  fi
+}
+
+function echoRed (){
+  _msg="${@}"
+  _red='\e[31m'
+  _nc='\e[0m' # No Color
+  echo -e "${_red}${_msg}${_nc}"
+}
+
+function echoYellow (){
+  _msg="${@}"
+  _yellow='\e[33m'
+  _nc='\e[0m' # No Color
+  echo -e "${_yellow}${_msg}${_nc}"
+}
+
+function echoBlue (){
+  _msg="${@}"
+  _blue='\e[34m'
+  _nc='\e[0m' # No Color
+  echo -e "${_blue}${_msg}${_nc}"
+}
+
+function echoGreen (){
+  _msg="${@}"
+  _green='\e[32m'
+  _nc='\e[0m' # No Color
+  echo -e "${_green}${_msg}${_nc}"
+}
+
+function echoMagenta (){
+  _msg="${@}"
+  _magenta='\e[35m'
+  _nc='\e[0m' # No Color
+  echo -e "${_magenta}${_msg}${_nc}"
+}
+
+function logInfo(){
+  (
+    infoMsg="${1}"
+    echo -e "${infoMsg}"
+    postMsgToWebhook "${ENVIRONMENT_FRIENDLY_NAME}" \
+                     "${ENVIRONMENT_NAME}" \
+                     "INFO" \
+                     "${infoMsg}"
+  )
+}
+
+function logWarn(){
+  (
+    warnMsg="${1}"
+    echoYellow "${warnMsg}"
+    postMsgToWebhook "${ENVIRONMENT_FRIENDLY_NAME}" \
+                     "${ENVIRONMENT_NAME}" \
+                     "WARN" \
+                     "${warnMsg}"
+  )
+}
+
+function logError(){
+  (
+    errorMsg="${1}"
+    echoRed "[!!ERROR!!] - ${errorMsg}" >&2
+    postMsgToWebhook "${ENVIRONMENT_FRIENDLY_NAME}" \
+                     "${ENVIRONMENT_NAME}" \
+                     "ERROR" \
+                     "${errorMsg}"
+  )
+}
+
+function getWebhookPayload(){
+  _payload=$(eval "cat <<-EOF
+$(<${WEBHOOK_TEMPLATE})
+EOF
+")
+  echo "${_payload}"
+}
+
+function formatWebhookMsg(){
+  (
+    # Escape all double quotes
+    # Escape all newlines
+    filters='s~"~\\"~g;:a;N;$!ba;s~\n~\\n~g;'
+    _value=$(echo "${1}" | sed "${filters}")
+    echo "${_value}"
+  )
+}
+
+function postMsgToWebhook(){
+  (
+    if [ -z "${WEBHOOK_URL}" ] && [ -f ${WEBHOOK_TEMPLATE} ]; then
+      return 0
+    fi
+
+    projectFriendlyName=${1}
+    projectName=${2}
+    statusCode=${3}
+    message=$(formatWebhookMsg "${4}")
+    curl -s -X POST -H 'Content-Type: application/json' --data "$(getWebhookPayload)" "${WEBHOOK_URL}" > /dev/null
+  )
+}
+# =================================================================================================================

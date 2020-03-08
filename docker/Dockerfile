@@ -7,8 +7,8 @@ ENV TZ=PST8PDT
 # Set the workdir to be root
 WORKDIR /
 
-# Load the backup script into the container (must be executable).
-COPY backup.sh /
+# Load the backup scripts into the container (must be executable).
+COPY backup.* /
 
 COPY webhook-template.json /
 

@@ -46,13 +46,25 @@
       }
     },
     {
-      "apiVersion": "v1",
       "kind": "Secret",
+      "apiVersion": "v1",
+      "metadata": {
+        "name": "${NAME}"
+      },
+      "type": "Opaque",
+      "stringData": {
+        "webhook-url": "${WEBHOOK_URL}"
+      }
+    },
+    {
+      "kind": "Secret",
+      "apiVersion": "v1",
       "metadata": {
         "name": "${FTP_SECRET_KEY}"
       },
       "type": "Opaque",
       "stringData": {
+        "ftp-url": "${FTP_URL}",
         "ftp-user": "${FTP_USER}",
         "ftp-password": "${FTP_PASSWORD}"
       }
@@ -198,7 +210,12 @@
                   },
                   {
                     "name": "FTP_URL",
-                    "value": "${FTP_URL}"
+                    "valueFrom": {
+                      "secretKeyRef": {
+                        "name": "${FTP_SECRET_KEY}",
+                        "key": "ftp-url"
+                      }
+                    }
                   },
                   {
                     "name": "FTP_USER",
@@ -220,7 +237,12 @@
                   },
                   {
                     "name": "WEBHOOK_URL",
-                    "value": "${WEBHOOK_URL}"
+                    "valueFrom": {
+                      "secretKeyRef": {
+                        "name": "${NAME}",
+                        "key": "webhook-url"
+                      }
+                    }
                   },
                   {
                     "name": "ENVIRONMENT_FRIENDLY_NAME",
@@ -267,16 +289,16 @@
     {
       "name": "NAME",
       "displayName": "Name",
-      "description": "The name assigned to all of the resources defined in this template.",
+      "description": "The name assigned to all of the resources.  Use 'backup-postgres' for Postgres deployments or 'backup-mongo' for MongoDB deployments.",
       "required": true,
-      "value": "pgbackup"
+      "value": "backup-postgres"
     },
     {
       "name": "SOURCE_IMAGE_NAME",
       "displayName": "Source Image Name",
-      "description": "The name of the image to use for this resource.",
+      "description": "The name of the image to use for this resource.  Use 'backup-postgres' for Postgres deployments or 'backup-mongo' for MongoDB deployments.",
       "required": true,
-      "value": "pgbackup"
+      "value": "backup-postgres"
     },
     {
       "name": "IMAGE_NAMESPACE",
@@ -295,23 +317,23 @@
     {
       "name": "DATABASE_SERVICE_NAME",
       "displayName": "Database Service Name",
-      "description": "The name of the database service.",
-      "required": true,
-      "value": "postgresql"
+      "description": "Used for backward compatibility only. Not needed when using the recommended 'backup.conf' configuration.  The name of the database service.",
+      "required": false,
+      "value": ""
     },
     {
       "name": "DATABASE_NAME",
       "displayName": "Database Name",
-      "description": "The name of the database.",
-      "required": true,
-      "value": "MyDatabase"
+      "description": "Used for backward compatibility only. Not needed when using the recommended 'backup.conf' configuration.  The name of the database.",
+      "required": false,
+      "value": ""
     },
     {
       "name": "MONGODB_AUTHENTICATION_DATABASE",
       "displayName": "MongoDB Authentication Database",
-      "description": "Value required if you are backing up MongoDB",
+      "description": "This is only required if you are backing up mongo database with a separate authentication database.",
       "required": false,
-      "value": "admin"
+      "value": ""
     },
     {
       "name": "DATABASE_DEPLOYMENT_NAME",
@@ -337,7 +359,7 @@
     {
       "name": "TABLE_SCHEMA",
       "displayName": "Table Schema",
-      "description": "The table schema for your database.",
+      "description": "The table schema for your database.  Used for Postgres backups.",
       "required": true,
       "value": "public"
     },
@@ -407,7 +429,7 @@
     {
       "name": "NUM_BACKUPS",
       "displayName": "The number of backup files to be retained",
-      "description": "The number of backup files to be retained.  Used for the `daily` backup strategy.  Ignored when using the `rolling` backup strategy.",
+      "description": "Used for backward compatibility only.  Ignored when using the recommended `rolling` backup strategy.  The number of backup files to be retained.  Used for the `daily` backup strategy.",
       "required": false,
       "value": ""
     },
@@ -435,9 +457,9 @@
     {
       "name": "BACKUP_PERIOD",
       "displayName": "Period (d,m,s) between backups in a format used by the sleep command",
-      "description": "Period (d,m,s) between backups in a format used by the sleep command",
-      "required": true,
-      "value": "1d"
+      "description": "Used for backward compatibility only.  Ignored when using the recommended `backup.conf` and cron backup strategy.  Period (d,m,s) between backups in a format used by the sleep command",
+      "required": false,
+      "value": ""
     },
     {
       "name": "CONFIG_FILE_NAME",
@@ -477,14 +499,14 @@
     {
       "name": "BACKUP_VOLUME_CLASS",
       "displayName": "Backup Volume Class",
-      "description": "The class of the persistent volume used to store the backups; gluster-file, gluster-block, gluster-file-db, nfs-backup.  Please note, nfs-backup storage is the recommended storage type for backups.  It MUST be provisioned manually through the OCP catalog via the 'BC Gov NFS Storage' template.  nfs-backup storage CANNOT be automatically provisioned by this template.",
+      "description": "The class of the persistent volume used to store the backups; netapp-block-standard, netapp-file-standard, nfs-backup.  Please note, nfs-backup storage is the recommended storage type for backups.  It MUST be provisioned manually through the OCP catalog via the 'BC Gov NFS Storage' template.  nfs-backup storage CANNOT be automatically provisioned by this template.",
       "required": true,
       "value": "nfs-backup"
     },
     {
       "name": "VERIFICATION_VOLUME_NAME",
       "displayName": "Verification Volume Name",
-      "description": "The name for the verification volume, used for restoring and verifying backups.  When using the recommend nfs-backup storage class for backups, this volume MUST be either gluster-file-db or gluster-block storage; gluster-block is recommended (it has far better performance).",
+      "description": "The name for the verification volume, used for restoring and verifying backups.  When using the recommend nfs-backup storage class for backups, this volume MUST be either netapp-file-standard or netapp-block-standard storage; netapp-block-standard is recommended (it has far better performance).",
       "required": false,
       "value": "backup-verification"
     },
@@ -498,9 +520,9 @@
     {
       "name": "VERIFICATION_VOLUME_CLASS",
       "displayName": "Backup Volume Class",
-      "description": "The class of the persistent volume used for restoring and verifying backups; should be one of gluster-block or gluster-file-db.  gluster-block performs better.",
+      "description": "The class of the persistent volume used for restoring and verifying backups; should be one of netapp-block-standard or netapp-file-standard.  netapp-block-standard performs better.",
       "required": true,
-      "value": "gluster-file-db"
+      "value": "netapp-file-standard"
     },
     {
       "name": "VERIFICATION_VOLUME_MOUNT_PATH",

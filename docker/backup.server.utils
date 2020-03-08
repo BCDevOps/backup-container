@@ -1,0 +1,39 @@
+#!/bin/bash
+# =================================================================================================================
+# Backup Server Utility Functions:
+# -----------------------------------------------------------------------------------------------------------------
+function startCron(){
+  logInfo "Starting backup server in cron mode ..."
+  listSettings
+  echoBlue "Starting go-crond as a background task ...\n"
+  CRON_CMD="go-crond -v --default-user=${UID} --allow-unprivileged ${BACKUP_CONF}"
+  exec ${CRON_CMD} &
+  wait
+}
+
+function startLegacy(){
+  (
+    while true; do
+      runBackups
+
+      echoYellow "Sleeping for ${BACKUP_PERIOD} ...\n"
+      sleep ${BACKUP_PERIOD}
+    done
+  )
+}
+
+function shutDown(){
+  jobIds=$(jobs | awk -F '[][]' '{print $2}' )
+  for jobId in ${jobIds} ; do
+    echo "Shutting down background job '${jobId}' ..."
+    kill %${jobId}
+  done
+
+  if [ ! -z "${jobIds}" ]; then
+    echo "Waiting for any background jobs to complete ..."
+  fi
+  wait
+
+  exit 0
+}
+# ======================================================================================
