@@ -19,9 +19,9 @@ parameters:
     required: true
   - name: "SCHEDULE"
     displayName: "Cron Schedule"
-    description: "Cron Schedule to Execute the Job (in UTC)"
-# Currently targeting 5:00 AM Daily
-    value: "0 13 * * *"
+    description: "Cron Schedule to Execute the Job (using local cluster system TZ)"
+    # Currently targeting 1:00 AM Daily
+    value: "0 1 * * *"
     required: true
   - name: "SOURCE_IMAGE_NAME"
     displayName: "Source Image Name"
@@ -58,6 +58,20 @@ parameters:
     description: "The name associated to the database deployment resources.  In particular, this is used to wire up the credentials associated to the database."
     required: true
     value: "postgresql"
+  - name: DATABASE_USER_KEY_NAME
+    displayName: Database User Key Name
+    description:
+      The database user key name stored in database deployment resources specified
+      by DATABASE_DEPLOYMENT_NAME.
+    required: true
+    value: database-user
+  - name: DATABASE_PASSWORD_KEY_NAME
+    displayName: Database Password Key Name
+    description:
+      The database password key name stored in database deployment resources
+      specified by DATABASE_DEPLOYMENT_NAME.
+    required: true
+    value: database-password
   - name: "BACKUP_STRATEGY"
     displayName: "Backup Strategy"
     description: "The strategy to use for backups; for example daily, or rolling."
@@ -120,9 +134,9 @@ objects:
     DATABASE_SERVICE_NAME: "${DATABASE_SERVICE_NAME}"
     DEFAULT_PORT: "${DATABASE_DEFAULT_PORT}"
     POSTGRESQL_DATABASE: "${DATABASE_NAME}"
-#    BACKUP_STRATEGY: "daily"
-    RETENTION.NUM_BACKUPS: "${NUM_BACKUPS}"
+    # BACKUP_STRATEGY: "daily"
     BACKUP_STRATEGY: "rolling"
+    RETENTION.NUM_BACKUPS: "${NUM_BACKUPS}"
     RETENTION.DAILY_BACKUPS: "${DAILY_BACKUPS}"
     RETENTION.WEEKLY_BACKUPS: "${WEEKLY_BACKUPS}"
     RETENTION.MONTHLY_BACKUPS: "${MONTHLY_BACKUPS}"
@@ -150,7 +164,7 @@ objects:
             containers:
               - name: "${JOB_NAME}-cronjob"
                 image: "docker-registry.default.svc:5000/${IMAGE_NAMESPACE}/${SOURCE_IMAGE_NAME}:${TAG_NAME}"
-#                image: backup
+                # image: backup
                 command:
                   - "/bin/bash"
                   - "-c"
@@ -170,25 +184,25 @@ objects:
                     valueFrom:
                       configMapKeyRef:
                         name: "${JOB_NAME}-config"
-                        key: NUM_BACKUPS
+                        key: RETENTION.NUM_BACKUPS
                         optional: true
                   - name: DAILY_BACKUPS
                     valueFrom:
                       configMapKeyRef:
                         name: "${JOB_NAME}-config"
-                        key: DAILY_BACKUPS
+                        key: RETENTION.DAILY_BACKUPS
                         optional: true
                   - name: WEEKLY_BACKUPS
                     valueFrom:
                       configMapKeyRef:
                         name: "${JOB_NAME}-config"
-                        key: WEEKLY_BACKUPS
+                        key: RETENTION.WEEKLY_BACKUPS
                         optional: true
                   - name: MONTHLY_BACKUPS
                     valueFrom:
                       configMapKeyRef:
                         name: "${JOB_NAME}-config"
-                        key: MONTHLY_BACKUPS
+                        key: RETENTION.MONTHLY_BACKUPS
                         optional: true
                   - name: DATABASE_SERVICE_NAME
                     valueFrom:
@@ -210,12 +224,12 @@ objects:
                     valueFrom:
                       secretKeyRef:
                         name: "${DATABASE_DEPLOYMENT_NAME}"
-                        key: database-user
+                        key: "${DATABASE_USER_KEY_NAME}"
                   - name: POSTGRESQL_PASSWORD
                     valueFrom:
                       secretKeyRef:
                         name: "${DATABASE_DEPLOYMENT_NAME}"
-                        key: database-password
+                        key: "${DATABASE_PASSWORD_KEY_NAME}"
             volumes:
               - name: backup
                 persistentVolumeClaim:
