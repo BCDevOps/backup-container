@@ -1,0 +1,485 @@
+#!/bin/bash
+# =================================================================================================================
+# Configuration Utility Functions:
+# -----------------------------------------------------------------------------------------------------------------
+function getDatabaseName(){
+  (
+    _databaseSpec=${1}
+    _databaseName=$(echo ${_databaseSpec} | sed -n 's~^.*/\(.*$\)~\1~p')
+    echo "${_databaseName}"
+  )
+}
+
+function getDatabaseType(){
+  (
+    _databaseSpec=${1}
+    _databaseType=$(echo ${_databaseSpec} | sed -n 's~^\(.*\)=.*$~\1~p' | tr '[:upper:]' '[:lower:]')
+    echo "${_databaseType}"
+  )
+}
+
+function getPort(){
+  (
+    local OPTIND
+    local localhost
+    unset localhost
+    while getopts :l FLAG; do
+      case $FLAG in
+        l ) localhost=1 ;;
+      esac
+    done
+    shift $((OPTIND-1))
+
+    _databaseSpec=${1}
+
+    if [ -z "${localhost}" ]; then
+      portsed="s~^.*:\([[:digit:]]\+\)/.*$~\1~p"
+      _port=$(echo ${_databaseSpec} | sed -n "${portsed}")
+    fi
+
+    echo "${_port}"
+  )
+}
+
+function getHostname(){
+  (
+    local OPTIND
+    local localhost
+    unset localhost
+    while getopts :l FLAG; do
+      case $FLAG in
+        l ) localhost=1 ;;
+      esac
+    done
+    shift $((OPTIND-1))
+
+    _databaseSpec=${1}
+
+    if [ -z "${localhost}" ]; then
+      _hostname=$(echo ${_databaseSpec} | sed 's~^.\+[=]~~;s~[:/].*~~')
+    else
+      _hostname="127.0.0.1"
+    fi
+
+    echo "${_hostname}"
+  )
+}
+
+function getHostPrefix(){
+  (
+    _hostname=${1}
+    _hostPrefix=$(echo ${_hostname} | tr '[:lower:]' '[:upper:]' | sed "s~-~_~g")
+    echo "${_hostPrefix}"
+  )
+}
+
+function getHostUserParam(){
+  (
+    _hostname=${1}
+    _hostUser=$(getHostPrefix ${_hostname})_USER
+    echo "${_hostUser}"
+  )
+}
+
+function getHostPasswordParam(){
+  (
+    _hostname=${1}
+    _hostPassword=$(getHostPrefix ${_hostname})_PASSWORD
+    echo "${_hostPassword}"
+  )
+}
+
+function readConf(){
+  (
+    local OPTIND
+    local readCron
+    local quiet
+    local all
+    unset readCron
+    unset quiet
+    while getopts cqa FLAG; do
+      case $FLAG in
+        c ) readCron=1 ;;
+        q ) quiet=1 ;;
+        a ) all=1 ;;
+      esac
+    done
+    shift $((OPTIND-1))
+
+    # Remove all comments and any blank lines
+    filters="/^[[:blank:]]*$/d;/^[[:blank:]]*#/d;/#.*/d;"
+
+    if [ -z "${readCron}" ]; then
+      # Read in the database config ...
+      #  - Remove any lines that do not match the expected database spec format(s)
+      #     - [<DatabaseType>=]<Hostname/>/<DatabaseName/>
+      #     - [<DatabaseType>=]<Hostname/>:<Port/>/<DatabaseName/>
+      filters+="/^[a-zA-Z0-9=_/-]*\(:[0-9]*\)\?\/[a-zA-Z0-9_/-]*$/!d;"
+      if [ -z "${all}" ]; then
+        # Remove any database configs that are not for the current container type
+        # Database configs that do not define the database type are assumed to be for the current container type
+        filters+="/\(^[a-zA-Z0-9_/-]*\(:[0-9]*\)\?\/[a-zA-Z0-9_/-]*$\)\|\(^${CONTAINER_TYPE}=\)/!d;"
+      fi
+    else
+      # Read in the cron config ...
+      #  - Remove any lines that MATCH expected database spec format(s),
+      #    leaving, what should be, cron tabs.
+      filters+="/^[a-zA-Z0-9=_/-]*\(:[0-9]*\)\?\/[a-zA-Z0-9_/-]*$/d;"
+    fi
+
+    if [ -f ${BACKUP_CONF} ]; then
+      if [ -z "${quiet}" ]; then
+        echo "Reading backup config from ${BACKUP_CONF} ..." >&2
+      fi
+      _value=$(sed "${filters}" ${BACKUP_CONF})
+    fi
+
+    if [ -z "${_value}" ] && [ -z "${readCron}" ]; then
+      # Backward compatibility
+      if [ -z "${quiet}" ]; then
+        echo "Reading backup config from environment variables ..." >&2
+      fi
+      _value="${DATABASE_SERVICE_NAME}${DEFAULT_PORT:+:${DEFAULT_PORT}}${POSTGRESQL_DATABASE:+/${POSTGRESQL_DATABASE}}"
+    fi
+
+    echo "${_value}"
+  )
+}
+
+function getNumBackupsToRetain(){
+  (
+    _count=0
+    _backupType=${1:-$(getBackupType)}
+
+    case "${_backupType}" in
+    daily)
+      _count=${DAILY_BACKUPS}
+      if (( ${_count} <= 0 )) && (( ${WEEKLY_BACKUPS} <= 0 )) && (( ${MONTHLY_BACKUPS} <= 0 )); then
+        _count=1
+      fi
+      ;;
+    weekly)
+      _count=${WEEKLY_BACKUPS}
+      ;;
+    monthly)
+      _count=${MONTHLY_BACKUPS}
+      ;;
+    *)
+      _count=${NUM_BACKUPS}
+      ;;
+    esac
+
+    echo "${_count}"
+  )
+}
+
+function getUsername(){
+  (
+    _databaseSpec=${1}
+    _hostname=$(getHostname ${_databaseSpec})
+    _paramName=$(getHostUserParam ${_hostname})
+    # Backward compatibility ...
+    _username="${!_paramName:-${DATABASE_USER}}"
+    echo ${_username}
+  )
+}
+
+function getPassword(){
+  (
+    _databaseSpec=${1}
+    _hostname=$(getHostname ${_databaseSpec})
+    _paramName=$(getHostPasswordParam ${_hostname})
+    # Backward compatibility ...
+    _password="${!_paramName:-${DATABASE_PASSWORD}}"
+    echo ${_password}
+  )
+}
+
+function isLastDayOfMonth(){
+  (
+    _date=${1:-$(date)}
+    _day=$(date -d "${_date}" +%-d)
+    _month=$(date -d "${_date}" +%-m)
+    _lastDayOfMonth=$(date -d "${_month}/1 + 1 month - 1 day" "+%-d")
+
+    if (( ${_day} == ${_lastDayOfMonth} )); then
+      return 0
+    else
+      return 1
+    fi
+  )
+}
+
+function isLastDayOfWeek(){
+  (
+    # We're calling Sunday the last dayt of the week in this case.
+    _date=${1:-$(date)}
+    _dayOfWeek=$(date -d "${_date}" +%u)
+
+    if (( ${_dayOfWeek} == 7 )); then
+      return 0
+    else
+      return 1
+    fi
+  )
+}
+
+function getBackupType(){
+  (
+    _backupType=""
+    if rollingStrategy; then
+      if isLastDayOfMonth && (( "${MONTHLY_BACKUPS}" > 0 )); then
+        _backupType="monthly"
+      elif isLastDayOfWeek; then
+        _backupType="weekly"
+      else
+        _backupType="daily"
+      fi
+    fi
+    echo "${_backupType}"
+  )
+}
+
+function rollingStrategy(){
+  if [[ "${BACKUP_STRATEGY}" == "rolling" ]] && (( "${WEEKLY_BACKUPS}" >= 0 )) && (( "${MONTHLY_BACKUPS}" >= 0 )); then
+    return 0
+  else
+    return 1
+  fi
+}
+
+function dailyStrategy(){
+  if [[ "${BACKUP_STRATEGY}" == "daily" ]] || (( "${WEEKLY_BACKUPS}" < 0 )); then
+    return 0
+  else
+    return 1
+  fi
+}
+
+function listSettings(){
+  _backupDirectory=${1:-$(createBackupFolder -g)}
+  _databaseList=${2:-$(readConf -q)}
+  _yellow='\e[33m'
+  _nc='\e[0m' # No Color
+  _notConfigured="${_yellow}not configured${_nc}"
+
+  echo -e \\n"Settings:"
+  _mode=$(getMode 2>/dev/null)
+  echo -e "- Run mode: ${_mode}"\\n
+
+  if rollingStrategy; then
+    echo "- Backup strategy: rolling"
+  fi
+  if dailyStrategy; then
+    echo "- Backup strategy: daily"
+  fi
+  if ! rollingStrategy && ! dailyStrategy; then
+    echoYellow "- Backup strategy: Unknown backup strategy; ${BACKUP_STRATEGY}"
+    _configurationError=1
+  fi
+  backupType=$(getBackupType)
+  if [ -z "${backupType}" ]; then
+    echo "- Current backup type: flat daily"
+  else
+    echo "- Current backup type: ${backupType}"
+  fi
+  echo "- Backups to retain:"
+  if rollingStrategy; then
+    echo "  - Daily: $(getNumBackupsToRetain daily)"
+    echo "  - Weekly: $(getNumBackupsToRetain weekly)"
+    echo "  - Monthly: $(getNumBackupsToRetain monthly)"
+  else
+    echo "  - Total: $(getNumBackupsToRetain)"
+  fi
+  echo "- Current backup folder: ${_backupDirectory}"
+
+  if [[ "${_mode}" != ${ONCE} ]]; then
+    if [[ "${_mode}" == ${CRON} ]] || [[ "${_mode}" == ${SCHEDULED} ]]; then
+      _backupSchedule=$(readConf -cq)
+      echo "- Time Zone: $(date +"%Z %z")"
+    fi
+    _backupSchedule=$(formatList "${_backupSchedule:-${BACKUP_PERIOD}}")
+    echo -e \\n"- Schedule:"
+    echo "${_backupSchedule}"
+  fi
+
+  if [[ "${CONTAINER_TYPE}" == "${UNKNOWN_DB}" ]] && [ -z "${_allowNullPlugin}" ]; then
+    echoRed "\n- Container Type: ${CONTAINER_TYPE}"
+    _configurationError=1
+  else
+    echo -e "\n- Container Type: ${CONTAINER_TYPE}"
+  fi
+  
+  _databaseList=$(formatList "${_databaseList}")
+  echo "- Databases (filtered by container type):"
+  echo "${_databaseList}"
+  echo
+  
+  if [ -z "${FTP_URL}" ]; then
+    echo -e "- FTP server: ${_notConfigured}"
+  else
+    echo "- FTP server: ${FTP_URL}"
+  fi
+  
+  if [ -z "${WEBHOOK_URL}" ]; then
+    echo -e "- Webhook Endpoint: ${_notConfigured}"
+  else
+    echo "- Webhook Endpoint: ${WEBHOOK_URL}"
+  fi
+  
+  if [ -z "${ENVIRONMENT_FRIENDLY_NAME}" ]; then
+    echo -e "- Environment Friendly Name: ${_notConfigured}"
+  else
+    echo -e "- Environment Friendly Name: ${ENVIRONMENT_FRIENDLY_NAME}"
+  fi
+  if [ -z "${ENVIRONMENT_NAME}" ]; then
+    echo -e "- Environment Name (Id): ${_notConfigured}"
+  else
+    echo "- Environment Name (Id): ${ENVIRONMENT_NAME}"
+  fi
+
+  if [ ! -z "${_configurationError}" ]; then
+    echo
+    logError "Configuration error!  The script will exit."
+    sleep 5
+    exit 1
+  fi
+  echo
+}
+
+function isScheduled(){
+  (
+    if [ ! -z "${SCHEDULED_RUN}" ]; then
+      return 0
+    else
+      return 1
+    fi
+  )
+}
+
+function isScripted(){
+  (
+    if [ ! -z "${SCHEDULED_RUN}" ]; then
+      return 0
+    else
+      return 1
+    fi
+  )
+}
+
+function restoreMode(){
+  (
+    if [ ! -z "${_restoreDatabase}" ]; then
+      return 0
+    else
+      return 1
+    fi
+  )
+}
+
+function verifyMode(){
+  (
+    if [ ! -z "${_verifyBackup}" ]; then
+      return 0
+    else
+      return 1
+    fi
+  )
+}
+
+function pruneMode(){
+  (
+    if [ ! -z "${RUN_PRUNE}" ]; then
+      return 0
+    else
+      return 1
+    fi
+  )
+}
+
+function cronMode(){
+  (
+    cronTabs=$(readConf -cq)
+    if isInstalled "go-crond" && [ ! -z "${cronTabs}" ]; then
+      return 0
+    else
+      return 1
+    fi
+  )
+}
+
+function runOnce() {
+  if [ ! -z "${RUN_ONCE}" ]; then
+    return 0
+  else
+    return 1
+  fi
+}
+
+function getMode(){
+  (
+    unset _mode
+
+    if pruneMode; then
+      _mode="${PRUNE}"
+    fi
+
+    if [ -z "${_mode}" ] && restoreMode; then
+      _mode="${RESTORE}"
+    fi
+
+    if [ -z "${_mode}" ] && verifyMode; then
+      # Determine if this is a scheduled verification or a manual one.
+      if isScheduled; then
+        if cronMode; then
+          _mode="${SCHEDULED_VERIFY}"
+        else
+          _mode="${ERROR}"
+          logError "Scheduled mode cannot be used without cron being installed and at least one cron tab being defined in ${BACKUP_CONF}."
+        fi
+      else
+        _mode="${VERIFY}"
+      fi
+    fi
+
+    if [ -z "${_mode}" ] && runOnce; then
+      _mode="${ONCE}"
+    fi
+
+    if [ -z "${_mode}" ] && isScheduled; then
+      if cronMode; then
+        _mode="${SCHEDULED}"
+      else
+        _mode="${ERROR}"
+        logError "Scheduled mode cannot be used without cron being installed and at least one cron tab being defined in ${BACKUP_CONF}."
+      fi
+    fi
+
+    if [ -z "${_mode}" ] && cronMode; then
+      _mode="${CRON}"
+    fi
+
+    if [ -z "${_mode}" ]; then
+      _mode="${LEGACY}"
+    fi
+
+    echo "${_mode}"
+  )
+}
+
+function validateOperation(){
+  (
+    _databaseSpec=${1}
+    _mode=${2}
+    _rtnCd=0
+
+    if [[ "${_mode}" == ${RESTORE} ]] && ! isForContainerType ${_databaseSpec}; then
+      echoRed "\nYou are attempting to restore database '${_databaseSpec}' from a ${CONTAINER_TYPE} container."
+      echoRed "Cannot continue with the restore.  It must be initiated from the matching container type."
+      _rtnCd=1
+    fi
+
+    return ${_rtnCd}
+  )
+}
+# ======================================================================================

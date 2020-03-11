@@ -1,0 +1,57 @@
+#!/bin/bash
+# =================================================================================================================
+# Container Utility Functions:
+# -----------------------------------------------------------------------------------------------------------------
+function isPostgres(){
+  (
+    if isInstalled "psql"; then
+      return 0
+    else
+      return 1
+    fi
+  )
+}
+
+function isMongo(){
+  (
+    if isInstalled "mongo"; then
+      return 0
+    else
+      return 1
+    fi
+  )
+}
+
+function getContainerType(){
+  (
+    local _containerType=${UNKNOWN_DB}
+    _rtnCd=0
+
+    if isPostgres; then
+      _containerType=${POSTGRE_DB}
+    elif isMongo; then
+      _containerType=${MONGO_DB}
+    else
+      _containerType=${UNKNOWN_DB}
+      _rtnCd=1
+    fi
+
+    echo "${_containerType}"
+    return ${_rtnCd}
+  )
+}
+
+function isForContainerType(){
+  (
+    _databaseSpec=${1}
+    _databaseType=$(getDatabaseType ${_databaseSpec})
+
+    # If the database type has not been defined, assume the database spec is valid for the current databse container type.
+    if [ -z "${_databaseType}" ] || [[ "${_databaseType}" == "${CONTAINER_TYPE}" ]]; then
+      return 0
+    else
+      return 1
+    fi
+  )
+}
+# ======================================================================================

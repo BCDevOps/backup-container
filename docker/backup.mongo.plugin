@@ -1,0 +1,226 @@
+#!/bin/bash
+# =================================================================================================================
+# Mongo Backup and Restore Functions:
+# - Dynamically loaded as a plug-in
+# -----------------------------------------------------------------------------------------------------------------
+function onBackupDatabase(){
+  (
+    local OPTIND
+    local unset flags
+    while getopts : FLAG; do
+      case $FLAG in
+        ? ) flags+="-${OPTARG} ";;
+      esac
+    done
+    shift $((OPTIND-1))
+
+    _databaseSpec=${1}
+    _backupFile=${2}
+
+    _hostname=$(getHostname ${_databaseSpec})
+    _database=$(getDatabaseName ${_databaseSpec})
+    _port=$(getPort ${_databaseSpec})
+    _portArg=${_port:+"--port=${_port}"}
+    _username=$(getUsername ${_databaseSpec})
+    _password=$(getPassword ${_databaseSpec})
+    echoGreen "Backing up '${_hostname}${_port:+:${_port}}${_database:+/${_database}}' to '${_backupFile}' ..."
+
+    _authDbArg=${MONGODB_AUTHENTICATION_DATABASE:+"--authenticationDatabase ${MONGODB_AUTHENTICATION_DATABASE}"}
+    mongodump -h "${_hostname}" -d "${_database}" ${_authDbArg} ${_portArg} -u "${_username}" -p "${_password}" --quiet --gzip --archive=${_backupFile}
+    return ${?}
+  )
+}
+
+function onRestoreDatabase(){
+  (
+    local OPTIND
+    local unset flags
+    while getopts : FLAG; do
+      case $FLAG in
+        ? ) flags+="-${OPTARG} ";;
+      esac
+    done
+    shift $((OPTIND-1))
+
+    _databaseSpec=${1}
+    _fileName=${2}
+    _adminPassword=${3}
+
+    _hostname=$(getHostname ${flags} ${_databaseSpec})
+    _database=$(getDatabaseName ${_databaseSpec})
+    _port=$(getPort ${flags} ${_databaseSpec})
+    _portArg=${_port:+"--port=${_port}"}
+    _username=$(getUsername ${_databaseSpec})
+    _password=$(getPassword ${_databaseSpec})
+    echo -e "Restoring '${_fileName}' to '${_hostname}${_port:+:${_port}}${_database:+/${_database}}' ...\n" >&2
+
+    # ToDo:
+    # - Add support for restoring to a different database.
+    #   The following implementation only supports restoring to a database of the same name, 
+    #   unlike the postgres implementation that allows the database to be restored to a database of a different
+    #   name for testing.
+    #   Ref: https://stackoverflow.com/questions/36321899/mongorestore-to-a-different-database
+
+    _authDbArg=${MONGODB_AUTHENTICATION_DATABASE:+"--authenticationDatabase ${MONGODB_AUTHENTICATION_DATABASE}"}
+    mongorestore --drop -h ${_hostname} -d "${_database}" ${_authDbArg} ${_portArg} -u "${_username}" -p "${_password}" --gzip --archive=${_fileName} --nsInclude="*"
+    return ${?}
+  )
+}
+
+function onStartServer(){
+  (
+    local OPTIND
+    local unset flags
+    while getopts : FLAG; do
+      case $FLAG in
+        ? ) flags+="-${OPTARG} ";;
+      esac
+    done
+    shift $((OPTIND-1))
+
+    _databaseSpec=${1}
+
+    # Start a local MongoDb instance
+    MONGODB_DATABASE=$(getDatabaseName "${_databaseSpec}") \
+    MONGODB_USER=$(getUsername "${_databaseSpec}") \
+    MONGODB_PASSWORD=$(getPassword "${_databaseSpec}") \
+    MONGODB_ADMIN_PASSWORD=$(getPassword "${_databaseSpec}") \
+    run-mongod >/dev/null 2>&1 &
+  )
+}
+
+function onStopServer(){
+  (
+    local OPTIND
+    local unset flags
+    while getopts : FLAG; do
+      case $FLAG in
+        ? ) flags+="-${OPTARG} ";;
+      esac
+    done
+    shift $((OPTIND-1))
+
+    _databaseSpec=${1}
+
+    _port=$(getPort ${_databaseSpec})
+    _portArg=${_port:+"--port ${_port}"}
+    _username=admin
+    _password=$(getPassword ${_databaseSpec})
+
+    _authDbArg=${MONGODB_AUTHENTICATION_DATABASE:+"--authenticationDatabase ${MONGODB_AUTHENTICATION_DATABASE}"}
+    mongo admin ${_authDbArg} ${_portArg} -u "${_username}" -p "${_password}" --quiet --eval "db.shutdownServer()"
+
+    # Delete the database files and configuration
+    echo -e "Cleaning up ...\n" >&2
+    rm -rf /var/lib/mongodb/data/*
+  )
+}
+
+function onPingDbServer(){
+  (
+    local OPTIND
+    local unset flags
+    while getopts : FLAG; do
+      case $FLAG in
+        ? ) flags+="-${OPTARG} ";;
+      esac
+    done
+    shift $((OPTIND-1))
+
+    _databaseSpec=${1}
+
+    _hostname=$(getHostname ${flags} ${_databaseSpec})
+    _database=$(getDatabaseName ${_databaseSpec})
+    _port=$(getPort ${flags} ${_databaseSpec})
+    _portArg=${_port:+"--port ${_port}"}
+    _username=$(getUsername ${_databaseSpec})
+    _password=$(getPassword ${_databaseSpec})
+
+    _dbAddressArg=${_hostname}${_port:+:${_port}}${_database:+/${_database}}
+    _authDbArg=${MONGODB_AUTHENTICATION_DATABASE:+"--authenticationDatabase ${MONGODB_AUTHENTICATION_DATABASE}"}
+    if mongo ${_dbAddressArg} ${_authDbArg} -u "${_username}" -p "${_password}" --quiet --eval='quit()' >/dev/null 2>&1; then
+      return 0
+    else
+      return 1
+    fi
+  )
+}
+
+function onVerifyBackup(){
+  (
+    local OPTIND
+    local unset flags
+    while getopts : FLAG; do
+      case $FLAG in
+        ? ) flags+="-${OPTARG} ";;
+      esac
+    done
+    shift $((OPTIND-1))
+
+    _databaseSpec=${1}
+
+    _hostname=$(getHostname -l ${_databaseSpec})
+    _database=$(getDatabaseName ${_databaseSpec})
+    _port=$(getPort -l ${_databaseSpec})
+    _portArg=${_port:+"--port ${_port}"}
+    _username=$(getUsername ${_databaseSpec})
+    _password=$(getPassword ${_databaseSpec})
+
+    _dbAddressArg=${_hostname}${_port:+:${_port}}${_database:+/${_database}}
+    _authDbArg=${MONGODB_AUTHENTICATION_DATABASE:+"--authenticationDatabase ${MONGODB_AUTHENTICATION_DATABASE}"}
+    collections=$(mongo ${_dbAddressArg} ${_authDbArg} -u "${_username}" -p "${_password}" --quiet --eval 'var dbs = [];dbs = db.getCollectionNames();for (i in dbs){ print(db.dbs[i]);}';)
+    rtnCd=${?}
+
+    # Get the size of the restored database
+    if (( ${rtnCd} == 0 )); then
+      size=$(getDbSize -l "${_databaseSpec}")
+      rtnCd=${?}
+    fi
+
+    if (( ${rtnCd} == 0 )); then
+      numResults=$(echo "${collections}"| wc -l)
+      if [[ ! -z "${collections}" ]] && (( numResults >= 1 )); then
+        # All good
+        verificationLog="\nThe restored database contained ${numResults} collections, and is ${size} in size."
+      else
+        # Not so good
+        verificationLog="\nNo collections were found in the restored database ${_database}."
+        rtnCd="3"
+      fi
+    fi
+
+    echo ${verificationLog}
+    return ${rtnCd}
+  )
+}
+
+function onGetDbSize(){
+  (
+    local OPTIND
+    local unset flags
+    while getopts : FLAG; do
+      case $FLAG in
+        ? ) flags+="-${OPTARG} ";;
+      esac
+    done
+    shift $((OPTIND-1))
+
+    _databaseSpec=${1}
+
+    _hostname=$(getHostname ${flags} ${_databaseSpec})
+    _database=$(getDatabaseName ${_databaseSpec})
+    _port=$(getPort ${flags} ${_databaseSpec})
+    _portArg=${_port:+"--port ${_port}"}
+    _username=$(getUsername ${_databaseSpec})
+    _password=$(getPassword ${_databaseSpec})
+
+    _dbAddressArg=${_hostname}${_port:+:${_port}}${_database:+/${_database}}
+    _authDbArg=${MONGODB_AUTHENTICATION_DATABASE:+"--authenticationDatabase ${MONGODB_AUTHENTICATION_DATABASE}"}
+    size=$(mongo ${_dbAddressArg} ${_authDbArg} -u "${_username}" -p "${_password}" --quiet --eval 'printjson(db.stats().fsTotalSize)')
+    rtnCd=${?}
+
+    echo ${size}
+    return ${rtnCd}
+  )
+}
+# =================================================================================================================

@@ -1,0 +1,55 @@
+#!/bin/bash
+# ======================================================================================
+# Default Settings
+# --------------------------------------------------------------------------------------
+export BACKUP_FILE_EXTENSION=".sql.gz"
+export IN_PROGRESS_BACKUP_FILE_EXTENSION=".sql.gz.in_progress"
+export DEFAULT_PORT=${POSTGRESQL_PORT_NUM:-5432}
+export DATABASE_SERVICE_NAME=${DATABASE_SERVICE_NAME:-postgresql}
+export POSTGRESQL_DATABASE=${POSTGRESQL_DATABASE:-my_postgres_db}
+export TABLE_SCHEMA=${TABLE_SCHEMA:-public}
+
+# Supports:
+# - daily
+# - rolling
+export BACKUP_STRATEGY=$(echo "${BACKUP_STRATEGY:-rolling}" | tr '[:upper:]' '[:lower:]')
+export BACKUP_PERIOD=${BACKUP_PERIOD:-1d}
+export ROOT_BACKUP_DIR=${ROOT_BACKUP_DIR:-${BACKUP_DIR:-/backups/}}
+export BACKUP_CONF=${BACKUP_CONF:-backup.conf}
+
+# Used to prune the total number of backup when using the daily backup strategy.
+# Default provides for one full month of backups
+export NUM_BACKUPS=${NUM_BACKUPS:-31}
+
+# Used to prune the total number of backup when using the rolling backup strategy.
+# Defaults provide for:
+# - A week's worth of daily backups
+# - A month's worth of weekly backups
+# - The previous month's backup
+export DAILY_BACKUPS=${DAILY_BACKUPS:-6}
+export WEEKLY_BACKUPS=${WEEKLY_BACKUPS:-4}
+export MONTHLY_BACKUPS=${MONTHLY_BACKUPS:-1}
+
+# Webhook defaults
+WEBHOOK_TEMPLATE=${WEBHOOK_TEMPLATE:-webhook-template.json}
+
+# Modes:
+export ONCE="once"
+export SCHEDULED="scheduled"
+export RESTORE="restore"
+export VERIFY="verify"
+export CRON="cron"
+export LEGACY="legacy"
+export ERROR="error"
+export SCHEDULED_VERIFY="scheduled-verify"
+export PRUNE="prune"
+
+# Supported Database Containers
+export UNKNOWN_DB="null"
+export MONGO_DB="mongo"
+export POSTGRE_DB="postgres"
+export CONTAINER_TYPE="$(getContainerType)"
+
+# Other:
+export DATABASE_SERVER_TIMEOUT=${DATABASE_SERVER_TIMEOUT:-120}
+# ======================================================================================
