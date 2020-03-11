@@ -88,6 +88,8 @@ The following environment variables are defaults used by the `backup` app.
 | MONTHLY_BACKUPS | 1 | When using the rolling backup strategy this value is used to determine the number of monthly (last day of the month) backups to retain before pruning. |
 | BACKUP_PERIOD | 1d | Only used for Legacy Mode.  Ignored when running in Cron Mode.  The schedule on which to run the backups.  The value is used by a sleep command and can be defined in d, h, m, or s. |
 | DATABASE_SERVICE_NAME | postgresql | Used for backward compatibility only.  The name of the service/host for the *default* database target. |
+| DATABASE_USER_KEY_NAME | database-user | The database user key name stored in database deployment resources specified by DATABASE_DEPLOYMENT_NAME. |
+| DATABASE_PASSWORD_KEY_NAME | database-password | The database password key name stored in database deployment resources specified by DATABASE_DEPLOYMENT_NAME. |
 | DATABASE_NAME | my_postgres_db | Used for backward compatibility only.  The name of the *default* database target; the name of the database you want to backup. |
 | DATABASE_USER | *wired to a secret* | The username for the database(s) hosted by the database server. The deployment configuration makes the assumption you have your database credentials stored in secrets (which you should), and the key for the username is `database-user`.  The name of the secret must be provided as the `DATABASE_DEPLOYMENT_NAME` parameter to the deployment configuration template. |
 | DATABASE_PASSWORD | *wired to a secret* | The password for the database(s) hosted by the database server. The deployment configuration makes the assumption you have your database credentials stored in secrets (which you should), and the key for the username is `database-password`.  The name of the secret must be provided as the `DATABASE_DEPLOYMENT_NAME` parameter to the deployment configuration template. |
@@ -120,11 +122,14 @@ The following variables are supported in the first iteration of the backup cronj
 | ---- | -------------------- | ------- |
 | BACKUP_STRATEGY | daily | To control the backup strategy used for backups.  This is explained more below. |
 | BACKUP_DIR | /backups/ | The directory under which backups will be stored.  The deployment configuration mounts the persistent volume claim to this location when first deployed. |
+| SCHEDULE | 0 1 * * * | Cron Schedule to Execute the Job (using local cluster system TZ). |
 | NUM_BACKUPS | 31 | For backward compatibility this value is used with the daily backup strategy to set the number of backups to retain before pruning. |
 | DAILY_BACKUPS | 6 | When using the rolling backup strategy this value is used to determine the number of daily (Mon-Sat) backups to retain before pruning. |
 | WEEKLY_BACKUPS | 4 | When using the rolling backup strategy this value is used to determine the number of weekly (Sun) backups to retain before pruning. |
 | MONTHLY_BACKUPS | 1 | When using the rolling backup strategy this value is used to determine the number of monthly (last day of the month) backups to retain before pruning. |
 | DATABASE_SERVICE_NAME | postgresql | The name of the service/host for the *default* database target. |
+| DATABASE_USER_KEY_NAME | database-user | The database user key name stored in database deployment resources specified by DATABASE_DEPLOYMENT_NAME. |
+| DATABASE_PASSWORD_KEY_NAME | database-password | The database password key name stored in database deployment resources specified by DATABASE_DEPLOYMENT_NAME. |
 | POSTGRESQL_DATABASE | my_postgres_db | The name of the *default* database target; the name of the database you want to backup. |
 | POSTGRESQL_USER | *wired to a secret* | The username for the database(s) hosted by the `postgresql` Postgres server. The deployment configuration makes the assumption you have your database credentials stored in secrets (which you should), and the key for the username is `database-user`.  The name of the secret must be provided as the `DATABASE_DEPLOYMENT_NAME` parameter to the deployment configuration template. |
 | POSTGRESQL_PASSWORD | *wired to a secret* | The password for the database(s) hosted by the `postgresql` Postgres server. The deployment configuration makes the assumption you have your database credentials stored in secrets (which you should), and the key for the username is `database-password`.  The name of the secret must be provided as the `DATABASE_DEPLOYMENT_NAME` parameter to the deployment configuration template. |
