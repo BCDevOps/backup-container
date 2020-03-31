@@ -12,6 +12,8 @@ COPY backup.* /
 
 COPY webhook-template.json /
 
+USER root
+
 # ========================================================================================================
 # Install go-crond (from https://github.com/BCDevOps/go-crond)
 #  - Adds some additional logging enhancements on top of the upstream project; 
@@ -22,9 +24,7 @@ COPY webhook-template.json /
 # --------------------------------------------------------------------------------------------------------
 ARG SOURCE_REPO=BCDevOps
 ARG GOCROND_VERSION=0.6.3
-ADD https://github.com/$SOURCE_REPO/go-crond/releases/download/$GOCROND_VERSION/go-crond-64-linux /usr/bin/go-crond
-
-USER root
+RUN curl https://github.com/$SOURCE_REPO/go-crond/releases/download/$GOCROND_VERSION/go-crond-64-linux -s -o /usr/bin/go-crond
 
 RUN chmod ug+x /usr/bin/go-crond
 # ========================================================================================================
