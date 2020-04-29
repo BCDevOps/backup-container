@@ -135,6 +135,8 @@ function startServer(){
       fi
       sleep 1
     done
+    
+    echoBlue "\nThe server started in ${duration} seconds.\n"
     echo
     return ${rtnCd}
   )
