@@ -3,6 +3,8 @@
 # Mongo Backup and Restore Functions:
 # - Dynamically loaded as a plug-in
 # -----------------------------------------------------------------------------------------------------------------
+export serverDataDirectory="/var/lib/mongodb/data"
+
 function onBackupDatabase(){
   (
     local OPTIND
@@ -109,10 +111,18 @@ function onStopServer(){
 
     _authDbArg=${MONGODB_AUTHENTICATION_DATABASE:+"--authenticationDatabase ${MONGODB_AUTHENTICATION_DATABASE}"}
     mongo admin ${_authDbArg} ${_portArg} -u "${_username}" -p "${_password}" --quiet --eval "db.shutdownServer()"
+  )
+}
 
-    # Delete the database files and configuration
-    echo -e "Cleaning up ...\n" >&2
-    rm -rf /var/lib/mongodb/data/*
+function onCleanup(){
+  (
+    if ! dirIsEmpty ${serverDataDirectory}; then
+      # Delete the database files and configuration
+      echo -e "Cleaning up ...\n" >&2
+      rm -rf ${serverDataDirectory}/*
+    else
+      echo -e "Already clean ...\n" >&2
+    fi
   )
 }
 

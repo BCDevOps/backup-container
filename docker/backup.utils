@@ -146,6 +146,12 @@ function stopServer(){
   )
 }
 
+function cleanUp(){
+  (
+    onCleanup
+  )
+}
+
 function pingDbServer(){
   (
     onPingDbServer ${@}
@@ -212,6 +218,15 @@ function verifyBackup(){
       waitForAnyKey
     fi
 
+    # Make sure the server is not running ...
+    if pingDbServer -l "${_databaseSpec}"; then
+      logError "Backup verification failed: ${_fileName}\n\nThe verification server is still running."
+      exit 1
+    fi
+
+    # Make sure things have been cleaned up before we start ...
+    cleanUp
+
     local startTime=${SECONDS}
     startServer -l "${_databaseSpec}"
     rtnCd=${?}
@@ -242,8 +257,10 @@ function verifyBackup(){
       rtnCd=${?}
     fi
 
-    # Stop the database server
+    # Stop the database server and clean up ...
     stopServer "${_databaseSpec}"
+    cleanUp
+
     local duration=$(($SECONDS - $startTime))
     local elapsedTime="\n\nElapsed time: $(($duration/3600))h:$(($duration%3600/60))m:$(($duration%60))s - Status Code: ${rtnCd}"
 

@@ -3,6 +3,8 @@
 # Postgres Backup and Restore Functions:
 # - Dynamically loaded as a plug-in
 # -----------------------------------------------------------------------------------------------------------------
+export serverDataDirectory="/var/lib/pgsql/data"
+
 function onBackupDatabase(){
   (
     local OPTIND
@@ -134,11 +136,19 @@ function onStopServer(){
     _databaseSpec=${1}
 
     # Stop the local PostgreSql instance
-    pg_ctl stop -D /var/lib/pgsql/data/userdata
+    pg_ctl stop -D ${serverDataDirectory}/userdata
+  )
+}
 
-    # Delete the database files and configuration
-    echo -e "Cleaning up ...\n"
-    rm -rf /var/lib/pgsql/data/userdata
+function onCleanup(){
+  (
+    if ! dirIsEmpty ${serverDataDirectory}; then
+      # Delete the database files and configuration
+      echo -e "Cleaning up ...\n" >&2
+      rm -rf ${serverDataDirectory}/*
+    else
+      echo -e "Already clean ...\n" >&2
+    fi
   )
 }
 
