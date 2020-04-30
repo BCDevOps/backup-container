@@ -27,4 +27,21 @@ function isInstalled(){
     return 0
   fi
 }
+
+function getElapsedTime(){
+  (
+    local startTime=${1}
+    local endTime=${2}
+    local duration=$(($endTime - $startTime))
+    echo $(getElapsedTimeFromDuration "${duration}")
+  )
+}
+
+function getElapsedTimeFromDuration(){
+  (
+    local duration=${1}
+    local elapsedTime="$(($duration/3600))h:$(($duration%3600/60))m:$(($duration%60))s"
+    echo ${elapsedTime}
+  )
+}
 # ======================================================================================

@@ -31,7 +31,7 @@ function restoreDatabase(){
     unset flags
     while getopts ql FLAG; do
       case $FLAG in
-        q ) 
+        q )
           quiet=1
           flags+="-${FLAG} "
           ;;
@@ -72,9 +72,9 @@ function restoreDatabase(){
     onRestoreDatabase ${flags} "${_databaseSpec}" "${_fileName}" "${_adminPassword}"
     _rtnCd=${?}
 
-    local duration=$(($SECONDS - $startTime))
+    local endTime=${SECONDS}
     if (( ${_rtnCd} == 0 )); then
-      echoGreen "\nRestore complete - Elapsed time: $(($duration/3600))h:$(($duration%3600/60))m:$(($duration%60))s\n"
+      echoGreen "\nRestore complete - Elapsed time: $(getElapsedTime ${startTime} ${endTime})\n"
     else
       echoRed "\nRestore failed.\n" >&2
     fi
@@ -96,8 +96,8 @@ function runBackups(){
         filename=$(generateFilename "${backupDir}" "${database}")
         backupDatabase "${database}" "${filename}"
         rtnCd=${?}
-        local duration=$(($SECONDS - $startTime))
-        local elapsedTime="\n\nElapsed time: $(($duration/3600))h:$(($duration%3600/60))m:$(($duration%60))s - Status Code: ${rtnCd}"
+        local endTime=${SECONDS}
+        local elapsedTime="\n\nElapsed time: $(getElapsedTime ${startTime} ${endTime}) - Status Code: ${rtnCd}"
 
         if (( ${rtnCd} == 0 )); then
           backupPath=$(finalizeBackup "${filename}")
@@ -129,14 +129,14 @@ function startServer(){
       printf "."
       local duration=$(($SECONDS - $startTime))
       if (( ${duration} >= ${DATABASE_SERVER_TIMEOUT} )); then
-        echoRed "\nThe server failed to start within ${duration} seconds.\n"
+        echoRed "\nThe server failed to start within $(getElapsedTimeFromDuration ${duration}).\n"
         rtnCd=1
         break
       fi
       sleep 1
     done
-    
-    echoBlue "\nThe server started in ${duration} seconds.\n"
+
+    echoBlue "\nThe server started in $(getElapsedTimeFromDuration ${duration}).\n"
     echo
     return ${rtnCd}
   )
@@ -263,8 +263,8 @@ function verifyBackup(){
     stopServer "${_databaseSpec}"
     cleanUp
 
-    local duration=$(($SECONDS - $startTime))
-    local elapsedTime="\n\nElapsed time: $(($duration/3600))h:$(($duration%3600/60))m:$(($duration%60))s - Status Code: ${rtnCd}"
+    local endTime=${SECONDS}
+    local elapsedTime="\n\nElapsed time: $(getElapsedTime ${startTime} ${endTime}) - Status Code: ${rtnCd}"
 
     if (( ${rtnCd} == 0 )); then
       logInfo "Successfully verified backup: ${_fileName}${verificationLog}${restoreLog}${elapsedTime}"
