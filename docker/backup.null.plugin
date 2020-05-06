@@ -4,6 +4,8 @@
 # - Dynamically loaded as a plug-in
 # - Refer to existing plug-ins for implementation examples.
 # -----------------------------------------------------------------------------------------------------------------
+export serverDataDirectory="/var/lib/pgsql/data"
+
 function onBackupDatabase(){
   (
     local OPTIND
@@ -100,10 +102,21 @@ function onStopServer(){
 
     # echo "Shutting down..."
     # Add your database specific shutdown operation(s) here.
+  )
+}
 
-    # Delete the database files and configuration
-    # echo -e "Cleaning up ...\n" >&2
+function onCleanup(){
+  (
     # Add your database specific cleanup operation(s) here.
+    echoRed "[backup.null.plugin] onCleanup - Not Implemented"
+
+    # if ! dirIsEmpty ${serverDataDirectory}; then
+    #   # Delete the database files and configuration
+    #   echo -e "Cleaning up ...\n" >&2
+    #   rm -rf ${serverDataDirectory}/*
+    # else
+    #   echo -e "Already clean ...\n" >&2
+    # fi
   )
 }
 

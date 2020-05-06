@@ -230,4 +230,16 @@ function getFileSize(){
     echo $(du -h "${_filename}" | awk '{print $1}')
   )
 }
+
+function dirIsEmpty(){
+  (
+    dir="${@}"
+    rtnVal=$(find ${dir} -maxdepth 0 -empty)
+    if [ -z "${rtnVal}" ] || [ "${dir}" != "${rtnVal}" ]; then
+      return 1
+    else
+      return 0
+    fi
+  )
+}
 # =================================================================================================================
