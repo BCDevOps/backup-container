@@ -289,14 +289,14 @@
     {
       "name": "NAME",
       "displayName": "Name",
-      "description": "The name assigned to all of the resources.  Use 'backup-postgres' for Postgres deployments or 'backup-mongo' for MongoDB deployments.",
+      "description": "The name assigned to all of the resources.  Use 'backup-{database name}' depending on your database provider",
       "required": true,
       "value": "backup-postgres"
     },
     {
       "name": "SOURCE_IMAGE_NAME",
       "displayName": "Source Image Name",
-      "description": "The name of the image to use for this resource.  Use 'backup-postgres' for Postgres deployments or 'backup-mongo' for MongoDB deployments.",
+      "description": "The name of the image to use for this resource.  Use 'backup-{database name}' depending on your database provider",
       "required": true,
       "value": "backup-postgres"
     },
@@ -527,7 +527,7 @@
     {
       "name": "VERIFICATION_VOLUME_MOUNT_PATH",
       "displayName": "Verification Volume Mount Path",
-      "description": "The path on which to mount the verification volume.  This is used by the database server to contain the database configuration and data files. For Mongo, please use /var/lib/mongodb/data",
+      "description": "The path on which to mount the verification volume.  This is used by the database server to contain the database configuration and data files. For Mongo, please use /var/lib/mongodb/data . For MSSQL, please use /var/opt/mssql/data",
       "required": true,
       "value": "/var/lib/pgsql/data"
     },

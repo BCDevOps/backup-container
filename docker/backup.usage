@@ -5,7 +5,7 @@
 function usage () {
   cat <<-EOF
 
-  Automated backup script for PostgreSQL and MongoDB databases.
+  Automated backup script for PostgreSQL, MongoDB and MSSQL databases.
 
   There are two modes of scheduling backups:
     - Cron Mode:

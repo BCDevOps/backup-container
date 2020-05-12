@@ -1,6 +1,6 @@
 ---
 title: Backup Container
-description: A simple containerized backup solution for backing up one or more postgres or mongo databases to a secondary location.
+description: A simple containerized backup solution for backing up one or more supported databases to a secondary location.
 author: WadeBarnes
 resourceType: Components
 personas: 
@@ -12,19 +12,25 @@ labels:
   - backups
   - postgres
   - mongo
+  - mssql
   - database
 ---
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
 
 # Backup Container
-[Backup Container](https://github.com/BCDevOps/backup-container) is a simple containerized backup solution for backing up one or more postgres or mongo databases to a secondary location.  _Code and documentation was originally pulled from the [HETS Project](https://github.com/bcgov/hets)_
+[Backup Container](https://github.com/BCDevOps/backup-container) is a simple containerized backup solution for backing up one or more supported databases to a secondary location.  _Code and documentation was originally pulled from the [HETS Project](https://github.com/bcgov/hets)_
+
+# Supported Databases
+MongoDB
+MSSQL - Currently MSSQL requires that the nfs db volume be shared with the database for backups to function correctly.
+PostgresSQL
 
 # Backup Container Options
-You can run the Backup Container for postgres and mongo databases separately or in a mixed environment.
+You can run the Backup Container for supported databases separately or in a mixed environment.
 For a mixed environment:
 1) You MUST use the recommended `backup.conf` configuration. 
 2) Within the `backup.conf`, you MUST specify the `DatabaseType` for each listed database.
-3) You will need to create two builds and two deployment configs.  One for a postgres backup container and the other for a mongo backup container.
+3) You will need to create two builds and two deployment configs.  One for each type of supported backup container in use.
 4) Mount the same `backup.conf` file (ConfigMap) to each deployed container.
 
 ## Backups in OpenShift
@@ -76,7 +82,7 @@ Together, the scripts and templates provided in the [openshift](./openshift) dir
 
 The following environment variables are defaults used by the `backup` app.
 
-**NOTE**: These environment variables MUST MATCH those used by the postgresql container(s) you are planning to backup.
+**NOTE**: These environment variables MUST MATCH those used by the database container(s) you are planning to backup.
 
 | Name | Default (if not set) | Purpose |
 | ---- | ------- | ------- |
@@ -282,6 +288,9 @@ Plugin Examples:
 
 - [backup.mongo.plugin](./docker/backup.mongo.plugin)
   - Mongo backup implementation.
+
+- [backup.mssql.plugin](./docker/backup.mssql.plugin)
+  - MSSQL backup implementation.
 
 - [backup.null.plugin](./docker/backup.null.plugin)
   - Sample/Template backup implementation that simply outputs log messages for the various operations.
