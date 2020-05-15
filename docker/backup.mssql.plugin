@@ -200,7 +200,7 @@ function onGetDbSize(){
     _username=$(getUsername ${_databaseSpec})
     _password=$(getPassword ${_databaseSpec})
 
-    size=$(sqlcmd -S ${_hostname} -U ${_username} -P ${_password} -d ${_database} -Q "SELECT CONVERT(VARCHAR,SUM(size)*8/1024)+' MB' AS 'size' FROM sys.master_files m INNER JOIN sys.databases d ON d.database_id = m.database_id where d.name = '${_database}' GROUP BY d.name")
+    size=$(sqlcmd -S ${_hostname} -U ${_username} -P ${_password} -d ${_database} -Q "SELECT CONVERT(VARCHAR,SUM(size)*8/1024)+' MB' AS 'size' FROM sys.master_files m INNER JOIN sys.databases d ON d.database_id = m.database_id WHERE d.name = '${_database}' AND m.type_desc = 'ROWS' GROUP BY d.name")
     rtnCd=${?}
 
     echo ${size}

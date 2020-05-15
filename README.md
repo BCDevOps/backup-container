@@ -30,7 +30,7 @@ You can run the Backup Container for supported databases separately or in a mixe
 For a mixed environment:
 1) You MUST use the recommended `backup.conf` configuration. 
 2) Within the `backup.conf`, you MUST specify the `DatabaseType` for each listed database.
-3) You will need to create two builds and two deployment configs.  One for each type of supported backup container in use.
+3) You will need to create a build and deployment config for each type of supported backup container in use.
 4) Mount the same `backup.conf` file (ConfigMap) to each deployed container.
 
 ## Backups in OpenShift
