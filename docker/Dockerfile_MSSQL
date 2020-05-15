@@ -1,4 +1,4 @@
-FROM mcr.microsoft.com/mssql/rhel/server:2019-CU1-rhel-7.6
+FROM mcr.microsoft.com/mssql/rhel/server:2019-CU1-rhel-8
 
 # Change timezone to PST for convenience
 ENV TZ=PST8PDT
