@@ -90,7 +90,7 @@ function onStopServer(){
     done
     shift $((OPTIND-1))
 
-    pkill -f sqlservr
+    sqlcmd -S ${_hostname} -U ${_username} -P ${_password} -Q "SHUTDOWN"
   )
 }
 
@@ -126,7 +126,7 @@ function onPingDbServer(){
     _username=$(getUsername ${_databaseSpec})
     _password=$(getPassword ${_databaseSpec})
 
-    if sqlcmd -S ${_hostname} -U ${_username} -P ${_password} -Q "SELECT 1" >/dev/null 2>&1; then
+    if sqlcmd -U sa -P ${_adminPassword} -Q "SELECT 1" >/dev/null 2>&1; then
       return 0
     else
       return 1

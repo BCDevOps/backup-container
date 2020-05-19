@@ -43,8 +43,8 @@ RUN mkdir -p /var/opt/mssql/data && \
 # Important - Reset to the base image's user account.
 USER 10001
 
-### user name recognition at runtime w/ an arbitrary uid - for OpenShift deployments
-ENTRYPOINT [ "/opt/mssql-tools/bin/uid_entrypoint" ]
-
 # Set the default CMD.
 CMD sh /backup.sh
+
+### user name recognition at runtime w/ an arbitrary uid - for OpenShift deployments
+ENTRYPOINT [ "/opt/mssql-tools/bin/uid_entrypoint" ]
