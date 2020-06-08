@@ -23,7 +23,7 @@ function onBackupDatabase(){
     _database=$(getDatabaseName ${_databaseSpec})
     _port=$(getPort ${_databaseSpec})
     _portArg=${_port:+",${_port}"}
-    _username=$(getLocalOrDBUsername ${_databaseSpec})
+    _username=$(getLocalOrDBUsername ${_databaseSpec} ${_hostname})
     _password=$(getPassword ${_databaseSpec})
     echoGreen "Backing up '${_hostname}${_port:+:${_port}}${_database:+/${_database}}' to '${_backupFile}' ..."
 
@@ -52,7 +52,7 @@ function onRestoreDatabase(){
     _database=$(getDatabaseName ${_databaseSpec})
     _port=$(getPort ${flags} ${_databaseSpec})
     _portArg=${_port:+",${_port}"}
-    _username=$(getLocalOrDBUsername ${_databaseSpec})
+    _username=$(getLocalOrDBUsername ${_databaseSpec} ${_hostname})
     _password=$(getPassword ${_databaseSpec})
     echo -e "Restoring '${_fileName}' to '${_hostname}${_port:+:${_port}}${_database:+/${_database}}' ...\n" >&2
 
@@ -93,7 +93,7 @@ function onStopServer(){
     _hostname=$(getHostname ${flags} ${_databaseSpec})
     _port=$(getPort ${flags} ${_databaseSpec})
     _portArg=${_port:+",${_port}"}
-    _username=$(getLocalOrDBUsername ${_databaseSpec})
+    _username=$(getLocalOrDBUsername ${_databaseSpec} ${_hostname})
     _password=$(getPassword ${_databaseSpec})
 
     sqlcmd -S ${_hostname}${_portArg} -U ${_username} -P ${_password} -Q "SHUTDOWN"
@@ -129,7 +129,7 @@ function onPingDbServer(){
     _database=$(getDatabaseName ${_databaseSpec})
     _port=$(getPort ${flags} ${_databaseSpec})
     _portArg=${_port:+",${_port}"}
-    _username=$(getLocalOrDBUsername ${_databaseSpec})
+    _username=$(getLocalOrDBUsername ${_databaseSpec} ${_hostname})
     _password=$(getPassword ${_databaseSpec})
 
     if sqlcmd -S ${_hostname}${_portArg} -U ${_username} -P ${_password} -Q "SELECT 1" >/dev/null 2>&1; then
@@ -152,12 +152,11 @@ function onVerifyBackup(){
     shift $((OPTIND-1))
 
     _databaseSpec=${1}
-
     _hostname=$(getHostname -l ${_databaseSpec})
     _database=$(getDatabaseName ${_databaseSpec})
     _port=$(getPort -l ${_databaseSpec})
     _portArg=${_port:+",${_port}"}
-    _username=$(getLocalOrDBUsername ${_databaseSpec})
+    _username=$(getLocalOrDBUsername ${_databaseSpec} ${_hostname})
     _password=$(getPassword ${_databaseSpec})
 
     tables=$(sqlcmd -S ${_hostname}${_portArg} -U ${_username} -P ${_password} -d ${_database} -Q "SELECT table_name FROM information_schema.tables WHERE TABLE_CATALOG = '${_database}' AND table_type='BASE TABLE';")
@@ -203,7 +202,7 @@ function onGetDbSize(){
     _database=$(getDatabaseName ${_databaseSpec})
     _port=$(getPort ${flags} ${_databaseSpec})
     _portArg=${_port:+",${_port}"}
-    _username=$(getLocalOrDBUsername ${_databaseSpec})
+    _username=$(getLocalOrDBUsername ${_databaseSpec} ${_hostname})
     _password=$(getPassword ${_databaseSpec})
 
     size=$(sqlcmd -S ${_hostname}${_portArg} -U ${_username} -P ${_password} -d ${_database} -Q "SELECT CONVERT(VARCHAR,SUM(size)*8/1024)+' MB' AS 'size' FROM sys.master_files m INNER JOIN sys.databases d ON d.database_id = m.database_id WHERE d.name = '${_database}' AND m.type_desc = 'ROWS' GROUP BY d.name")
@@ -218,7 +217,7 @@ function getLocalOrDBUsername(){
   (
     _databaseSpec=${1}
     _localhost="127.0.0.1"
-    _hostname=$(getHostname ${flags} ${_databaseSpec})
+    _hostname=${2}
     if [ "$_hostname" == "$_localhost" ]; then
       _username=sa
     else
