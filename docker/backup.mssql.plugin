@@ -1,0 +1,229 @@
+#!/bin/bash
+# =================================================================================================================
+# MSSQL Backup and Restore Functions:
+# - Dynamically loaded as a plug-in
+# -----------------------------------------------------------------------------------------------------------------
+export serverDataDirectory="/var/opt/mssql/data"
+
+function onBackupDatabase(){
+  (
+    local OPTIND
+    local unset flags
+    while getopts : FLAG; do
+      case $FLAG in
+        ? ) flags+="-${OPTARG} ";;
+      esac
+    done
+    shift $((OPTIND-1))
+
+    _databaseSpec=${1}
+    _backupFile=${2}
+
+    _hostname=$(getHostname ${_databaseSpec})
+    _database=$(getDatabaseName ${_databaseSpec})
+    _port=$(getPort ${_databaseSpec})
+    _portArg=${_port:+",${_port}"}
+    _username=$(getLocalOrDBUsername ${_databaseSpec} ${_hostname})
+    _password=$(getPassword ${_databaseSpec})
+    echoGreen "Backing up '${_hostname}${_port:+:${_port}}${_database:+/${_database}}' to '${_backupFile}' ..."
+
+    #TODO: add support for backing up transaction log as well.
+    sqlcmd -S ${_hostname}${_portArg} -U ${_username} -P ${_password} -Q "BACKUP DATABASE ${_database} TO DISK = N'${_fileName}' WITH NOFORMAT, NOINIT, SKIP, NOREWIND, NOUNLOAD, STATS = 10"
+    return ${?}
+  )
+}
+
+function onRestoreDatabase(){
+  (
+    local OPTIND
+    local unset flags
+    while getopts : FLAG; do
+      case $FLAG in
+        ? ) flags+="-${OPTARG} ";;
+      esac
+    done
+    shift $((OPTIND-1))
+
+    _databaseSpec=${1}
+    _fileName=${2}
+    _adminPassword=${3}
+
+    _hostname=$(getHostname ${flags} ${_databaseSpec})
+    _database=$(getDatabaseName ${_databaseSpec})
+    _port=$(getPort ${flags} ${_databaseSpec})
+    _portArg=${_port:+",${_port}"}
+    _username=$(getLocalOrDBUsername ${_databaseSpec} ${_hostname})
+    _password=$(getPassword ${_databaseSpec})
+    echo -e "Restoring '${_fileName}' to '${_hostname}${_port:+:${_port}}${_database:+/${_database}}' ...\n" >&2
+
+    #force single user mode on database to ensure restore works properly
+    sqlcmd -S ${_hostname}${_portArg} -U ${_username} -P ${_password} -Q "ALTER DATABASE ${_database} SET SINGLE_USER WITH ROLLBACK AFTER 30;RESTORE DATABASE ${_database} FROM DISK = N'${_fileName}' WITH FILE = 1, NOUNLOAD, REPLACE, STATS=5;ALTER DATABASE ${_database} SET MULTI_USER"
+    return ${?}
+  )
+}
+
+function onStartServer(){
+  (
+    local OPTIND
+    local unset flags
+    while getopts : FLAG; do
+      case $FLAG in
+        ? ) flags+="-${OPTARG} ";;
+      esac
+    done
+    shift $((OPTIND-1))
+
+    _databaseSpec=${1}
+
+    /opt/mssql/bin/sqlservr --accept-eula &
+  )
+}
+
+function onStopServer(){
+  (
+    local OPTIND
+    local unset flags
+    while getopts : FLAG; do
+      case $FLAG in
+        ? ) flags+="-${OPTARG} ";;
+      esac
+    done
+    shift $((OPTIND-1))
+
+    _hostname=$(getHostname ${flags} ${_databaseSpec})
+    _port=$(getPort ${flags} ${_databaseSpec})
+    _portArg=${_port:+",${_port}"}
+    _username=$(getLocalOrDBUsername ${_databaseSpec} ${_hostname})
+    _password=$(getPassword ${_databaseSpec})
+
+    sqlcmd -S ${_hostname}${_portArg} -U ${_username} -P ${_password} -Q "SHUTDOWN"
+  )
+}
+
+function onCleanup(){
+  (
+    if ! dirIsEmpty ${serverDataDirectory}; then
+      # Delete the database files and configuration
+      echo -e "Cleaning up ...\n" >&2
+      rm -rf ${serverDataDirectory}/*
+    else
+      echo -e "Already clean ...\n" >&2
+    fi
+  )
+}
+
+function onPingDbServer(){
+  (
+    local OPTIND
+    local unset flags
+    while getopts : FLAG; do
+      case $FLAG in
+        ? ) flags+="-${OPTARG} ";;
+      esac
+    done
+    shift $((OPTIND-1))
+
+    _databaseSpec=${1}
+
+    _hostname=$(getHostname ${flags} ${_databaseSpec})
+    _database=$(getDatabaseName ${_databaseSpec})
+    _port=$(getPort ${flags} ${_databaseSpec})
+    _portArg=${_port:+",${_port}"}
+    _username=$(getLocalOrDBUsername ${_databaseSpec} ${_hostname})
+    _password=$(getPassword ${_databaseSpec})
+
+    if sqlcmd -S ${_hostname}${_portArg} -U ${_username} -P ${_password} -Q "SELECT 1" >/dev/null 2>&1; then
+      return 0
+    else
+      return 1
+    fi
+  )
+}
+
+function onVerifyBackup(){
+  (
+    local OPTIND
+    local unset flags
+    while getopts : FLAG; do
+      case $FLAG in
+        ? ) flags+="-${OPTARG} ";;
+      esac
+    done
+    shift $((OPTIND-1))
+
+    _databaseSpec=${1}
+    _hostname=$(getHostname -l ${_databaseSpec})
+    _database=$(getDatabaseName ${_databaseSpec})
+    _port=$(getPort -l ${_databaseSpec})
+    _portArg=${_port:+",${_port}"}
+    _username=$(getLocalOrDBUsername ${_databaseSpec} ${_hostname})
+    _password=$(getPassword ${_databaseSpec})
+
+    tables=$(sqlcmd -S ${_hostname}${_portArg} -U ${_username} -P ${_password} -d ${_database} -Q "SELECT table_name FROM information_schema.tables WHERE TABLE_CATALOG = '${_database}' AND table_type='BASE TABLE';")
+    rtnCd=${?}
+
+    # Get the size of the restored database
+    if (( ${rtnCd} == 0 )); then
+      size=$(getDbSize -l "${_databaseSpec}")
+      rtnCd=${?}
+    fi
+
+    if (( ${rtnCd} == 0 )); then
+      numResults=$(echo "${tables}"| wc -l)
+      if [[ ! -z "${tables}" ]] && (( numResults >= 1 )); then
+        # All good
+        verificationLog="\nThe restored database contained ${numResults} tables, and is ${size} in size."
+      else
+        # Not so good
+        verificationLog="\nNo tables were found in the restored database ${_database}."
+        rtnCd="3"
+      fi
+    fi
+
+    echo ${verificationLog}
+    return ${rtnCd}
+  )
+}
+
+function onGetDbSize(){
+  (
+    local OPTIND
+    local unset flags
+    while getopts : FLAG; do
+      case $FLAG in
+        ? ) flags+="-${OPTARG} ";;
+      esac
+    done
+    shift $((OPTIND-1))
+
+    _databaseSpec=${1}
+
+    _hostname=$(getHostname ${flags} ${_databaseSpec})
+    _database=$(getDatabaseName ${_databaseSpec})
+    _port=$(getPort ${flags} ${_databaseSpec})
+    _portArg=${_port:+",${_port}"}
+    _username=$(getLocalOrDBUsername ${_databaseSpec} ${_hostname})
+    _password=$(getPassword ${_databaseSpec})
+
+    size=$(sqlcmd -S ${_hostname}${_portArg} -U ${_username} -P ${_password} -d ${_database} -Q "SELECT CONVERT(VARCHAR,SUM(size)*8/1024)+' MB' AS 'size' FROM sys.master_files m INNER JOIN sys.databases d ON d.database_id = m.database_id WHERE d.name = '${_database}' AND m.type_desc = 'ROWS' GROUP BY d.name")
+    rtnCd=${?}
+
+    echo ${size}
+    return ${rtnCd}
+  )
+}
+
+function getLocalOrDBUsername(){
+  (
+    _databaseSpec=${1}
+    _localhost="127.0.0.1"
+    _hostname=${2}
+    if [ "$_hostname" == "$_localhost" ]; then
+      _username=sa
+    else
+      _username=$(getUsername ${_databaseSpec})
+    fi
+    echo ${_username}
+  )
+}
+# =================================================================================================================
