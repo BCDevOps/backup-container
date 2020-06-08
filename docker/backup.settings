@@ -48,6 +48,7 @@ export PRUNE="prune"
 export UNKNOWN_DB="null"
 export MONGO_DB="mongo"
 export POSTGRE_DB="postgres"
+export MSSQL_DB="mssql"
 export CONTAINER_TYPE="$(getContainerType)"
 
 # Other:

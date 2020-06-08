@@ -22,6 +22,16 @@ function isMongo(){
   )
 }
 
+function isMsSql(){
+  (
+    if isInstalled "sqlcmd"; then
+      return 0
+    else
+      return 1
+    fi
+  )
+}
+
 function getContainerType(){
   (
     local _containerType=${UNKNOWN_DB}
@@ -31,6 +41,8 @@ function getContainerType(){
       _containerType=${POSTGRE_DB}
     elif isMongo; then
       _containerType=${MONGO_DB}
+    elif isMsSql; then
+      _containerType=${MSSQL_DB}
     else
       _containerType=${UNKNOWN_DB}
       _rtnCd=1
