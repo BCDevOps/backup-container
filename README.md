@@ -363,6 +363,78 @@ Following are more detailed steps to perform a restore of a backup.
 
 Done!
 
+<details><summary>Example deployment</summary>
+
+## Simple example
+
+TL;DR for a simple backup of three PostgreSQL databases in the same project namespace:
+
+1. Decide on amount of backup storage required (5Gi is currently the maxium)
+1. Provision the nfs-backup PVC, following the [docs](https://github.com/BCDevOps/provision-nfs-apb/blob/master/docs/usage-gui.md)
+
+    This provisioning may take several minutes to an hour, and if using the GUI, will result in a PVC with a name similar to `bk-b7cg3n-deploy-v9k7xgyvwdxm`, where `b7cg3n` is your project namespace, and the last portion is random-generated.
+1. `git clone https://github.com/BCDevOps/backup-container.git && cd backup-container` (`git switch -c` to your own branch)
+1. Determine the OpenShift namespace for the image (e.g. `b7cg3n-tools`), the app name (e.g. `nrmsurvey-feedback-bkup`), and the image tag (e.g. `v2`), and build the image in your `-tools` namespace.  For example:
+
+```bash
+  oc -n b7cg3n-tools process -f ./openshift/templates/backup/backup-build.json -p NAME=nrmsurveys-bkup OUTPUT_IMAGE_TAG=v1 \
+  | oc -n b7cg3n-tools create -f -`
+```
+1. Configure ./config/backup.conf (listing your database(s), and setting your cron schedule).
+
+    For example:
+
+```bash
+  postgres=eaofider-postgresql:5432/eaofider
+  postgres=pawslimesurvey-postgresql:5432/pawslimesurvey
+  postgres=ppmlimesurvey-postgresql:5432/ppmlimesurvey
+
+  0 1 * * * default ./backup.sh -s
+  0 4 * * * default ./backup.sh -s -v all
+```
+1. Configure references to your DB credentials in [backup-deploy.json](./openshift/templates/backup/backup-deploy.json), replacing the boilerplate DATABASE_USER and DATABASE_PASSWORD; for example:
+
+    ```yaml
+      "name": "EAOFIDER_POSTGRESQL_USER",
+      "valueFrom": {
+        "secretKeyRef": {
+          "name": "eaofider-postgresql",
+          "key": "${DATABASE_USER_KEY_NAME}"
+        }
+      }
+    },
+    {
+      "name": "EAOFIDER_POSTGRESQL_PASSWORD",
+      "valueFrom": {
+        "secretKeyRef": {
+          "name": "eaofider-postgresql",
+          "key": "${DATABASE_PASSWORD_KEY_NAME}"
+        }
+      }
+    },
+    ```
+
+NOTE underscores should be used in the environment variable names.
+1. Customize your [overrides file](./openshift/backup-deploy.overrides.param)
+1. Deploy the app; here the example namespace is `b7cg3n-deploy` and the app name is `nrmsurveys-bkup`:
+
+    ```bash
+    oc -n b7cg3n-deploy create configmap backup-conf --from-file=./config/backup.conf
+    oc -n b7cg3n-deploy label configmap backup-conf app=nrmsurveys-bkup
+
+    oc -n b7cg3n-deploy process -f ./openshift/templates/backup/backup-deploy.json -p NAME=nrmsurveys-bkup \
+      -p IMAGE_NAMESPACE=b7cg3n-tools \
+      -p SOURCE_IMAGE_NAME=nrmsurveys-bkup \
+      -p TAG_NAME=v1 \
+      -p BACKUP_VOLUME_NAME=bk-b7cg3n-deploy-yxq6rf8z23pu -p BACKUP_VOLUME_SIZE=5Gi \
+      -p VERIFICATION_VOLUME_SIZE=10Gi \
+      -p VERIFICATION_VOLUME_CLASS=netapp-block-standard \
+      -p ENVIRONMENT_FRIENDLY_NAME='NRM Survey DB Backups' | oc -n b7cg3n-deploy create -f -
+    ```
+
+NOTE the `BACKUP_VOLUME_NAME=bk-b7cg3n-deploy-yxq6rf8z23pu` is from Step 2 above; when using the GUI there is no option to set the PVC name.
+</details>
+
 ## Tip and Tricks
 
 Please refer to the [Tips and Tricks](./docs/TipsAndTricks.md) document for solutions to known issues.
