@@ -17,10 +17,9 @@ labels:
 ---
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
 
-## Table of Contents 
+*Table of Contents* 
 <!-- TOC depthTo:2 -->
 
-  - [Table of Contents](#table-of-contents)
 - [Backup Container](#backup-container)
   - [Supported Databases](#supported-databases)
 - [Backup Container Options](#backup-container-options)
