@@ -1,0 +1,208 @@
+#!/bin/bash
+# =================================================================================================================
+# Null Backup and Restore Functions:
+# - Dynamically loaded as a plug-in
+# - Refer to existing plug-ins for implementation examples.
+# -----------------------------------------------------------------------------------------------------------------
+export serverDataDirectory="/var/lib/pgsql/data"
+
+function onBackupDatabase(){
+  (
+    local OPTIND
+    local unset flags
+    while getopts : FLAG; do
+      case $FLAG in
+        ? ) flags+="-${OPTARG} ";;
+      esac
+    done
+    shift $((OPTIND-1))
+
+    _databaseSpec=${1}
+    _backupFile=${2}
+
+    _hostname=$(getHostname ${_databaseSpec})
+    _database=$(getDatabaseName ${_databaseSpec})
+    _port=$(getPort ${_databaseSpec})
+    _portArg=${_port:+"--port ${_port}"}
+    _username=$(getUsername ${_databaseSpec})
+    _password=$(getPassword ${_databaseSpec})
+    echoGreen "Backing up '${_hostname}${_port:+:${_port}}${_database:+/${_database}}' to '${_backupFile}' ..."
+
+    echoRed "[backup.null.plugin] onBackupDatabase - Not Implemented"
+    # echoGreen "Starting database backup ..."
+    # Add your database specific backup operation(s) here.
+    return ${?}
+  )
+}
+
+function onRestoreDatabase(){
+  (
+    local OPTIND
+    local unset flags
+    while getopts : FLAG; do
+      case $FLAG in
+        ? ) flags+="-${OPTARG} ";;
+      esac
+    done
+    shift $((OPTIND-1))
+
+    _databaseSpec=${1}
+    _fileName=${2}
+    _adminPassword=${3}
+
+    _hostname=$(getHostname ${flags} ${_databaseSpec})
+    _database=$(getDatabaseName ${_databaseSpec})
+    _port=$(getPort ${flags} ${_databaseSpec})
+    _portArg=${_port:+"--port ${_port}"}
+    _username=$(getUsername ${_databaseSpec})
+    _password=$(getPassword ${_databaseSpec})
+    echo -e "Restoring '${_fileName}' to '${_hostname}${_port:+:${_port}}${_database:+/${_database}}' ...\n" >&2
+
+    echoRed "[backup.null.plugin] onRestoreDatabase - Not Implemented"
+    # Add your database specific restore operation(s) here.
+    return ${?}
+  )
+}
+
+function onStartServer(){
+  (
+    local OPTIND
+    local unset flags
+    while getopts : FLAG; do
+      case $FLAG in
+        ? ) flags+="-${OPTARG} ";;
+      esac
+    done
+    shift $((OPTIND-1))
+
+    _databaseSpec=${1}
+
+    echoRed "[backup.null.plugin] onStartServer - Not Implemented"
+    # Add your NON-BLOCKING database specific startup operation(s) here.
+    # - Start the database server as a background job.
+  )
+}
+
+function onStopServer(){
+  (
+    local OPTIND
+    local unset flags
+    while getopts : FLAG; do
+      case $FLAG in
+        ? ) flags+="-${OPTARG} ";;
+      esac
+    done
+    shift $((OPTIND-1))
+
+    _databaseSpec=${1}
+    _username=$(getUsername ${_databaseSpec})
+    _password=$(getPassword ${_databaseSpec})
+
+    echoRed "[backup.null.plugin] onStopServer - Not Implemented"
+
+    # echo "Shutting down..."
+    # Add your database specific shutdown operation(s) here.
+  )
+}
+
+function onCleanup(){
+  (
+    # Add your database specific cleanup operation(s) here.
+    echoRed "[backup.null.plugin] onCleanup - Not Implemented"
+
+    # if ! dirIsEmpty ${serverDataDirectory}; then
+    #   # Delete the database files and configuration
+    #   echo -e "Cleaning up ...\n" >&2
+    #   rm -rf ${serverDataDirectory}/*
+    # else
+    #   echo -e "Already clean ...\n" >&2
+    # fi
+  )
+}
+
+function onPingDbServer(){
+  (
+    local OPTIND
+    local unset flags
+    while getopts : FLAG; do
+      case $FLAG in
+        ? ) flags+="-${OPTARG} ";;
+      esac
+    done
+    shift $((OPTIND-1))
+
+    _databaseSpec=${1}
+
+    _hostname=$(getHostname ${flags} ${_databaseSpec})
+    _database=$(getDatabaseName ${_databaseSpec})
+    _port=$(getPort ${flags} ${_databaseSpec})
+    _portArg=${_port:+"--port ${_port}"}
+    _username=$(getUsername ${_databaseSpec})
+    _password=$(getPassword ${_databaseSpec})
+
+    echoRed "[backup.null.plugin] onPingDbServer - Not Implemented"
+    # Add your database specific ping operation(s) here.
+    # if <ping you database here>; then
+    #   return 0
+    # else
+    #   return 1
+    # fi
+  )
+}
+
+function onVerifyBackup(){
+  (
+    local OPTIND
+    local unset flags
+    while getopts : FLAG; do
+      case $FLAG in
+        ? ) flags+="-${OPTARG} ";;
+      esac
+    done
+    shift $((OPTIND-1))
+
+    _databaseSpec=${1}
+
+    _hostname=$(getHostname -l ${_databaseSpec})
+    _database=$(getDatabaseName ${_databaseSpec})
+    _port=$(getPort -l ${_databaseSpec})
+    _portArg=${_port:+"--port ${_port}"}
+    _username=$(getUsername ${_databaseSpec})
+    _password=$(getPassword ${_databaseSpec})
+
+    echoRed "[backup.null.plugin] onVerifyBackup - Not Implemented"
+    # Add your database specific verification operation(s) here.
+
+    # echo ${verificationLog}
+    # return ${rtnCd}
+  )
+}
+
+function onGetDbSize(){
+  (
+    local OPTIND
+    local unset flags
+    while getopts : FLAG; do
+      case $FLAG in
+        ? ) flags+="-${OPTARG} ";;
+      esac
+    done
+    shift $((OPTIND-1))
+
+    _databaseSpec=${1}
+
+    _hostname=$(getHostname ${flags} ${_databaseSpec})
+    _database=$(getDatabaseName ${_databaseSpec})
+    _port=$(getPort ${flags} ${_databaseSpec})
+    _portArg=${_port:+"--port ${_port}"}
+    _username=$(getUsername ${_databaseSpec})
+    _password=$(getPassword ${_databaseSpec})
+    
+    echoRed "[backup.null.plugin] onGetDbSize - Not Implemented"
+    # Add your database specific get size operation(s) here.
+
+    # echo ${size}
+    # return ${rtnCd}
+  )
+}
+# =================================================================================================================

@@ -1,0 +1,257 @@
+#!/bin/bash
+# =================================================================================================================
+# Postgres Backup and Restore Functions:
+# - Dynamically loaded as a plug-in
+# -----------------------------------------------------------------------------------------------------------------
+export serverDataDirectory="/var/lib/pgsql/data"
+
+function onBackupDatabase(){
+  (
+    local OPTIND
+    local unset flags
+    while getopts : FLAG; do
+      case $FLAG in
+        ? ) flags+="-${OPTARG} ";;
+      esac
+    done
+    shift $((OPTIND-1))
+
+    _databaseSpec=${1}
+    _backupFile=${2}
+
+    _hostname=$(getHostname ${_databaseSpec})
+    _database=$(getDatabaseName ${_databaseSpec})
+    _port=$(getPort ${_databaseSpec})
+    _portArg=${_port:+"-p ${_port}"}
+    _username=$(getUsername ${_databaseSpec})
+    _password=$(getPassword ${_databaseSpec})
+    echoGreen "Backing up '${_hostname}${_port:+:${_port}}${_database:+/${_database}}' to '${_backupFile}' ..."
+
+    PGPASSWORD=${_password} pg_dump -Fp -h "${_hostname}" ${_portArg} -U "${_username}" "${_database}" | gzip > ${_backupFile}
+    return ${PIPESTATUS[0]}
+  )
+}
+
+function onRestoreDatabase(){
+  (
+    local OPTIND
+    local unset quiet
+    local unset flags
+    while getopts :q FLAG; do
+      case $FLAG in
+        q )
+          quiet=1
+          flags+="-${FLAG} "
+          ;;
+        ? ) flags+="-${OPTARG} ";;
+      esac
+    done
+    shift $((OPTIND-1))
+
+    _databaseSpec=${1}
+    _fileName=${2}
+    _adminPassword=${3}
+
+    _hostname=$(getHostname ${flags} ${_databaseSpec})
+    _database=$(getDatabaseName ${_databaseSpec})
+    _port=$(getPort ${flags} ${_databaseSpec})
+    _portArg=${_port:+"-p ${_port}"}
+    _username=$(getUsername ${_databaseSpec})
+    _password=$(getPassword ${_databaseSpec})
+    echo -e "Restoring '${_fileName}' to '${_hostname}${_port:+:${_port}}${_database:+/${_database}}' ...\n" >&2
+
+    export PGPASSWORD=${_adminPassword}
+    _rtnCd=0
+
+    # Drop
+    if (( ${_rtnCd} == 0 )); then
+      psql -h "${_hostname}" ${_portArg} -ac "DROP DATABASE \"${_database}\";"
+      _rtnCd=${?}
+      echo
+    fi
+
+    # Create
+    if (( ${_rtnCd} == 0 )); then
+      psql -h "${_hostname}" ${_portArg} -ac "CREATE DATABASE \"${_database}\";"
+      _rtnCd=${?}
+      echo
+    fi
+
+    # Grant User Access
+    if (( ${_rtnCd} == 0 )); then
+      psql -h "${_hostname}" ${_portArg} -ac "GRANT ALL ON DATABASE \"${_database}\" TO \"${_username}\";"
+      _rtnCd=${?}
+      echo
+    fi
+
+    # Restore
+    if (( ${_rtnCd} == 0 )); then
+      gunzip -c "${_fileName}" | psql -v ON_ERROR_STOP=1 -x -h "${_hostname}" ${_portArg} -d "${_database}"
+      # Get the status code from psql specifically.  ${?} would only provide the status of the last command, psql in this case.
+      _rtnCd=${PIPESTATUS[1]}
+    fi
+
+    # List tables
+    if [ -z "${quiet}" ] && (( ${_rtnCd} == 0 )); then
+      psql -h "${_hostname}" ${_portArg} -d "${_database}" -c "\d"
+      _rtnCd=${?}
+    fi
+
+    return ${_rtnCd}
+  )
+}
+
+function onStartServer(){
+  (
+    local OPTIND
+    local unset flags
+    while getopts : FLAG; do
+      case $FLAG in
+        ? ) flags+="-${OPTARG} ";;
+      esac
+    done
+    shift $((OPTIND-1))
+
+    _databaseSpec=${1}
+
+    # Start a local PostgreSql instance
+    POSTGRESQL_DATABASE=$(getDatabaseName "${_databaseSpec}") \
+    POSTGRESQL_USER=$(getUsername "${_databaseSpec}") \
+    POSTGRESQL_PASSWORD=$(getPassword "${_databaseSpec}") \
+    run-postgresql >/dev/null 2>&1 &
+  )
+}
+
+function onStopServer(){
+  (
+    local OPTIND
+    local unset flags
+    while getopts : FLAG; do
+      case $FLAG in
+        ? ) flags+="-${OPTARG} ";;
+      esac
+    done
+    shift $((OPTIND-1))
+
+    _databaseSpec=${1}
+
+    # Stop the local PostgreSql instance
+    pg_ctl stop -D ${serverDataDirectory}/userdata
+  )
+}
+
+function onCleanup(){
+  (
+    if ! dirIsEmpty ${serverDataDirectory}; then
+      # Delete the database files and configuration
+      echo -e "Cleaning up ...\n" >&2
+      rm -rf ${serverDataDirectory}/*
+    else
+      echo -e "Already clean ...\n" >&2
+    fi
+  )
+}
+
+function onPingDbServer(){
+  (
+    local OPTIND
+    local unset flags
+    while getopts : FLAG; do
+      case $FLAG in
+        ? ) flags+="-${OPTARG} ";;
+      esac
+    done
+    shift $((OPTIND-1))
+
+    _databaseSpec=${1}
+
+    _hostname=$(getHostname ${flags} ${_databaseSpec})
+    _database=$(getDatabaseName ${_databaseSpec})
+    _port=$(getPort ${flags} ${_databaseSpec})
+    _portArg=${_port:+"-p ${_port}"}
+    _username=$(getUsername ${_databaseSpec})
+    _password=$(getPassword ${_databaseSpec})
+
+    if PGPASSWORD=${_password} psql -h ${_hostname} ${_portArg} -U ${_username} -q -d ${_database} -c 'SELECT 1' >/dev/null 2>&1; then
+      return 0
+    else
+      return 1
+    fi
+  )
+}
+
+function onVerifyBackup(){
+  (
+    local OPTIND
+    local unset flags
+    while getopts : FLAG; do
+      case $FLAG in
+        ? ) flags+="-${OPTARG} ";;
+      esac
+    done
+    shift $((OPTIND-1))
+
+    _databaseSpec=${1}
+
+    _hostname=$(getHostname -l ${_databaseSpec})
+    _database=$(getDatabaseName ${_databaseSpec})
+    _port=$(getPort -l ${_databaseSpec})
+    _portArg=${_port:+"-p ${_port}"}
+    _username=$(getUsername ${_databaseSpec})
+    _password=$(getPassword ${_databaseSpec})
+
+    debugMsg "backup.postgres.plugin - onVerifyBackup"
+    tables=$(psql -h "${_hostname}" ${_portArg} -d "${_database}" -t -c "SELECT table_name FROM information_schema.tables WHERE table_schema='${TABLE_SCHEMA}' AND table_type='BASE TABLE';")
+    rtnCd=${?}
+
+    # Get the size of the restored database
+    if (( ${rtnCd} == 0 )); then
+      size=$(getDbSize -l "${_databaseSpec}")
+      rtnCd=${?}
+    fi
+
+    if (( ${rtnCd} == 0 )); then
+      numResults=$(echo "${tables}"| wc -l)
+      if [[ ! -z "${tables}" ]] && (( numResults >= 1 )); then
+        # All good
+        verificationLog="\nThe restored database contained ${numResults} tables, and is ${size} in size."
+      else
+        # Not so good
+        verificationLog="\nNo tables were found in the restored database."
+        rtnCd="3"
+      fi
+    fi
+
+    echo ${verificationLog}
+    return ${rtnCd}
+  )
+}
+
+function onGetDbSize(){
+  (
+    local OPTIND
+    local unset flags
+    while getopts : FLAG; do
+      case $FLAG in
+        ? ) flags+="-${OPTARG} ";;
+      esac
+    done
+    shift $((OPTIND-1))
+
+    _databaseSpec=${1}
+
+    _hostname=$(getHostname ${flags} ${_databaseSpec})
+    _database=$(getDatabaseName ${_databaseSpec})
+    _port=$(getPort ${flags} ${_databaseSpec})
+    _portArg=${_port:+"-p ${_port}"}
+    _username=$(getUsername ${_databaseSpec})
+    _password=$(getPassword ${_databaseSpec})
+
+    size=$(PGPASSWORD=${_password} psql -h "${_hostname}" ${_portArg} -U "${_username}" -d "${_database}" -t -c "SELECT pg_size_pretty(pg_database_size(current_database())) as size;")
+    rtnCd=${?}
+
+    echo ${size}
+    return ${rtnCd}
+  )
+}
+# =================================================================================================================

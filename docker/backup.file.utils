@@ -1,0 +1,245 @@
+#!/bin/bash
+# =================================================================================================================
+# File Utility Functions
+# -----------------------------------------------------------------------------------------------------------------
+function makeDirectory()
+{
+  (
+    # Creates directories with permissions reclusively.
+    # ${1} is the directory to be created
+    # Inspired by https://unix.stackexchange.com/questions/49263/recursive-mkdir
+    directory="${1}"
+    test $# -eq 1 || { echo "Function 'makeDirectory' can create only one directory (with it's parent directories)."; exit 1; }
+    test -d "${directory}" && return 0
+    test -d "$(dirname "${directory}")" || { makeDirectory "$(dirname "${directory}")" || return 1; }
+    test -d "${directory}" || { mkdir --mode=g+w "${directory}" || return 1; }
+    return 0
+  )
+}
+
+function finalizeBackup(){
+  (
+    _filename=${1}
+    _inProgressFilename="${_filename}${IN_PROGRESS_BACKUP_FILE_EXTENSION}"
+    _finalFilename="${_filename}${BACKUP_FILE_EXTENSION}"
+
+    if [ -f ${_inProgressFilename} ]; then
+      mv "${_inProgressFilename}" "${_finalFilename}"
+      echo "${_finalFilename}"
+    fi
+  )
+}
+
+function listExistingBackups(){
+  (
+    local _backupDir=${1:-${ROOT_BACKUP_DIR}}
+    local database
+    local databases=$(readConf -q)
+    local output="\nDatabase,Current Size"
+
+    for database in ${databases}; do
+      if isForContainerType ${database}; then
+        output+="\n${database},$(getDbSize "${database}")"
+      fi
+    done
+
+    echoMagenta "\n================================================================================================================================"
+    echoMagenta "Current Backups:"
+    echoMagenta "\n$(echo -ne "${output}" | column -t -s ,)"
+    echoMagenta "\n$(df -h ${_backupDir})"
+    echoMagenta "--------------------------------------------------------------------------------------------------------------------------------"
+    du -ah --time ${_backupDir}
+    echoMagenta "================================================================================================================================\n"
+  )
+}
+
+function getDirectoryName(){
+  (
+    local path=${1}
+    path="${path%"${path##*[!/]}"}"
+    local name="${path##*/}"
+    echo "${name}"
+  )
+}
+
+function getBackupTypeFromPath(){
+  (
+    local path=${1}
+    path="${path%"${path##*[!/]}"}"
+    path="$(dirname "${path}")"
+    local backupType=$(getDirectoryName "${path}")
+    echo "${backupType}"
+  )
+}
+
+function prune(){
+  (
+    local database
+    local backupDirs
+    local backupDir
+    local backupType
+    local backupTypes
+    local pruneBackup
+    unset backupTypes
+    unset backupDirs
+    unset pruneBackup
+
+    local databases=$(readConf -q)
+    if rollingStrategy; then
+      backupTypes="daily weekly monthly"
+      for backupType in ${backupTypes}; do
+        backupDirs="${backupDirs} $(createBackupFolder -g ${backupType})"
+      done
+    else
+      backupDirs=$(createBackupFolder -g)
+    fi
+
+    if [ ! -z "${_fromBackup}" ]; then
+      pruneBackup="$(findBackup "" "${_fromBackup}")"
+      while [ ! -z "${pruneBackup}" ]; do
+        echoYellow "\nAbout to delete backup file: ${pruneBackup}"
+        waitForAnyKey
+        rm -rfvd "${pruneBackup}"
+
+        # Quietly delete any empty directories that are left behind ...
+        find ${ROOT_BACKUP_DIR} -type d -empty -delete > /dev/null 2>&1
+        pruneBackup="$(findBackup "" "${_fromBackup}")"
+      done
+    else
+      for backupDir in ${backupDirs}; do
+        for database in ${databases}; do
+          unset backupType
+          if rollingStrategy; then
+            backupType=$(getBackupTypeFromPath "${backupDir}")
+          fi
+          pruneBackups "${backupDir}" "${database}" "${backupType}"
+        done
+      done
+    fi
+  )
+}
+
+function pruneBackups(){
+  (
+    _backupDir=${1}
+    _databaseSpec=${2}
+    _backupType=${3:-''}
+    _pruneDir="$(dirname "${_backupDir}")"
+    _numBackupsToRetain=$(getNumBackupsToRetain "${_backupType}")
+    _coreFilename=$(generateCoreFilename ${_databaseSpec})
+
+    if [ -d ${_pruneDir} ]; then
+      let _index=${_numBackupsToRetain}+1
+      _filesToPrune=$(find ${_pruneDir}* -type f -printf '%T@ %p\n' | grep ${_coreFilename} | sort -r | tail -n +${_index} | sed 's~^.* \(.*$\)~\1~')
+
+      if [ ! -z "${_filesToPrune}" ]; then
+        echoYellow "\nPruning ${_coreFilename} backups from ${_pruneDir} ..."
+        echo "${_filesToPrune}" | xargs rm -rfvd
+
+        # Quietly delete any empty directories that are left behind ...
+        find ${ROOT_BACKUP_DIR} -type d -empty -delete > /dev/null 2>&1
+      fi
+    fi
+  )
+}
+
+function touchBackupFile() {
+  (
+    # For safety, make absolutely certain the directory and file exist.
+    # The pruning process removes empty directories, so if there is an error
+    # during a backup the backup directory could be deleted.
+    _backupFile=${1}
+    _backupDir="${_backupFile%/*}"
+    makeDirectory ${_backupDir} && touch ${_backupFile}
+  )
+}
+
+function findBackup(){
+  (
+    _databaseSpec=${1}
+    _fileName=${2}
+
+    # If no backup file was specified, find the most recent for the database.
+    # Otherwise treat the value provided as a filter to find the most recent backup file matching the filter.
+    if [ -z "${_fileName}" ]; then
+      _coreFilename=$(generateCoreFilename ${_databaseSpec})
+      _fileName=$(find ${ROOT_BACKUP_DIR}* -type f -printf '%T@ %p\n' | grep ${_coreFilename} | sort | tail -n 1 | sed 's~^.* \(.*$\)~\1~')
+    else
+      _fileName=$(find ${ROOT_BACKUP_DIR}* -type f -printf '%T@ %p\n' | grep ${_fileName} | sort | tail -n 1 | sed 's~^.* \(.*$\)~\1~')
+    fi
+
+    echo "${_fileName}"
+  )
+}
+
+function createBackupFolder(){
+  (
+    local OPTIND
+    local genOnly
+    unset genOnly
+    while getopts g FLAG; do
+      case $FLAG in
+        g ) genOnly=1 ;;
+      esac
+    done
+    shift $((OPTIND-1))
+
+    _backupTypeDir="${1:-$(getBackupType)}"
+    if [ ! -z "${_backupTypeDir}" ]; then
+      _backupTypeDir=${_backupTypeDir}/
+    fi
+
+    _backupDir="${ROOT_BACKUP_DIR}${_backupTypeDir}`date +\%Y-\%m-\%d`/"
+
+    # Don't actually create the folder if we're just generating it for printing the configuation.
+    if [ -z "${genOnly}" ]; then
+      echo "Making backup directory ${_backupDir} ..." >&2
+      if ! makeDirectory ${_backupDir}; then
+        logError "Failed to create backup directory ${_backupDir}."
+        exit 1;
+      fi;
+    fi
+
+    echo ${_backupDir}
+  )
+}
+
+function generateFilename(){
+  (
+    _backupDir=${1}
+    _databaseSpec=${2}
+    _coreFilename=$(generateCoreFilename ${_databaseSpec})
+    _filename="${_backupDir}${_coreFilename}_`date +\%Y-\%m-\%d_%H-%M-%S`"
+    echo ${_filename}
+  )
+}
+
+function generateCoreFilename(){
+  (
+    _databaseSpec=${1}
+    _hostname=$(getHostname ${_databaseSpec})
+    _database=$(getDatabaseName ${_databaseSpec})
+    _coreFilename="${_hostname}-${_database}"
+    echo ${_coreFilename}
+  )
+}
+
+function getFileSize(){
+  (
+    _filename=${1}
+    echo $(du -h "${_filename}" | awk '{print $1}')
+  )
+}
+
+function dirIsEmpty(){
+  (
+    dir="${@}"
+    rtnVal=$(find ${dir} -maxdepth 0 -empty)
+    if [ -z "${rtnVal}" ] || [ "${dir}" != "${rtnVal}" ]; then
+      return 1
+    else
+      return 0
+    fi
+  )
+}
+# =================================================================================================================

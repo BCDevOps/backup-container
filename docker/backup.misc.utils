@@ -1,0 +1,47 @@
+#!/bin/bash
+# =================================================================================================================
+# General Utility Functions:
+# -----------------------------------------------------------------------------------------------------------------
+function waitForAnyKey() {
+  read -n1 -s -r -p $'\e[33mWould you like to continue?\e[0m  Press Ctrl-C to exit, or any other key to continue ...' key
+  echo -e \\n
+
+  # If we get here the user did NOT press Ctrl-C ...
+  return 0
+}
+
+function formatList(){
+  (
+    filters='s~^~  - ~;'
+    _value=$(echo "${1}" | sed "${filters}")
+    echo "${_value}"
+  )
+}
+
+function isInstalled(){
+  rtnVal=$(type "$1" >/dev/null 2>&1)
+  rtnCd=$?
+  if [ ${rtnCd} -ne 0 ]; then
+    return 1
+  else
+    return 0
+  fi
+}
+
+function getElapsedTime(){
+  (
+    local startTime=${1}
+    local endTime=${2}
+    local duration=$(($endTime - $startTime))
+    echo $(getElapsedTimeFromDuration "${duration}")
+  )
+}
+
+function getElapsedTimeFromDuration(){
+  (
+    local duration=${1}
+    local elapsedTime="$(($duration/3600))h:$(($duration%3600/60))m:$(($duration%60))s"
+    echo ${elapsedTime}
+  )
+}
+# ======================================================================================

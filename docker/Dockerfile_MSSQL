@@ -1,5 +1,4 @@
-# This image provides a postgres installation from which to run backups 
-FROM registry.access.redhat.com/rhscl/postgresql-10-rhel7
+FROM mcr.microsoft.com/mssql/rhel/server:2019-CU1-rhel-8
 
 # Change timezone to PST for convenience
 ENV TZ=PST8PDT
@@ -34,9 +33,18 @@ RUN chmod ug+x /usr/bin/go-crond
 # --------------------------------------------------------------------------------------------------------
 RUN echo $TZ > /etc/timezone
 # ========================================================================================================
+COPY uid_entrypoint /opt/mssql-tools/bin/
+RUN chmod -R a+rwx /opt/mssql-tools/bin/uid_entrypoint
+
+ENV PATH=${PATH}:/opt/mssql/bin:/opt/mssql-tools/bin
+RUN mkdir -p /var/opt/mssql/data && \
+    chmod -R g=u /var/opt/mssql /etc/passwd
 
 # Important - Reset to the base image's user account.
-USER 26
+USER 10001
 
 # Set the default CMD.
 CMD sh /backup.sh
+
+### user name recognition at runtime w/ an arbitrary uid - for OpenShift deployments
+ENTRYPOINT [ "/opt/mssql-tools/bin/uid_entrypoint" ]

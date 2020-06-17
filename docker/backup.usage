@@ -1,0 +1,133 @@
+#!/bin/bash
+# =================================================================================================================
+# Usage:
+# -----------------------------------------------------------------------------------------------------------------
+function usage () {
+  cat <<-EOF
+
+  Automated backup script for PostgreSQL, MongoDB and MSSQL databases.
+
+  There are two modes of scheduling backups:
+    - Cron Mode:
+      - Allows one or more schedules to be defined as cron tabs in ${BACKUP_CONF}.
+      - If cron (go-crond) is installed (which is handled by the Docker file) and at least one cron tab is defined, the script will startup in Cron Mode,
+        otherwise it will default to Legacy Mode.
+      - Refer to ${BACKUP_CONF} for additional details and exples of using cron scheduling.
+
+    - Legacy Mode:
+      - Uses a simple sleep command to set the schedule based on the setting of BACKUP_PERIOD; defaults to ${BACKUP_PERIOD}
+
+  Refer to the project documentation for additional details on how to use this script.
+  - https://github.com/BCDevOps/backup-container
+
+  Usage:
+    $0 [options]
+
+  Standard Options:
+  =================
+    -h prints this usage documentation.
+
+    -1 run once.
+       Performs a single set of backups and exits.
+
+    -s run in scheduled/silent (no questions asked) mode.
+       A flag to be used by cron scheduled backups to indicate they are being run on a schedule.
+       Requires cron (go-crond) to be installed and at least one cron tab to be defined in ${BACKUP_CONF}
+       Refer to ${BACKUP_CONF} for additional details and examples of using cron scheduling.
+
+    -l lists existing backups.
+       Great for listing the available backups for a restore.
+
+    -c lists the current configuration settings and exits.
+       Great for confirming the current settings, and listing the databases included in the backup schedule.
+
+    -p prune backups
+       Used to manually prune backups.
+       This can be used with the '-f' option, see below, to prune specific backups or sets of backups.
+       Use caution when using the '-f' option.
+
+  Verify Options:
+  ================
+    The verify process performs the following basic operations:
+      - Start a local database server instance.
+      - Restore the selected backup locally, watching for errors.
+      - Run a table query on the restored database as a simple test to ensure tables were restored
+        and queries against the database succeed without error.
+      - Stop the local database server instance.
+      - Delete the local database and configuration.
+
+    -v <DatabaseSpec/>; in the form <connectionSpec>=<Hostname/>/<DatabaseName/>, or <connectionSpec>=<Hostname/>:<Port/>/<DatabaseName/>
+                        where <connectionSpec> defaults to container database type if omitted
+                        <connectionSpec> must be one of "postgres" or "mongo"
+                        <connectionSpec> must be specified in a mixed database container project
+
+       Triggers verify mode and starts verify mode on the specified database.
+
+      Example:
+        $0 -v postgresql=postgresql:5432/TheOrgBook_Database
+          - Would start the verification process on the database using the most recent backup for the database.
+
+        $0 -v all
+          - Verify the most recent backup of all databases.
+
+    -f <BackupFileFilter/>; an OPTIONAL filter to use to find/identify the backup file to restore.
+       Refer to the same option under 'Restore Options' for details.
+
+  Restore Options:
+  ================
+    The restore process performs the following basic operations:
+      - Drop and recreate the selected database.
+      - Grant the database user access to the recreated database
+      - Restore the database from the selected backup file
+
+    Have the 'Admin' (postgres or mongo) password handy, the script will ask you for it during the restore.
+
+    When in restore mode, the script will list the settings it will use and wait for your confirmation to continue.
+    This provides you with an opportunity to ensure you have selected the correct database and backup file
+    for the job.
+
+    Restore mode will allow you to restore a database to a different location (host, and/or database name) provided
+    it can contact the host and you can provide the appropriate credentials.  If you choose to do this, you will need
+    to provide a file filter using the '-f' option, since the script will likely not be able to determine which backup
+    file you would want to use.  This functionality provides a convenient way to test your backups or migrate your
+    database/data without affecting the original database.
+
+    -r <DatabaseSpec/>; in the form <connectionSpec>=<Hostname/>/<DatabaseName/>, or <connectionSpec>=<Hostname/>:<Port/>/<DatabaseName/>
+                        where <connectionSpec> defaults to container database type if omitted
+                        <connectionSpec> must be one of "postgres" or "mongo"
+                        <connectionSpec> must be specified in a mixed database container project
+
+       Triggers restore mode and starts restore mode on the specified database.
+
+      Example:
+        $0 -r postgresql:5432/TheOrgBook_Database/postgres
+          - Would start the restore process on the database using the most recent backup for the database.
+
+    -f <BackupFileFilter/>; an OPTIONAL filter to use to find/identify the backup file to restore.
+       This can be a full or partial file specification.  When only part of a filename is specified the restore process
+       attempts to find the most recent backup matching the filter.
+       If not specified, the restore process attempts to locate the most recent backup file for the specified database.
+
+      Examples:
+        $0 -r postgresql=wallet-db/test_db/postgres -f wallet-db-tob_holder
+          - Would try to find the latest backup matching on the partial file name provided.
+
+        $0 -r wallet-db/test_db/postgres -f /backups/daily/2018-11-07/wallet-db-tob_holder_2018-11-07_23-59-35.sql.gz
+          - Would use  the specific backup file.
+
+        $0 -r wallet-db/test_db/postgres -f wallet-db-tob_holder_2018-11-07_23-59-35.sql.gz
+          - Would use the specific backup file regardless of its location in the root backup folder.
+
+    -s OPTIONAL flag.  Use with caution.  Could cause unintentional data loss.
+       Run the restore in scripted/scheduled mode.  In this mode the restore will not ask you to confirm the settings,
+       nor will ask you for the 'Admin' password.  It will simply attempt to restore a database from a backup.
+       It's up to you to ensure it's targeting the correct database and using the correct backup file.
+
+    -a <AdminPassword/>; an OPTIONAL flag used to specify the 'Admin' password.
+       Use with the '-s' flag to specify the 'Admin' password.  Under normal usage conditions it's better to supply the
+       password when prompted so it is not visible on the console.
+
+EOF
+exit 1
+}
+# =================================================================================================================

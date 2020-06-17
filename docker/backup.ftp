@@ -1,0 +1,23 @@
+#!/bin/bash
+# =================================================================================================================
+# FTP Support Functions:
+# -----------------------------------------------------------------------------------------------------------------
+function ftpBackup(){
+  (
+    if [ -z "${FTP_URL}" ] ; then
+      return 0
+    fi
+
+    _filename=${1}
+    _filenameWithExtension="${_filename}${BACKUP_FILE_EXTENSION}"
+    echo "Transferring ${_filenameWithExtension} to ${FTP_URL}"
+    curl --ftp-ssl -T ${_filenameWithExtension} --user ${FTP_USER}:${FTP_PASSWORD} ${FTP_URL}
+
+    if [ ${?} -eq 0 ]; then
+      logInfo "Successfully transferred ${_filenameWithExtension} to the FTP server"
+    else
+      logError "Failed to transfer ${_filenameWithExtension} with the exit code ${?}"
+    fi
+  )
+}
+# =================================================================================================================

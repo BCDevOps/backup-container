@@ -5,6 +5,7 @@
 *_DeploymentConfig.json
 *_BuildConfig.json
 *.local.*
+*.overrides.*
 
 # Visual Studio Code
 .vscode

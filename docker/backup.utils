@@ -1,0 +1,287 @@
+#!/bin/bash
+# =================================================================================================================
+# Primary Database Backup and Restore Functions:
+# -----------------------------------------------------------------------------------------------------------------
+function backupDatabase(){
+  (
+    _databaseSpec=${1}
+    _fileName=${2}
+
+    _backupFile="${_fileName}${IN_PROGRESS_BACKUP_FILE_EXTENSION}"
+
+    touchBackupFile "${_backupFile}"
+    onBackupDatabase "${_databaseSpec}" "${_backupFile}"
+    _rtnCd=${?}
+
+    if (( ${_rtnCd} != 0 )); then
+      rm -rfvd ${_backupFile}
+    fi
+
+    return ${_rtnCd}
+  )
+}
+
+function restoreDatabase(){
+  (
+    local OPTIND
+    local quiet
+    local localhost
+    unset quiet
+    unset localhost
+    unset flags
+    while getopts ql FLAG; do
+      case $FLAG in
+        q )
+          quiet=1
+          flags+="-${FLAG} "
+          ;;
+        * ) flags+="-${FLAG} ";;
+      esac
+    done
+    shift $((OPTIND-1))
+
+    _databaseSpec=${1}
+    _fileName=${2}
+    _fileName=$(findBackup "${_databaseSpec}" "${_fileName}")
+
+    if [ -z "${quiet}" ]; then
+      echoBlue "\nRestoring database ..."
+      echo -e "\nSettings:"
+      echo "- Database: ${_databaseSpec}"
+
+      if [ ! -z "${_fileName}" ]; then
+        echo -e "- Backup file: ${_fileName}\n"
+      else
+        echoRed "- Backup file: No backup file found or specified.  Cannot continue with the restore.\n"
+        exit 1
+      fi
+      waitForAnyKey
+    fi
+
+    if [ -z "${quiet}" ] && [ -z "${_adminPassword}" ]; then
+      # Ask for the Admin Password for the database, if it has not already been provided.
+      _msg="Admin password (${_databaseSpec}):"
+      _yellow='\033[1;33m'
+      _nc='\033[0m' # No Color
+      _message=$(echo -e "${_yellow}${_msg}${_nc}")
+      read -r -s -p $"${_message}" _adminPassword
+      echo -e "\n"
+    fi
+
+    local startTime=${SECONDS}
+    onRestoreDatabase ${flags} "${_databaseSpec}" "${_fileName}" "${_adminPassword}"
+    _rtnCd=${?}
+
+    local endTime=${SECONDS}
+    if (( ${_rtnCd} == 0 )); then
+      echoGreen "\nRestore complete - Elapsed time: $(getElapsedTime ${startTime} ${endTime})\n"
+    else
+      echoRed "\nRestore failed.\n" >&2
+    fi
+
+    return ${_rtnCd}
+  )
+}
+
+function runBackups(){
+  (
+    echoBlue "\nStarting backup process ..."
+    databases=$(readConf)
+    backupDir=$(createBackupFolder)
+    listSettings "${backupDir}" "${databases}"
+
+    for database in ${databases}; do
+      if isForContainerType ${database}; then
+        local startTime=${SECONDS}
+        filename=$(generateFilename "${backupDir}" "${database}")
+        backupDatabase "${database}" "${filename}"
+        rtnCd=${?}
+        local endTime=${SECONDS}
+        local elapsedTime="\n\nElapsed time: $(getElapsedTime ${startTime} ${endTime}) - Status Code: ${rtnCd}"
+
+        if (( ${rtnCd} == 0 )); then
+          backupPath=$(finalizeBackup "${filename}")
+          dbSize=$(getDbSize "${database}")
+          backupSize=$(getFileSize "${backupPath}")
+          logInfo "Successfully backed up ${database}.\nBackup written to ${backupPath}.\nDatabase Size: ${dbSize}\nBackup Size: ${backupSize}${elapsedTime}"
+          ftpBackup "${filename}"
+          pruneBackups "${backupDir}" "${database}"
+        else
+          logError "Failed to backup ${database}.${elapsedTime}"
+        fi
+      fi
+    done
+
+    listExistingBackups ${ROOT_BACKUP_DIR}
+  )
+}
+
+function startServer(){
+  (
+    # Start a local server instance ...
+    onStartServer ${@}
+
+    # Wait for server to start ...
+    local startTime=${SECONDS}
+    rtnCd=0
+    printf "waiting for server to start"
+    while ! pingDbServer ${@}; do
+      printf "."
+      local duration=$(($SECONDS - $startTime))
+      if (( ${duration} >= ${DATABASE_SERVER_TIMEOUT} )); then
+        echoRed "\nThe server failed to start within $(getElapsedTimeFromDuration ${duration}).\n"
+        rtnCd=1
+        break
+      fi
+      sleep 1
+    done
+
+    echoBlue "\nThe server started in $(getElapsedTimeFromDuration ${duration}).\n"
+    echo
+    return ${rtnCd}
+  )
+}
+
+function stopServer(){
+  (
+    onStopServer ${@}
+  )
+}
+
+function cleanUp(){
+  (
+    onCleanup
+  )
+}
+
+function pingDbServer(){
+  (
+    onPingDbServer ${@}
+    return ${?}
+  )
+}
+
+function verifyBackups(){
+  (
+    local OPTIND
+    local flags
+    unset flags
+    while getopts q FLAG; do
+      case $FLAG in
+        * ) flags+="-${FLAG} " ;;
+      esac
+    done
+    shift $((OPTIND-1))
+
+    _databaseSpec=${1}
+    _fileName=${2}
+    if [[ "${_databaseSpec}" == "all" ]]; then
+      databases=$(readConf -q)
+    else
+      databases=${_databaseSpec}
+    fi
+
+    for database in ${databases}; do
+      if isForContainerType ${database}; then
+        verifyBackup ${flags} "${database}" "${_fileName}"
+      fi
+    done
+  )
+}
+
+function verifyBackup(){
+  (
+    local OPTIND
+    local quiet
+    unset quiet
+    while getopts q FLAG; do
+      case $FLAG in
+        q ) quiet=1 ;;
+      esac
+    done
+    shift $((OPTIND-1))
+
+    _databaseSpec=${1}
+    _fileName=${2}
+    _fileName=$(findBackup "${_databaseSpec}" "${_fileName}")
+
+    echoBlue "\nVerifying backup ..."
+    echo -e "\nSettings:"
+    echo "- Database: ${_databaseSpec}"
+
+    if [ ! -z "${_fileName}" ]; then
+      echo -e "- Backup file: ${_fileName}\n"
+    else
+      echoRed "- Backup file: No backup file found or specified.  Cannot continue with the backup verification.\n"
+      exit 0
+    fi
+
+    if [ -z "${quiet}" ]; then
+      waitForAnyKey
+    fi
+
+    # Make sure the server is not running ...
+    if pingDbServer -l "${_databaseSpec}"; then
+      logError "Backup verification failed: ${_fileName}\n\nThe verification server is still running."
+      exit 1
+    fi
+
+    # Make sure things have been cleaned up before we start ...
+    cleanUp
+
+    local startTime=${SECONDS}
+    startServer -l "${_databaseSpec}"
+    rtnCd=${?}
+
+    # Restore the database
+    if (( ${rtnCd} == 0 )); then
+      if [ -z "${quiet}" ]; then
+        restoreDatabase -ql "${_databaseSpec}" "${_fileName}"
+        rtnCd=${?}
+      else
+        # Filter out stdout, keep stderr
+        echo "Restoring from backup ..."
+        restoreLog=$(restoreDatabase -ql "${_databaseSpec}" "${_fileName}" 2>&1 >/dev/null)
+        rtnCd=${?}
+
+        if [ ! -z "${restoreLog}" ] && (( ${rtnCd} == 0 )); then
+          echo ${restoreLog}
+          unset restoreLog
+        elif [ ! -z "${restoreLog}" ] && (( ${rtnCd} != 0 )); then
+          restoreLog="\n\nThe following issues were encountered during backup verification;\n${restoreLog}"
+        fi
+      fi
+    fi
+
+    # Ensure there are tables in the databse and general queries work
+    if (( ${rtnCd} == 0 )); then
+      verificationLog=$(onVerifyBackup "${_databaseSpec}")
+      rtnCd=${?}
+    fi
+
+    # Stop the database server and clean up ...
+    stopServer "${_databaseSpec}"
+    cleanUp
+
+    local endTime=${SECONDS}
+    local elapsedTime="\n\nElapsed time: $(getElapsedTime ${startTime} ${endTime}) - Status Code: ${rtnCd}"
+
+    if (( ${rtnCd} == 0 )); then
+      logInfo "Successfully verified backup: ${_fileName}${verificationLog}${restoreLog}${elapsedTime}"
+    else
+      logError "Backup verification failed: ${_fileName}${verificationLog}${restoreLog}${elapsedTime}"
+    fi
+    return ${rtnCd}
+  )
+}
+
+function getDbSize(){
+  (
+    size=$(onGetDbSize ${@})
+    rtnCd=${?}
+
+    echo ${size}
+    return ${rtnCd}
+  )
+}
+# =================================================================================================================
