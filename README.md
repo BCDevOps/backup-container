@@ -17,13 +17,37 @@ labels:
 ---
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
 
+*Table of Contents* 
+<!-- TOC depthTo:2 -->
+
+- [Backup Container](#backup-container)
+  - [Supported Databases](#supported-databases)
+- [Backup Container Options](#backup-container-options)
+  - [Backups in OpenShift](#backups-in-openshift)
+  - [Storage](#storage)
+  - [Deployment / Configuration](#deployment--configuration)
+  - [Multiple Databases](#multiple-databases)
+  - [Backup Strategies](#backup-strategies)
+  - [Using the Backup Script](#using-the-backup-script)
+  - [Using Backup Verification](#using-backup-verification)
+  - [Using the FTP backup](#using-the-ftp-backup)
+  - [Using the Webhook Integration](#using-the-webhook-integration)
+  - [Database Plugin Support](#database-plugin-support)
+  - [Backup](#backup)
+- [Example Deployment](#example-deployment)
+- [Tip and Tricks](#tip-and-tricks)
+- [Getting Help or Reporting an Issue](#getting-help-or-reporting-an-issue)
+- [How to Contribute](#how-to-contribute)
+
+<!-- /TOC -->
+
 # Backup Container
 [Backup Container](https://github.com/BCDevOps/backup-container) is a simple containerized backup solution for backing up one or more supported databases to a secondary location.  _Code and documentation was originally pulled from the [HETS Project](https://github.com/bcgov/hets)_
 
-# Supported Databases
-MongoDB
-MSSQL - Currently MSSQL requires that the nfs db volume be shared with the database for backups to function correctly.
-PostgresSQL
+## Supported Databases
+- MongoDB
+- PostgresSQL
+- MSSQL - Currently MSSQL requires that the nfs db volume be shared with the database for backups to function correctly.
 
 # Backup Container Options
 You can run the Backup Container for supported databases separately or in a mixed environment.
@@ -363,14 +387,88 @@ Following are more detailed steps to perform a restore of a backup.
 
 Done!
 
-## Tip and Tricks
+# Example Deployment
+
+<details><summary>Concrete example of a deployment</summary>
+
+
+TL;DR for a simple backup of three PostgreSQL databases in the same project namespace:
+
+1. Decide on amount of backup storage required (5Gi is currently the maximum)
+2. Provision the nfs-backup PVC, following the [docs](https://github.com/BCDevOps/provision-nfs-apb/blob/master/docs/usage-gui.md)
+
+    This provisioning may take several minutes to an hour, and if using the GUI, will result in a PVC with a name similar to `bk-b7cg3n-deploy-v9k7xgyvwdxm`, where `b7cg3n` is your project namespace, and the last portion is random-generated.
+3. `git clone https://github.com/BCDevOps/backup-container.git && cd backup-container` (`git switch -c` to your own branch)
+4. Determine the OpenShift namespace for the image (e.g. `b7cg3n-tools`), the app name (e.g. `nrmsurvey-feedback-bkup`), and the image tag (e.g. `v2`), and build the image in your `-tools` namespace.  For example:
+
+```bash
+  oc -n b7cg3n-tools process -f ./openshift/templates/backup/backup-build.json -p NAME=nrmsurveys-bkup OUTPUT_IMAGE_TAG=v1 \
+  | oc -n b7cg3n-tools create -f -`
+```
+5. Configure (./config/backup.conf) (listing your databas(s, and setting your cron schedule).
+
+    For example:
+
+```bash
+  postgres=eaofider-postgresql:5432/eaofider
+  postgres=pawslimesurvey-postgresql:5432/pawslimesurvey
+  postgres=ppmlimesurvey-postgresql:5432/ppmlimesurvey
+
+  0 1 * * * default ./backup.sh -s
+  0 4 * * * default ./backup.sh -s -v all
+```
+
+6. Configure references to your DB credentials in [backup-deploy.json](./openshift/templates/backup/backup-deploy.json), replacing the boilerplate DATABASE_USER and DATABASE_PASSWORD; for example:
+
+    ```yaml
+      "name": "EAOFIDER_POSTGRESQL_USER",
+      "valueFrom": {
+        "secretKeyRef": {
+          "name": "eaofider-postgresql",
+          "key": "${DATABASE_USER_KEY_NAME}"
+        }
+      }
+    },
+    {
+      "name": "EAOFIDER_POSTGRESQL_PASSWORD",
+      "valueFrom": {
+        "secretKeyRef": {
+          "name": "eaofider-postgresql",
+          "key": "${DATABASE_PASSWORD_KEY_NAME}"
+        }
+      }
+    },
+    ```
+
+    NOTE underscores should be used in the environment variable names.
+7. Create your customized `./openshift/backup-deploy.overrides.param` parameter file
+8. Deploy the app; here the example namespace is `b7cg3n-deploy` and the app name is `nrmsurveys-bkup`:
+
+    ```bash
+    oc -n b7cg3n-deploy create configmap backup-conf --from-file=./config/backup.conf
+    oc -n b7cg3n-deploy label configmap backup-conf app=nrmsurveys-bkup
+
+    oc -n b7cg3n-deploy process -f ./openshift/templates/backup/backup-deploy.json -p NAME=nrmsurveys-bkup \
+      -p IMAGE_NAMESPACE=b7cg3n-tools \
+      -p SOURCE_IMAGE_NAME=nrmsurveys-bkup \
+      -p TAG_NAME=v1 \
+      -p BACKUP_VOLUME_NAME=bk-b7cg3n-deploy-yxq6rf8z23pu -p BACKUP_VOLUME_SIZE=5Gi \
+      -p VERIFICATION_VOLUME_SIZE=10Gi \
+      -p VERIFICATION_VOLUME_CLASS=netapp-block-standard \
+      -p ENVIRONMENT_FRIENDLY_NAME='NRM Survey DB Backups' | oc -n b7cg3n-deploy create -f -
+    ```
+
+NOTE the `BACKUP_VOLUME_NAME=bk-b7cg3n-deploy-yxq6rf8z23pu` is from Step 2 above; when using the GUI there is no option to set the PVC name.
+</details>
+
+# Tip and Tricks
 
 Please refer to the [Tips and Tricks](./docs/TipsAndTricks.md) document for solutions to known issues.
 
-## Getting Help or Reporting an Issue
+# Getting Help or Reporting an Issue
 To report bugs/issues/feature requests, please file an [issue](../../issues).
 
-## How to Contribute
+# How to Contribute
 If you would like to contribute, please see our [CONTRIBUTING](./CONTRIBUTING.md) guidelines.
 
 Please note that this project is released with a [Contributor Code of Conduct](./CODE_OF_CONDUCT.md). 
