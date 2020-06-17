@@ -220,12 +220,12 @@ objects:
                       configMapKeyRef:
                         name: "${JOB_NAME}-config"
                         key: POSTGRESQL_DATABASE
-                  - name: POSTGRESQL_USER
+                  - name: DATABASE_USER
                     valueFrom:
                       secretKeyRef:
                         name: "${DATABASE_DEPLOYMENT_NAME}"
                         key: "${DATABASE_USER_KEY_NAME}"
-                  - name: POSTGRESQL_PASSWORD
+                  - name: DATABASE_PASSWORD
                     valueFrom:
                       secretKeyRef:
                         name: "${DATABASE_DEPLOYMENT_NAME}"
