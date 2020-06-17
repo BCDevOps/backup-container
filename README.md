@@ -380,7 +380,7 @@ TL;DR for a simple backup of three PostgreSQL databases in the same project name
   oc -n b7cg3n-tools process -f ./openshift/templates/backup/backup-build.json -p NAME=nrmsurveys-bkup OUTPUT_IMAGE_TAG=v1 \
   | oc -n b7cg3n-tools create -f -`
 ```
-1. Configure ./config/backup.conf (listing your database(s), and setting your cron schedule).
+1. Configure (./config/backup.conf) (listing your databas(s, and setting your cron schedule).
 
     For example:
 
@@ -414,8 +414,8 @@ TL;DR for a simple backup of three PostgreSQL databases in the same project name
     },
     ```
 
-NOTE underscores should be used in the environment variable names.
-1. Customize your [overrides file](./openshift/backup-deploy.overrides.param)
+    NOTE underscores should be used in the environment variable names.
+1. Create your customized `./openshift/backup-deploy.overrides.param` parameter file
 1. Deploy the app; here the example namespace is `b7cg3n-deploy` and the app name is `nrmsurveys-bkup`:
 
     ```bash
