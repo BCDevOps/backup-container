@@ -65,21 +65,21 @@ function onRestoreDatabase(){
 
     # Drop
     if (( ${_rtnCd} == 0 )); then
-      psql -h "${_hostname}" ${_portArg} -ac "DROP DATABASE \"${_database}\";"
+      psql -h "${_hostname}" -p ${_portArg} -ac "DROP DATABASE \"${_database}\";"
       _rtnCd=${?}
       echo
     fi
 
     # Create
     if (( ${_rtnCd} == 0 )); then
-      psql -h "${_hostname}" ${_portArg} -ac "CREATE DATABASE \"${_database}\";"
+      psql -h "${_hostname}" -p ${_portArg} -ac "CREATE DATABASE \"${_database}\";"
       _rtnCd=${?}
       echo
     fi
 
     # Grant User Access
     if (( ${_rtnCd} == 0 )); then
-      psql -h "${_hostname}" ${_portArg} -ac "GRANT ALL ON DATABASE \"${_database}\" TO \"${_username}\";"
+      psql -h "${_hostname}" -p ${_portArg} -ac "GRANT ALL ON DATABASE \"${_database}\" TO \"${_username}\";"
       _rtnCd=${?}
       echo
     fi
@@ -93,7 +93,7 @@ function onRestoreDatabase(){
 
     # List tables
     if [ -z "${quiet}" ] && (( ${_rtnCd} == 0 )); then
-      psql -h "${_hostname}" ${_portArg} -d "${_database}" -c "\d"
+      psql -h "${_hostname}" -p ${_portArg} -d "${_database}" -c "\d"
       _rtnCd=${?}
     fi
 
@@ -201,7 +201,7 @@ function onVerifyBackup(){
     _password=$(getPassword ${_databaseSpec})
 
     debugMsg "backup.postgres.plugin - onVerifyBackup"
-    tables=$(psql -h "${_hostname}" ${_portArg} -d "${_database}" -t -c "SELECT table_name FROM information_schema.tables WHERE table_schema='${TABLE_SCHEMA}' AND table_type='BASE TABLE';")
+    tables=$(psql -h "${_hostname}" -p ${_portArg} -d "${_database}" -t -c "SELECT table_name FROM information_schema.tables WHERE table_schema='${TABLE_SCHEMA}' AND table_type='BASE TABLE';")
     rtnCd=${?}
 
     # Get the size of the restored database
@@ -247,7 +247,7 @@ function onGetDbSize(){
     _username=$(getUsername ${_databaseSpec})
     _password=$(getPassword ${_databaseSpec})
 
-    size=$(PGPASSWORD=${_password} psql -h "${_hostname}" ${_portArg} -U "${_username}" -d "${_database}" -t -c "SELECT pg_size_pretty(pg_database_size(current_database())) as size;")
+    size=$(PGPASSWORD=${_password} psql -h "${_hostname}" -p ${_portArg} -U "${_username}" -d "${_database}" -t -c "SELECT pg_size_pretty(pg_database_size(current_database())) as size;")
     rtnCd=${?}
 
     echo ${size}
