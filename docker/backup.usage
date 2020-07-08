@@ -46,6 +46,11 @@ function usage () {
        This can be used with the '-f' option, see below, to prune specific backups or sets of backups.
        Use caution when using the '-f' option.
 
+    -I ignore errors
+       This flag can be used with the Restore Options, when restoring a postgres database, to continue the 
+       database restoration process when errors are encountered.  By default the postgres restoration script 
+       stops on the first error.
+
   Verify Options:
   ================
     The verify process performs the following basic operations:

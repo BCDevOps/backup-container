@@ -488,4 +488,14 @@ function validateOperation(){
     return ${_rtnCd}
   )
 }
+
+function ignoreErrors(){
+  (
+    if [ ! -z "${IGNORE_ERRORS}" ]; then
+      return 0
+    else
+      return 1
+    fi
+  )
+}
 # ======================================================================================
