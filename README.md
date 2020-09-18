@@ -35,7 +35,7 @@ labels:
   - [Database Plugin Support](#database-plugin-support)
   - [Backup](#backup)
 - [Example Deployment](#example-deployment)
-  - [Deploy with Helm Chart](#helm-chart)
+  - [Deploy with Helm Chart](#deploy-with-helm-chart)
 - [Tip and Tricks](#tip-and-tricks)
 - [Getting Help or Reporting an Issue](#getting-help-or-reporting-an-issue)
 - [How to Contribute](#how-to-contribute)
