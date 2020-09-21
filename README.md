@@ -387,9 +387,9 @@ Following are more detailed steps to perform a restore of a backup.
 
 Done!
 
-# Example Deployment
+# Example Deployments
 
-<details><summary>Concrete example of a deployment</summary>
+<details><summary>Concrete example of a Postgres deployment</summary>
 
 
 TL;DR for a simple backup of three PostgreSQL databases in the same project namespace:
@@ -459,6 +459,73 @@ TL;DR for a simple backup of three PostgreSQL databases in the same project name
     ```
 
 NOTE the `BACKUP_VOLUME_NAME=bk-b7cg3n-deploy-yxq6rf8z23pu` is from Step 2 above; when using the GUI there is no option to set the PVC name.
+</details>
+
+<details><summary>Concrete example of a MongoDB deployment</summary>
+
+
+TL;DR: A simple backup of a single MongoDB database with backup validation.
+
+1. Decide on amount of backup storage required (5Gi is currently the maximum)
+2. Provision the nfs-backup PVC, following the [docs](https://github.com/BCDevOps/provision-nfs-apb/blob/master/docs/usage-gui.md). This provisioning may take several minutes to an hour, and if using the GUI, will result in a PVC with a name similar to `bk-abc123-dev-v9k7xgyvwdxm`, where `abc123-dev` is your project namespace and the last portion is randomly generated.
+3. `git clone https://github.com/BCDevOps/backup-container.git && cd backup-container`.
+4. Determine the OpenShift namespace for the image (e.g. `abc123-dev`), the app name (e.g. `myapp-backup`), and the image tag (e.g. `v1`). Then build the image in your the namespace.
+```bash
+oc -n abc123-dev process -f ./openshift/templates/backup/backup-build.json \
+  -p DOCKER_FILE_PATH=Dockerfile_Mongo
+  -p NAME=myapp-backup OUTPUT_IMAGE_TAG=v1 | oc -n abc123-dev create -f -
+```
+5. Configure `./config/backup.conf`. This defines the database(s) to backup and the schedule that backups are to follow. Additionally, this sets up backup validation (identified by `-v all` flag).
+```bash
+# Database(s)
+mongo=hcap-mongodb:27017/hcap
+
+# Cron Schedule(s)
+0 1 * * * default ./backup.sh -s
+0 4 * * * default ./backup.sh -s -v all
+```
+6. Configure references to your DB credentials in [backup-deploy.json](./openshift/templates/backup/backup-deploy.json), replacing the boilerplate `DATABASE_USER` and `DATABASE_PASSWORD` environment variable names. Note the hostname of the database to be backed up. This example uses a hostname of `myapp-mongodb` which maps to environement variables named `MYAPP_MONGODB_USER` and `MYAPP_MONGODB_PASSWORD`. See the [backup.conf](#backupconf) section  above for more in depth instructions. This example also assumes that the name of the secret containing your database username and password is the same as the provided `DATABASE_DEPLOYMENT_NAME` parameter. If that's not the case for your service, the secret name can be overridden.
+```json
+{
+  "name": "MYAPP_MONGODB_USER",
+  "valueFrom": {
+    "secretKeyRef": {
+      "name": "${DATABASE_DEPLOYMENT_NAME}",
+      "key": "${DATABASE_USER_KEY_NAME}"
+    }
+  }
+},
+{
+  "name": "MYAPP_MONGODB_PASSWORD",
+  "valueFrom": {
+    "secretKeyRef": {
+      "name": "${DATABASE_DEPLOYMENT_NAME}",
+      "key": "${DATABASE_PASSWORD_KEY_NAME}"
+    }
+  }
+},
+```
+8. Deploy the app. In this example, the namespace is `abc123-dev` and the app name is `myapp-backup`. Note that the key names within the database secret referencing database username and password are `username` and `password`, respectively. If this is not the case for your deployment, specify the correct key names as parameters `DATABASE_USER_KEY_NAME` and `DATABASE_PASSWORD_KEY_NAME`. Also note that `BACKUP_VOLUME_NAME` is from Step 2 above.
+
+```bash
+oc -n abc123-dev create configmap backup-conf --from-file=./config/backup.conf
+oc -n abc123-dev label configmap backup-conf app=myapp-backup
+
+oc -n abc123-dev process -f ./openshift/templates/backup/backup-deploy.json \
+  -p NAME=myapp-backup \
+  -p IMAGE_NAMESPACE=abc123-dev \
+  -p SOURCE_IMAGE_NAME=myapp-backup \
+  -p TAG_NAME=v1 \
+  -p BACKUP_VOLUME_NAME=bk-abc123-dev-v9k7xgyvwdxm \
+  -p BACKUP_VOLUME_SIZE=5Gi \
+  -p VERIFICATION_VOLUME_SIZE=10Gi \
+  -p VERIFICATION_VOLUME_CLASS=netapp-block-standard \
+  -p DATABASE_DEPLOYMENT_NAME=myapp-mongodb \
+  -p DATABASE_USER_KEY_NAME=username \
+  -p DATABASE_PASSWORD_KEY_NAME=password \
+  -p ENVIRONMENT_FRIENDLY_NAME='My App MongoDB Backups' | oc -n abc123-dev create -f -
+
+```
 </details>
 
 # Tip and Tricks
