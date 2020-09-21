@@ -478,7 +478,7 @@ oc -n abc123-dev process -f ./openshift/templates/backup/backup-build.json \
 5. Configure `./config/backup.conf`. This defines the database(s) to backup and the schedule that backups are to follow. Additionally, this sets up backup validation (identified by `-v all` flag).
 ```bash
 # Database(s)
-mongo=hcap-mongodb:27017/hcap
+mongo=myapp-mongodb:27017/mydb
 
 # Cron Schedule(s)
 0 1 * * * default ./backup.sh -s
