@@ -35,6 +35,7 @@ labels:
   - [Database Plugin Support](#database-plugin-support)
   - [Backup](#backup)
 - [Example Deployment](#example-deployment)
+  - [Deploy with Helm Chart](#deploy-with-helm-chart)
 - [Tip and Tricks](#tip-and-tricks)
 - [Getting Help or Reporting an Issue](#getting-help-or-reporting-an-issue)
 - [How to Contribute](#how-to-contribute)
@@ -460,6 +461,15 @@ TL;DR for a simple backup of three PostgreSQL databases in the same project name
 
 NOTE the `BACKUP_VOLUME_NAME=bk-b7cg3n-deploy-yxq6rf8z23pu` is from Step 2 above; when using the GUI there is no option to set the PVC name.
 </details>
+
+## Deploy with Helm Chart
+
+```
+helm repo add bcgov http://bcgov.github.io/helm-charts
+helm upgrade --install db-backup-storage bcgov/backup-storage
+```
+
+For customizing the configuration, go to: https://github.com/bcgov/helm-charts/tree/master/backup-storage
 
 # Tip and Tricks
 

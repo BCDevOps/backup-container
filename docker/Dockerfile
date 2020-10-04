@@ -1,5 +1,5 @@
 # This image provides a postgres installation from which to run backups 
-FROM registry.access.redhat.com/rhscl/postgresql-10-rhel7
+FROM centos/postgresql-12-centos7:20200917-804ef01
 
 # Change timezone to PST for convenience
 ENV TZ=PST8PDT
