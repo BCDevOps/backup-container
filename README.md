@@ -394,7 +394,7 @@ Done!
 
 TL;DR for a simple backup of three PostgreSQL databases in the same project namespace:
 
-1. Decide on amount of backup storage required (5Gi is currently the maximum)
+1. Decide on amount of backup storage required. While 5Gi is the default quota limit in BC Gov OCP provisioned namespaces for `nfs-backup`-class storage, teams are able to request more. If you are backing up a non-production environment or an environment outside of BC Gov OCP, you can use a different storage class and thus, different default storage quota. This example assumes that you're using 5Gi of `nfs-backup`-class storage.
 2. Provision the nfs-backup PVC, following the [docs](https://github.com/BCDevOps/provision-nfs-apb/blob/master/docs/usage-gui.md)
 
     This provisioning may take several minutes to an hour, and if using the GUI, will result in a PVC with a name similar to `bk-b7cg3n-deploy-v9k7xgyvwdxm`, where `b7cg3n` is your project namespace, and the last portion is random-generated.
@@ -466,7 +466,7 @@ NOTE the `BACKUP_VOLUME_NAME=bk-b7cg3n-deploy-yxq6rf8z23pu` is from Step 2 above
 
 TL;DR: A simple backup of a single MongoDB database with backup validation.
 
-1. Decide on amount of backup storage required (5Gi is currently the maximum)
+1. Decide on amount of backup storage required. While 5Gi is the default quota limit in BC Gov OCP provisioned namespaces for `nfs-backup`-class storage, teams are able to request more. If you are backing up a non-production environment or an environment outside of BC Gov OCP, you can use a different storage class and thus, different default storage quota. This example assumes that you're using 5Gi of `nfs-backup`-class storage.
 2. Provision the nfs-backup PVC, following the [docs](https://github.com/BCDevOps/provision-nfs-apb/blob/master/docs/usage-gui.md). This provisioning may take several minutes to an hour, and if using the GUI, will result in a PVC with a name similar to `bk-abc123-dev-v9k7xgyvwdxm`, where `abc123-dev` is your project namespace and the last portion is randomly generated.
 3. `git clone https://github.com/BCDevOps/backup-container.git && cd backup-container`.
 4. Determine the OpenShift namespace for the image (e.g. `abc123-dev`), the app name (e.g. `myapp-backup`), and the image tag (e.g. `v1`). Then build the image in your the namespace.
