@@ -389,26 +389,19 @@ Done!
 
 # Example Deployments
 
-<details><summary>Concrete example of a Postgres deployment</summary>
+<details><summary>Example of a Postgres deployment</summary>
 
-
-TL;DR for a simple backup of three PostgreSQL databases in the same project namespace:
+The following outlines the deployment of a simple backup of three PostgreSQL databases in the same project namespace.
 
 1. Decide on amount of backup storage required. While 5Gi is the default quota limit in BC Gov OCP provisioned namespaces for `nfs-backup`-class storage, teams are able to request more. If you are backing up a non-production environment or an environment outside of BC Gov OCP, you can use a different storage class and thus, different default storage quota. This example assumes that you're using 5Gi of `nfs-backup`-class storage.
-2. Provision the nfs-backup PVC, following the [docs](https://github.com/BCDevOps/provision-nfs-apb/blob/master/docs/usage-gui.md)
-
-    This provisioning may take several minutes to an hour, and if using the GUI, will result in a PVC with a name similar to `bk-b7cg3n-deploy-v9k7xgyvwdxm`, where `b7cg3n` is your project namespace, and the last portion is random-generated.
+2. Provision the nfs-backup PVC, following the [docs](https://github.com/BCDevOps/backup-container#backup-storage-volume). This provisioning may take several minutes to an hour, and if using the GUI, will result in a PVC with a name similar to `bk-b7cg3n-deploy-v9k7xgyvwdxm`, where `b7cg3n` is your project namespace, and the last portion is random-generated.
 3. `git clone https://github.com/BCDevOps/backup-container.git && cd backup-container` (`git switch -c` to your own branch)
-4. Determine the OpenShift namespace for the image (e.g. `b7cg3n-tools`), the app name (e.g. `nrmsurvey-feedback-bkup`), and the image tag (e.g. `v2`), and build the image in your `-tools` namespace.  For example:
-
+4. Determine the OpenShift namespace for the image (e.g. `b7cg3n-tools`), the app name (e.g. `nrmsurvey-feedback-bkup`), and the image tag (e.g. `v2`), and build the image in your `-tools` namespace.
 ```bash
   oc -n b7cg3n-tools process -f ./openshift/templates/backup/backup-build.json -p NAME=nrmsurveys-bkup OUTPUT_IMAGE_TAG=v1 \
   | oc -n b7cg3n-tools create -f -`
 ```
 5. Configure (./config/backup.conf) (listing your databas(s, and setting your cron schedule).
-
-    For example:
-
 ```bash
   postgres=eaofider-postgresql:5432/eaofider
   postgres=pawslimesurvey-postgresql:5432/pawslimesurvey
@@ -417,63 +410,57 @@ TL;DR for a simple backup of three PostgreSQL databases in the same project name
   0 1 * * * default ./backup.sh -s
   0 4 * * * default ./backup.sh -s -v all
 ```
-
-6. Configure references to your DB credentials in [backup-deploy.json](./openshift/templates/backup/backup-deploy.json), replacing the boilerplate DATABASE_USER and DATABASE_PASSWORD; for example:
-
-    ```yaml
-      "name": "EAOFIDER_POSTGRESQL_USER",
-      "valueFrom": {
-        "secretKeyRef": {
-          "name": "eaofider-postgresql",
-          "key": "${DATABASE_USER_KEY_NAME}"
-        }
-      }
-    },
-    {
-      "name": "EAOFIDER_POSTGRESQL_PASSWORD",
-      "valueFrom": {
-        "secretKeyRef": {
-          "name": "eaofider-postgresql",
-          "key": "${DATABASE_PASSWORD_KEY_NAME}"
-        }
-      }
-    },
-    ```
-
-    NOTE underscores should be used in the environment variable names.
+6. Configure references to your DB credentials in [backup-deploy.json](./openshift/templates/backup/backup-deploy.json), replacing the boilerplate `DATABASE_USER` and `DATABASE_PASSWORD`.
+```yaml
+  "name": "EAOFIDER_POSTGRESQL_USER",
+  "valueFrom": {
+    "secretKeyRef": {
+      "name": "eaofider-postgresql",
+      "key": "${DATABASE_USER_KEY_NAME}"
+    }
+  }
+},
+{
+  "name": "EAOFIDER_POSTGRESQL_PASSWORD",
+  "valueFrom": {
+    "secretKeyRef": {
+      "name": "eaofider-postgresql",
+      "key": "${DATABASE_PASSWORD_KEY_NAME}"
+    }
+  }
+},
+```
+Note that underscores should be used in the environment variable names.
 7. Create your customized `./openshift/backup-deploy.overrides.param` parameter file
 8. Deploy the app; here the example namespace is `b7cg3n-deploy` and the app name is `nrmsurveys-bkup`:
+```bash
+oc -n b7cg3n-deploy create configmap backup-conf --from-file=./config/backup.conf
+oc -n b7cg3n-deploy label configmap backup-conf app=nrmsurveys-bkup
 
-    ```bash
-    oc -n b7cg3n-deploy create configmap backup-conf --from-file=./config/backup.conf
-    oc -n b7cg3n-deploy label configmap backup-conf app=nrmsurveys-bkup
-
-    oc -n b7cg3n-deploy process -f ./openshift/templates/backup/backup-deploy.json -p NAME=nrmsurveys-bkup \
-      -p IMAGE_NAMESPACE=b7cg3n-tools \
-      -p SOURCE_IMAGE_NAME=nrmsurveys-bkup \
-      -p TAG_NAME=v1 \
-      -p BACKUP_VOLUME_NAME=bk-b7cg3n-deploy-yxq6rf8z23pu -p BACKUP_VOLUME_SIZE=5Gi \
-      -p VERIFICATION_VOLUME_SIZE=10Gi \
-      -p VERIFICATION_VOLUME_CLASS=netapp-block-standard \
-      -p ENVIRONMENT_FRIENDLY_NAME='NRM Survey DB Backups' | oc -n b7cg3n-deploy create -f -
-    ```
-
-NOTE the `BACKUP_VOLUME_NAME=bk-b7cg3n-deploy-yxq6rf8z23pu` is from Step 2 above; when using the GUI there is no option to set the PVC name.
+oc -n b7cg3n-deploy process -f ./openshift/templates/backup/backup-deploy.json -p NAME=nrmsurveys-bkup \
+  -p IMAGE_NAMESPACE=b7cg3n-tools \
+  -p SOURCE_IMAGE_NAME=nrmsurveys-bkup \
+  -p TAG_NAME=v1 \
+  -p BACKUP_VOLUME_NAME=bk-b7cg3n-deploy-yxq6rf8z23pu -p BACKUP_VOLUME_SIZE=5Gi \
+  -p VERIFICATION_VOLUME_SIZE=10Gi \
+  -p VERIFICATION_VOLUME_CLASS=netapp-block-standard \
+  -p ENVIRONMENT_FRIENDLY_NAME='NRM Survey DB Backups' | oc -n b7cg3n-deploy create -f -
+```
+Note the `BACKUP_VOLUME_NAME=bk-b7cg3n-deploy-yxq6rf8z23pu` is from Step 2 above; when using the GUI there is no option to set the PVC name.
 </details>
 
-<details><summary>Concrete example of a MongoDB deployment</summary>
+<details><summary>Example of a MongoDB deployment</summary>
 
-
-TL;DR: A simple backup of a single MongoDB database with backup validation.
+The following outlines the deployment of a simple backup of a single MongoDB database with backup validation.
 
 1. Decide on amount of backup storage required. While 5Gi is the default quota limit in BC Gov OCP provisioned namespaces for `nfs-backup`-class storage, teams are able to request more. If you are backing up a non-production environment or an environment outside of BC Gov OCP, you can use a different storage class and thus, different default storage quota. This example assumes that you're using 5Gi of `nfs-backup`-class storage.
-2. Provision the nfs-backup PVC, following the [docs](https://github.com/BCDevOps/provision-nfs-apb/blob/master/docs/usage-gui.md). This provisioning may take several minutes to an hour, and if using the GUI, will result in a PVC with a name similar to `bk-abc123-dev-v9k7xgyvwdxm`, where `abc123-dev` is your project namespace and the last portion is randomly generated.
+2. Provision the nfs-backup PVC, following the [docs](https://github.com/BCDevOps/backup-container#backup-storage-volume). This provisioning may take several minutes to an hour, and if using the GUI, will result in a PVC with a name similar to `bk-abc123-dev-v9k7xgyvwdxm`, where `abc123-dev` is your project namespace and the last portion is randomly generated.
 3. `git clone https://github.com/BCDevOps/backup-container.git && cd backup-container`.
-4. Determine the OpenShift namespace for the image (e.g. `abc123-dev`), the app name (e.g. `myapp-backup`), and the image tag (e.g. `v1`). Then build the image in your the namespace.
+4. Determine the OpenShift namespace for the image (e.g. `abc123-dev`), the app name (e.g. `myapp-backup`), and the image tag (e.g. `v1`). Then build the image in your `-tools` namespace.
 ```bash
-oc -n abc123-dev process -f ./openshift/templates/backup/backup-build.json \
+oc -n abc123-tools process -f ./openshift/templates/backup/backup-build.json \
   -p DOCKER_FILE_PATH=Dockerfile_Mongo
-  -p NAME=myapp-backup OUTPUT_IMAGE_TAG=v1 | oc -n abc123-dev create -f -
+  -p NAME=myapp-backup OUTPUT_IMAGE_TAG=v1 | oc -n abc123-tools create -f -
 ```
 5. Configure `./config/backup.conf`. This defines the database(s) to backup and the schedule that backups are to follow. Additionally, this sets up backup validation (identified by `-v all` flag).
 ```bash
@@ -506,14 +493,13 @@ mongo=myapp-mongodb:27017/mydb
 },
 ```
 8. Deploy the app. In this example, the namespace is `abc123-dev` and the app name is `myapp-backup`. Note that the key names within the database secret referencing database username and password are `username` and `password`, respectively. If this is not the case for your deployment, specify the correct key names as parameters `DATABASE_USER_KEY_NAME` and `DATABASE_PASSWORD_KEY_NAME`. Also note that `BACKUP_VOLUME_NAME` is from Step 2 above.
-
 ```bash
 oc -n abc123-dev create configmap backup-conf --from-file=./config/backup.conf
 oc -n abc123-dev label configmap backup-conf app=myapp-backup
 
 oc -n abc123-dev process -f ./openshift/templates/backup/backup-deploy.json \
   -p NAME=myapp-backup \
-  -p IMAGE_NAMESPACE=abc123-dev \
+  -p IMAGE_NAMESPACE=abc123-tools \
   -p SOURCE_IMAGE_NAME=myapp-backup \
   -p TAG_NAME=v1 \
   -p BACKUP_VOLUME_NAME=bk-abc123-dev-v9k7xgyvwdxm \
