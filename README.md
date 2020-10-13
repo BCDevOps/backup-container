@@ -60,6 +60,10 @@ For a mixed environment:
 ## Backups in OpenShift
 This project provides you with a starting point for integrating backups into your OpenShift projects.  The scripts and templates provided in the [openshift](./openshift) directory are compatible with the [openshift-developer-tools](https://github.com/BCDevOps/openshift-developer-tools) scripts.  They help you create an OpenShift deployment or cronjob called `backup` in your projects that runs backups on databases within the project environment.  You only need to integrate the scripts and templates into your project(s), the builds can be done with this repository as the source.
 
+As an alternative to using discrete `oc` ([OpenShift ClI](https://docs.openshift.com/container-platform/3.11/cli_reference/get_started_cli.html)) commands, you can integrate the backup configurations (Build and Deployment templates, override script, and config) directly into your project configuration and manage the publishing and updating of the Build and Deployment configurations using the [BCDevOps/openshift-developer-tools](https://github.com/BCDevOps/openshift-developer-tools/tree/master/bin) scripts. An example can be found in the [bcgov/orgbook-configurations](https://github.com/bcgov/orgbook-configurations) repository under the [backup templates folder](https://github.com/bcgov/orgbook-configurations/tree/master/openshift/templates/backup).
+
+Simplified documentation on how to use the tools can be found [here](https://github.com/bcgov/jag-cullencommission/tree/master/openshift). All scripts support a `-c` option that allows you to perform operations on a single component of your application such as the backup container. In the orgbook-configurations example above, note the `-c backup` argument supplied.
+
 Following are the instructions for running the backups and a restore.
 
 ## Storage
