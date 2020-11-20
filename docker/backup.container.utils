@@ -32,6 +32,17 @@ function isMsSql(){
   )
 }
 
+function isMariaDb(){
+  (
+    # If a seperate mysql plugin is added, this check may be insufficient to establish the container type.
+    if isInstalled "mysql"; then
+      return 0
+    else
+      return 1
+    fi
+  )
+}
+
 function getContainerType(){
   (
     local _containerType=${UNKNOWN_DB}
@@ -43,6 +54,8 @@ function getContainerType(){
       _containerType=${MONGO_DB}
     elif isMsSql; then
       _containerType=${MSSQL_DB}
+    elif isMariaDb; then
+      _containerType=${MARIA_DB}
     else
       _containerType=${UNKNOWN_DB}
       _rtnCd=1
