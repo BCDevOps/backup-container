@@ -1,4 +1,4 @@
-from registry.access.redhat.com/rhscl/mariadb-102-rhel7
+from registry.fedoraproject.org/f31/mariadb
 
 # Change timezone to PST for convenience
 ENV TZ=PST8PDT
