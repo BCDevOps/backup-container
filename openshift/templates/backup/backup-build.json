@@ -43,7 +43,11 @@
         "strategy": {
           "type": "Docker",
           "dockerStrategy": {
-            "dockerfilePath": "${DOCKER_FILE_PATH}"
+            "from": {
+              "kind": "DockerImage",
+              "name": "${BASE_IMAGE_FOR_BUILD}"
+            },
+            "dockerfilePath": "Dockerfile"
           }
         },
         "output": {
@@ -97,6 +101,13 @@
       "description": "The tag given to the built image.",
       "required": true,
       "value": "latest"
+    },
+    {
+      "name": "BASE_IMAGE_FOR_BUILD",
+      "displayName": "FROM Image Tag",
+      "description": "Base image to build from.  Docker creds or Artificatory setup may be needed to alleviate docker rate-limiting",
+      "required": true,
+      "value": "docker.io/centos/postgresql-12-centos7:20200917-804ef01"
     }
   ]
 }
