@@ -158,7 +158,7 @@ objects:
           template: "${JOB_NAME}-job"
           cronjob: "${JOB_NAME}"
       spec:
-        backoffLimit: ${JOB_BACKOFF_LIMIT}
+        backoffLimit: ${{JOB_BACKOFF_LIMIT}}
         template:
           spec:
             containers:

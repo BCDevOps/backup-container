@@ -49,6 +49,7 @@ labels:
 - MongoDB
 - PostgresSQL
 - MSSQL - Currently MSSQL requires that the nfs db volume be shared with the database for backups to function correctly.
+- MariaDB
 
 # Backup Container Options
 You can run the Backup Container for supported databases separately or in a mixed environment.
@@ -320,6 +321,9 @@ Plugin Examples:
 
 - [backup.mssql.plugin](./docker/backup.mssql.plugin)
   - MSSQL backup implementation.
+
+- [backup.mariadb.plugin](./docker/backup.mariadb.plugin)
+  - MariaDB backup implementation. This plugin should also work with mysql, but is currently untested.
 
 - [backup.null.plugin](./docker/backup.null.plugin)
   - Sample/Template backup implementation that simply outputs log messages for the various operations.

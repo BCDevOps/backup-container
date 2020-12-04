@@ -1,0 +1,218 @@
+#!/bin/bash
+# =================================================================================================================
+# MariaDB Backup and Restore Functions:
+# - Dynamically loaded as a plug-in
+# - Refer to existing plug-ins for implementation examples.
+# -----------------------------------------------------------------------------------------------------------------
+export serverDataDirectory="/var/lib/mysql/data"
+
+function onBackupDatabase(){
+  (
+    local OPTIND
+    local unset flags
+    while getopts : FLAG; do
+      case $FLAG in
+        ? ) flags+="-${OPTARG} ";;
+      esac
+    done
+    shift $((OPTIND-1))
+
+    _databaseSpec=${1}
+    _backupFile=${2}
+
+    _hostname=$(getHostname ${_databaseSpec})
+    _database=$(getDatabaseName ${_databaseSpec})
+    _port=$(getPort ${_databaseSpec})
+    _portArg=${_port:+"-P ${_port}"}
+    _username=$(getUsername ${_databaseSpec})
+    _password=$(getPassword ${_databaseSpec})
+    echoGreen "Backing up '${_hostname}${_port:+:${_port}}${_database:+/${_database}}' to '${_backupFile}' ..."
+
+    MYSQL_PWD=${_password} mysqldump -h "${_hostname}" -u "${_username}" ${_portArg} "${_database}" | gzip > ${_backupFile}
+    return ${?}
+  )
+}
+
+function onRestoreDatabase(){
+  (
+    local OPTIND
+    local unset flags
+    while getopts : FLAG; do
+      case $FLAG in
+        ? ) flags+="-${OPTARG} ";;
+      esac
+    done
+    shift $((OPTIND-1))
+
+    _databaseSpec=${1}
+    _fileName=${2}
+    _adminPassword=${3}
+
+    _hostname=$(getHostname ${flags} ${_databaseSpec})
+    _database=$(getDatabaseName ${_databaseSpec})
+    _port=$(getPort ${flags} ${_databaseSpec})
+    _portArg=${_port:+"-P ${_port}"}
+    _username=$(getUsername ${_databaseSpec})
+    _password=$(getPassword ${_databaseSpec})
+    echo -e "Restoring '${_fileName}' to '${_hostname}${_port:+:${_port}}${_database:+/${_database}}' ...\n" >&2
+
+    
+    # Restore
+    gunzip -c "${_fileName}" | MYSQL_PWD=${_password} mysql -h ${_hostname} -u ${_username} ${_portArg} ${_database}
+    _rtnCd=${PIPESTATUS[1]}
+
+    return ${_rtnCd} 
+  )
+}
+
+function onStartServer(){
+  (
+    local OPTIND
+    local unset flags
+    while getopts : FLAG; do
+      case $FLAG in
+        ? ) flags+="-${OPTARG} ";;
+      esac
+    done
+    shift $((OPTIND-1))
+
+    _databaseSpec=${1}
+
+    # Start a local MariaDB instance
+    MYSQL_USER=$(getUsername "${_databaseSpec}") \
+    MYSQL_PASSWORD=$(getPassword "${_databaseSpec}") \
+    MYSQL_DATABASE=$(getDatabaseName "${_databaseSpec}") \
+    MYSQL_ROOT_PASSWORD=$(getPassword "${_databaseSpec}") \
+    run-mysqld >/dev/null 2>&1 &
+  )
+}
+
+function onStopServer(){
+  (
+    local OPTIND
+    local unset flags
+    while getopts : FLAG; do
+      case $FLAG in
+        ? ) flags+="-${OPTARG} ";;
+      esac
+    done
+    shift $((OPTIND-1))
+
+    mysqladmin --defaults-file=${MYSQL_DEFAULTS_FILE:-/etc/my.cnf} -u root --socket=/var/lib/mysql/mysql.sock flush-privileges shutdown
+  )
+}
+
+function onCleanup(){
+  (
+    if ! dirIsEmpty ${serverDataDirectory}; then
+      # Delete the database files and configuration
+      echo -e "Cleaning up ...\n" >&2
+      rm -rf ${serverDataDirectory}/*
+    else
+      echo -e "Already clean ...\n" >&2
+    fi
+  )
+}
+
+function onPingDbServer(){
+  (
+    local OPTIND
+    local unset flags
+    while getopts : FLAG; do
+      case $FLAG in
+        ? ) flags+="-${OPTARG} ";;
+      esac
+    done
+    shift $((OPTIND-1))
+
+    _databaseSpec=${1}
+
+    _hostname=$(getHostname ${flags} ${_databaseSpec})
+    _database=$(getDatabaseName ${_databaseSpec})
+    _port=$(getPort ${flags} ${_databaseSpec})
+    _portArg=${_port:+"-P ${_port}"}
+    _username=$(getUsername ${_databaseSpec})
+    _password=$(getPassword ${_databaseSpec})
+
+    if MYSQL_PWD=${_password} mysql -h ${_hostname} -u ${_username} ${_portArg} ${_database} -e "SELECT 1;" >/dev/null 2>&1; then
+      return 0
+    else
+      return 1
+    fi
+  )
+}
+
+function onVerifyBackup(){
+  (
+    local OPTIND
+    local unset flags
+    while getopts : FLAG; do
+      case $FLAG in
+        ? ) flags+="-${OPTARG} ";;
+      esac
+    done
+    shift $((OPTIND-1))
+
+    _databaseSpec=${1}
+
+    _hostname=$(getHostname -l ${_databaseSpec})
+    _database=$(getDatabaseName ${_databaseSpec})
+    _port=$(getPort -l ${_databaseSpec})
+    _portArg=${_port:+"-P ${_port}"}
+    _username=$(getUsername ${_databaseSpec})
+    _password=$(getPassword ${_databaseSpec})
+
+    debugMsg "backup.mariadb.plugin - onVerifyBackup"
+    tables=$(MYSQL_PWD=${_password} mysql -h "${_hostname}" -u "${_username}" ${_portArg} "${_database}" -e "SHOW TABLES;")
+    rtnCd=${?}
+
+    # Get the size of the restored database
+    if (( ${rtnCd} == 0 )); then
+      size=$(getDbSize -l "${_databaseSpec}")
+      rtnCd=${?}
+    fi
+
+    if (( ${rtnCd} == 0 )); then
+      numResults=$(echo "${tables}"| wc -l)
+      if [[ ! -z "${tables}" ]] && (( numResults >= 1 )); then
+        # All good
+        verificationLog="\nThe restored database contained ${numResults} tables, and is ${size} in size."
+      else
+        # Not so good
+        verificationLog="\nNo tables were found in the restored database."
+        rtnCd="3"
+      fi
+    fi
+
+    echo ${verificationLog}
+    return ${rtnCd}
+  )
+}
+
+function onGetDbSize(){
+  (
+    local OPTIND
+    local unset flags
+    while getopts : FLAG; do
+      case $FLAG in
+        ? ) flags+="-${OPTARG} ";;
+      esac
+    done
+    shift $((OPTIND-1))
+
+    _databaseSpec=${1}
+
+    _hostname=$(getHostname ${flags} ${_databaseSpec})
+    _database=$(getDatabaseName ${_databaseSpec})
+    _port=$(getPort ${flags} ${_databaseSpec})
+    _portArg=${_port:+"-P ${_port}"}
+    _username=$(getUsername ${_databaseSpec})
+    _password=$(getPassword ${_databaseSpec})
+
+    MYSQL_PWD=${_password} mysql -h "${_hostname}" -u "${_username}" ${_portArg} "${_database}" -e "SELECT ROUND(SUM(data_length + index_length) / 1024 / 1024, 1) AS \"size in mb\" FROM information_schema.tables WHERE table_schema=\"${_database}\" GROUP BY table_schema;"
+    
+    echo ${size}
+    return ${rtnCd}
+  )
+}
+# =================================================================================================================
