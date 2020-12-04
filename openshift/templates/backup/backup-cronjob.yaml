@@ -160,6 +160,10 @@ objects:
       spec:
         backoffLimit: ${{JOB_BACKOFF_LIMIT}}
         template:
+          metadata:
+            labels:
+              template: "${JOB_NAME}-job"
+              cronjob: "${JOB_NAME}"
           spec:
             containers:
               - name: "${JOB_NAME}-cronjob"
