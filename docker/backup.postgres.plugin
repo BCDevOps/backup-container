@@ -27,6 +27,8 @@ function onBackupDatabase(){
     _password=$(getPassword ${_databaseSpec})
     echoGreen "Backing up '${_hostname}${_port:+:${_port}}${_database:+/${_database}}' to '${_backupFile}' ..."
 
+    echo "BACKUP ${_password} ${_username} ${_database}"
+    
     PGPASSWORD=${_password} pg_dump -Fp -h "${_hostname}" ${_portArg} -U "${_username}" "${_database}" | gzip > ${_backupFile}
     return ${PIPESTATUS[0]}
   )
@@ -114,11 +116,37 @@ function onStartServer(){
 
     _databaseSpec=${1}
 
-    # Start a local PostgreSql instance
-    POSTGRESQL_DATABASE=$(getDatabaseName "${_databaseSpec}") \
-    POSTGRESQL_USER=$(getUsername "${_databaseSpec}") \
-    POSTGRESQL_PASSWORD=$(getPassword "${_databaseSpec}") \
-    run-postgresql >/dev/null 2>&1 &
+    # echo "WHAT THE?? ${_databaseSpec}"
+    
+    # echo "THE HOSTNAME = $(getHostname "${_databaseSpec}")"
+    # HOST_NAME=$(getHostname "${_databaseSpec}")
+    # echo "HN=${HOST_NAME}"
+    # echo "THE PREFIX = $(getHostPrefix "${HOST_NAME}")"
+
+    # _username=$(getUsername ${_databaseSpec})
+    # _password=$(getPassword ${_databaseSpec})
+    # echo "UNAME = ${_username}"
+    # echo "PSWD = ${_password}"
+
+    # _a=$(getUsername ${_databaseSpec})
+    # _b=$(getUsername "${_databaseSpec}")
+    # echo "A=$_a, B=$_b"
+
+    # POSTGRESQL_DATABASE=$(getDatabaseName ${_databaseSpec}) \
+    # POSTGRESQL_USER=$(getUsername ${_databaseSpec}) \
+    # POSTGRESQL_PASSWORD=$(getPassword ${_databaseSpec}) \
+    # env
+
+    # # Start a local PostgreSql instance
+    # POSTGRESQL_DATABASE=$(getDatabaseName ${_databaseSpec}) \
+    # POSTGRESQL_USER=$(getUsername ${_databaseSpec}) \
+    # POSTGRESQL_PASSWORD=$(getPassword ${_databaseSpec}) \
+    # echo "DB: $POSTGRESQL_DATABASE $POSTGRESQL_USER $POSTGRESQL_PASSWORD"
+
+    POSTGRESQL_DATABASE=$(getDatabaseName ${_databaseSpec}) \
+    POSTGRESQL_USER="$(getUsername ${_databaseSpec})" \
+    POSTGRESQL_PASSWORD=$(getPassword ${_databaseSpec}) \
+    run-postgresql &
   )
 }
 
@@ -172,7 +200,8 @@ function onPingDbServer(){
     _username=$(getUsername ${_databaseSpec})
     _password=$(getPassword ${_databaseSpec})
 
-    if PGPASSWORD=${_password} psql -h ${_hostname} ${_portArg} -U ${_username} -q -d ${_database} -c 'SELECT 1' >/dev/null 2>&1; then
+    echo "PING COMMAND: PGPASSWORD=${_password} psql -h ${_hostname} ${_portArg} -U ${_username} -q -d ${_database}"
+    if PGPASSWORD=${_password} psql -h ${_hostname} ${_portArg} -U ${_username} -q -d ${_database} -c 'SELECT 1'; then
       return 0
     else
       return 1
@@ -192,7 +221,7 @@ function onVerifyBackup(){
     shift $((OPTIND-1))
 
     _databaseSpec=${1}
-
+    echo "DBSPEC=${_databaseSpec}"
     _hostname=$(getHostname -l ${_databaseSpec})
     _database=$(getDatabaseName ${_databaseSpec})
     _port=$(getPort -l ${_databaseSpec})
