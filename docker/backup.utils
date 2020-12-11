@@ -222,8 +222,8 @@ function verifyBackup(){
 
     # Make sure the server is not running ...
     if pingDbServer -l "${_databaseSpec}"; then
-      logError "Backup verification failed: ${_fileName}\n\nThe verification server is still running."
-      exit 1
+     logError "Backup verification failed: ${_fileName}\n\nThe verification server is still running."
+     exit 1
     fi
 
     # Make sure things have been cleaned up before we start ...

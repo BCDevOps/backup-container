@@ -1,0 +1,51 @@
+FROM registry.opensource.zalan.do/acid/spilo-12:1.6-p3
+LABEL maintainer="Matthieu Foucault <matthieu@button.is>"
+
+# ========================================================================================================
+# Install go-crond (from https://github.com/BCDevOps/go-crond)
+#  - Adds some additional logging enhancements on top of the upstream project; 
+#    https://github.com/webdevops/go-crond
+#
+# CRON Jobs in OpenShift:
+#  - https://blog.danman.eu/cron-jobs-in-openshift/
+# --------------------------------------------------------------------------------------------------------
+ARG SOURCE_REPO=BCDevOps
+ARG GOCROND_VERSION=0.6.3
+ADD https://github.com/$SOURCE_REPO/go-crond/releases/download/$GOCROND_VERSION/go-crond-64-linux /usr/bin/go-crond
+
+# Get prefix path to scripts rather than hard-code it
+ENV CONTAINER_SCRIPTS_PATH=/usr/share/container-scripts/postgresql
+ENV APP_DATA=/opt/app-root
+
+USER root
+
+#RUN chmod +x /usr/bin/go-crond
+# ========================================================================================================
+
+# ========================================================================================================
+# Perform operations that require root privilages here ...
+# --------------------------------------------------------------------------------------------------------
+# Set permissions for OpenShift
+RUN chmod 664 /etc/passwd \
+ && apt-get update && apt-get install -y gettext-base \
+ && echo $TZ > /etc/timezone
+# ========================================================================================================
+
+# Important - Reset to the base image's user account.
+USER postgres
+
+COPY patroni-spilo/root /
+COPY backup.* /
+COPY webhook-template.json /
+
+ENV POSTGRESQL_SHARED_PRELOAD_LIBRARIES="pg_stat_statements,pg_stat_kcache,set_user"
+
+
+WORKDIR /
+
+USER root 
+
+RUN apt-get install -y bsdmainutils
+
+SHELL ["/bin/bash", "-c"]
+ENTRYPOINT ["/backup.sh"]

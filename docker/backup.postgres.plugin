@@ -3,7 +3,7 @@
 # Postgres Backup and Restore Functions:
 # - Dynamically loaded as a plug-in
 # -----------------------------------------------------------------------------------------------------------------
-export serverDataDirectory="/var/lib/pgsql/data"
+export serverDataDirectory="/home/postgres/pgdata/pgroot/data"
 
 function onBackupDatabase(){
   (
@@ -60,6 +60,7 @@ function onRestoreDatabase(){
     _portArg=${_port:+"-p ${_port}"}
     _username=$(getUsername ${_databaseSpec})
     _password=$(getPassword ${_databaseSpec})
+    
     echo -e "Restoring '${_fileName}' to '${_hostname}${_port:+:${_port}}${_database:+/${_database}}' ...\n" >&2
 
     export PGPASSWORD=${_adminPassword}
@@ -116,37 +117,13 @@ function onStartServer(){
 
     _databaseSpec=${1}
 
-    # echo "WHAT THE?? ${_databaseSpec}"
-    
-    # echo "THE HOSTNAME = $(getHostname "${_databaseSpec}")"
-    # HOST_NAME=$(getHostname "${_databaseSpec}")
-    # echo "HN=${HOST_NAME}"
-    # echo "THE PREFIX = $(getHostPrefix "${HOST_NAME}")"
-
-    # _username=$(getUsername ${_databaseSpec})
-    # _password=$(getPassword ${_databaseSpec})
-    # echo "UNAME = ${_username}"
-    # echo "PSWD = ${_password}"
-
-    # _a=$(getUsername ${_databaseSpec})
-    # _b=$(getUsername "${_databaseSpec}")
-    # echo "A=$_a, B=$_b"
-
-    # POSTGRESQL_DATABASE=$(getDatabaseName ${_databaseSpec}) \
-    # POSTGRESQL_USER=$(getUsername ${_databaseSpec}) \
-    # POSTGRESQL_PASSWORD=$(getPassword ${_databaseSpec}) \
-    # env
-
-    # # Start a local PostgreSql instance
-    # POSTGRESQL_DATABASE=$(getDatabaseName ${_databaseSpec}) \
-    # POSTGRESQL_USER=$(getUsername ${_databaseSpec}) \
-    # POSTGRESQL_PASSWORD=$(getPassword ${_databaseSpec}) \
-    # echo "DB: $POSTGRESQL_DATABASE $POSTGRESQL_USER $POSTGRESQL_PASSWORD"
+    _username=$(getUsername ${_databaseSpec})
+    _password=$(getPassword ${_databaseSpec})
 
     POSTGRESQL_DATABASE=$(getDatabaseName ${_databaseSpec}) \
     POSTGRESQL_USER="$(getUsername ${_databaseSpec})" \
     POSTGRESQL_PASSWORD=$(getPassword ${_databaseSpec}) \
-    run-postgresql &
+    run-postgresql >/dev/null 2>&1 &
   )
 }
 
@@ -164,7 +141,7 @@ function onStopServer(){
     _databaseSpec=${1}
 
     # Stop the local PostgreSql instance
-    pg_ctl stop -D ${serverDataDirectory}/userdata
+    pg_ctl stop -D ${serverDataDirectory}
   )
 }
 
@@ -200,8 +177,7 @@ function onPingDbServer(){
     _username=$(getUsername ${_databaseSpec})
     _password=$(getPassword ${_databaseSpec})
 
-    echo "PING COMMAND: PGPASSWORD=${_password} psql -h ${_hostname} ${_portArg} -U ${_username} -q -d ${_database}"
-    if PGPASSWORD=${_password} psql -h ${_hostname} ${_portArg} -U ${_username} -q -d ${_database} -c 'SELECT 1'; then
+    if PGPASSWORD=${_password} psql -h ${_hostname} ${_portArg} -U ${_username} -q -d ${_database} -c 'SELECT 1' >/dev/null 2>&1; then
       return 0
     else
       return 1
