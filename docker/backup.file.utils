@@ -35,11 +35,11 @@ function listExistingBackups(){
     local _backupDir=${1:-${ROOT_BACKUP_DIR}}
     local database
     local databases=$(readConf -q)
-    local output="\nDatabase,Current Size"
+    local output="\nDatabase,Current Size\n"
 
     for database in ${databases}; do
       if isForContainerType ${database}; then
-        output+="\n${database},$(getDbSize "${database}")"
+        output+="${database},$(getDbSize "${database}")\n"
       fi
     done
 
