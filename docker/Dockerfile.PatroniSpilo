@@ -16,6 +16,7 @@ ADD https://github.com/$SOURCE_REPO/go-crond/releases/download/$GOCROND_VERSION/
 # Get prefix path to scripts rather than hard-code it
 ENV CONTAINER_SCRIPTS_PATH=/usr/share/container-scripts/postgresql
 ENV APP_DATA=/opt/app-root
+ENV TZ=PST8PDT
 
 USER root
 
