@@ -17,6 +17,7 @@ ADD https://github.com/$SOURCE_REPO/go-crond/releases/download/$GOCROND_VERSION/
 ENV CONTAINER_SCRIPTS_PATH=/usr/share/container-scripts/postgresql
 ENV APP_DATA=/opt/app-root
 ENV TZ=PST8PDT
+ENV HOME=/home/postgres
 
 USER root
 
