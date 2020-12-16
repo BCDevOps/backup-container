@@ -118,7 +118,7 @@ function onStartServer(){
     POSTGRESQL_DATABASE=$(getDatabaseName "${_databaseSpec}") \
     POSTGRESQL_USER=$(getUsername "${_databaseSpec}") \
     POSTGRESQL_PASSWORD=$(getPassword "${_databaseSpec}") \
-    run-postgresql >/dev/null 2>&1 &
+    run-postgresql &
   )
 }
 
