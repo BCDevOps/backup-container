@@ -28,6 +28,12 @@ parameters:
     description: "The name of the image to use for this resource."
     required: true
     value: "backup-postgres"
+  - name: "IMAGE_REGISTRY"
+    description: "The base OpenShift docker registry"
+    displayName: "Docker Image Registry"
+    required: true
+    # Set value to "docker-registry.default.svc:5000" if using OCP3
+    value: "image-registry.openshift-image-registry.svc:5000"
   - name: "IMAGE_NAMESPACE"
     displayName: "Image Namespace"
     description: "The namespace of the OpenShift project containing the imagestream for the application."
@@ -167,7 +173,7 @@ objects:
           spec:
             containers:
               - name: "${JOB_NAME}-cronjob"
-                image: "docker-registry.default.svc:5000/${IMAGE_NAMESPACE}/${SOURCE_IMAGE_NAME}:${TAG_NAME}"
+                image: "${IMAGE_REGISTRY}/${IMAGE_NAMESPACE}/${SOURCE_IMAGE_NAME}:${TAG_NAME}"
                 # image: backup
                 command:
                   - "/bin/bash"
