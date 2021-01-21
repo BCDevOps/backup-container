@@ -507,7 +507,7 @@
       "displayName": "Backup Volume Class",
       "description": "The class of the persistent volume used to store the backups; netapp-block-standard, netapp-file-standard, nfs-backup.  Please note, nfs-backup storage is the recommended storage type for backups.  It MUST be provisioned manually through the OCP catalog via the 'BC Gov NFS Storage' template.  nfs-backup storage CANNOT be automatically provisioned by this template.",
       "required": true,
-      "value": "nfs-backup"
+      "value": "netapp-file-backup"
     },
     {
       "name": "VERIFICATION_VOLUME_NAME",
