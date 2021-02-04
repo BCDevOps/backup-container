@@ -111,7 +111,7 @@ NFS backed storage is covered by the following backup and retention policies:
 
 ### Restore/Verification Storage Volume
 
-The default storage class for the restore/verification volume is `netapp-file-standard`. The supplied deployment template will auto-provision this volume for you with it is published. Refer to the _Storage Performance_ section for performance considerations.
+The default storage class for the restore/verification volume is `netapp-file-standard` (do not use `netapp-file-backup` as it is unsuitable for such transient workloads). The supplied deployment template will auto-provision this volume for you with it is published. Refer to the _Storage Performance_ section for performance considerations.
 
 This volume should be large enough to host your largest database. Set the size by updating/overriding the `VERIFICATION_VOLUME_SIZE` value within the template.
 
@@ -480,14 +480,20 @@ Note that underscores should be used in the environment variable names.
 oc -n 599f0a-dev create configmap backup-conf --from-file=./backup-container/config/backup.conf
 oc -n 599f0a-dev label configmap backup-conf app=nrmsurveys-bkup
 
-oc -n 599f0a-dev process -f ./backup-container/templates/backup-deploy.json -p NAME=nrmsurveys-bkup \
+oc -n 599f0a-dev process -f ./openshift/templates/backup/backup-deploy.json \
+  -p NAME=nrmsurveys-bkup \
   -p IMAGE_NAMESPACE=599f0a-tools \
   -p SOURCE_IMAGE_NAME=nrmsurveys-bkup \
   -p TAG_NAME=v1 \
   -p BACKUP_VOLUME_NAME=nrmsurveys-bkup-pvc -p BACKUP_VOLUME_SIZE=20Gi \
   -p VERIFICATION_VOLUME_SIZE=5Gi \
-  -p VERIFICATION_VOLUME_CLASS=netapp-file-backup \
   -p ENVIRONMENT_FRIENDLY_NAME='NRM Survey DB Backups' | oc -n 599f0a-dev create -f -
+```
+
+To clean up
+
+```bash
+oc -n 599f0a-dev delete pvc/nrmsurveys-bkup-pvc pvc/backup-verification secret/nrmsurveys-bkup secret/ftp-secret dc/nrmsurveys-bkup
 ```
 
 </details>
