@@ -83,21 +83,11 @@ The following sections on storage discuss the recommendations and limitations of
 
 ### Backup Storage Volume
 
-NOTE: OCP4 has a different storage class available. TODO
+The recommended storage class for the backup volume for OCP4 is `netapp-file-backup`, backed up with the standard OCIO Backup infrastructure. Quota for this storage class is 25Gi by default. If you need more please put in a request for a quota change.
 
-The recommended storage class for the backup volume is `nfs-backup`. This class of storage **cannot** be auto-provisioned through the use of a deployment template. The `PersistentVolumeClaim` declared in the supplied deployment template for the _backup volume_ will purposely fail to properly provision and wire an `nfs-backup` volume if published before you manually provision your `nfs-backup` claim.
+Simply create a PVC with the netapp-file-backup and mount it to your pod as you would any other PVC.
 
-When using `nfs-backup` you will need to provision your claims **before** you publish your deployment configuration, through either the [service catalog](https://github.com/BCDevOps/provision-nfs-apb#provision-via-gui-catalog) using the [BC Gov NFS Storage](https://github.com/BCDevOps/provision-nfs-apb/blob/master/docs/usage-gui.md) wizard, or by using the [svcat cli](https://github.com/BCDevOps/provision-nfs-apb#provision-via-svcat-cli).
-
-You'll note the name of the resulting storage claim has a random component to it (example, `bk-devex-von-bc-tob-test-xjrmkhsnshay`). This name needs to be injected into the default value of the `BACKUP_VOLUME_NAME` parameter of the template **before** publishing the deployment configuration in order for the storage to be correctly mounted to the `/backups/` directory of the container.
-
-`nfs-backup` storageClass is a lower tier of storage and not considered highly available. `read: don't use this for live application storage`. The storageClass **IS** covered by the default enterprise backup policies, and can be directly referenced for restores using the PVC name when opening a restore ticket with 7700.
-
-`nfs-backup` PVCs **cannot** be used for restore/verification. The permissions on the underlying volume do not allow the PostgreSql server to host it's configuration and data files on a directory backed by this class of storage.
-
-Ensure you review and plan your storage requirements before provisioning.
-
-More information on provisioning `nfs-backup` storage here; [provision-nfs-apb](https://github.com/BCDevOps/provision-nfs-apb)
+For additional details see the [DevHub](https://developer.gov.bc.ca/OCP4-Backup-and-Restore) page.
 
 #### NFS Storage Backup and Retention Policy
 
@@ -502,10 +492,9 @@ oc -n 599f0a-dev delete pvc/nrmsurveys-bkup-pvc pvc/backup-verification secret/n
 
 The following outlines the deployment of a simple backup of a single MongoDB database with backup validation.
 
-1. Decide on amount of backup storage required. While 5Gi is the default quota limit in BC Gov OCP provisioned namespaces for `nfs-backup`-class storage, teams are able to request more. If you are backing up a non-production environment or an environment outside of BC Gov OCP, you can use a different storage class and thus, different default storage quota. This example assumes that you're using 5Gi of `nfs-backup`-class storage.
-2. Provision the nfs-backup PVC, following the [docs](https://github.com/BCDevOps/backup-container#backup-storage-volume). This provisioning may take several minutes to an hour, and if using the GUI, will result in a PVC with a name similar to `bk-abc123-dev-v9k7xgyvwdxm`, where `abc123-dev` is your project namespace and the last portion is randomly generated.
-3. `git clone https://github.com/BCDevOps/backup-container.git && cd backup-container`.
-4. Determine the OpenShift namespace for the image (e.g. `abc123-dev`), the app name (e.g. `myapp-backup`), and the image tag (e.g. `v1`). Then build the image in your `-tools` namespace.
+1. Decide on amount of backup storage required. While 25Gi is the default quota limit in BC Gov OCP4 provisioned namespaces for `netapp-file-backup`-class storage, teams are able to request more. If you are backing up a non-production environment or an environment outside of BC Gov OCP, you can use a different storage class and thus, different default storage quota. This example assumes that you're using 5Gi of `netapp-file-backup`-class storage.
+2. `git clone https://github.com/BCDevOps/backup-container.git && cd backup-container`.
+3. Determine the OpenShift namespace for the image (e.g. `abc123-dev`), the app name (e.g. `myapp-backup`), and the image tag (e.g. `v1`). Then build the image in your `-tools` namespace.
 
 ```bash
 oc -n abc123-tools process -f ./openshift/templates/backup/backup-build.json \
@@ -561,7 +550,7 @@ oc -n abc123-dev process -f ./openshift/templates/backup/backup-deploy.json \
   -p BACKUP_VOLUME_NAME=bk-abc123-dev-v9k7xgyvwdxm \
   -p BACKUP_VOLUME_SIZE=5Gi \
   -p VERIFICATION_VOLUME_SIZE=10Gi \
-  -p VERIFICATION_VOLUME_CLASS=netapp-block-standard \
+  -p VERIFICATION_VOLUME_CLASS=netapp-file-standard \
   -p DATABASE_DEPLOYMENT_NAME=myapp-mongodb \
   -p DATABASE_USER_KEY_NAME=username \
   -p DATABASE_PASSWORD_KEY_NAME=password \
