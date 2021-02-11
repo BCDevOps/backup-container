@@ -39,20 +39,20 @@ objects:
       resources:
         requests:
           storage: ${BACKUP_VOLUME_SIZE}
-  # - kind: PersistentVolumeClaim
-  #   apiVersion: v1
-  #   metadata:
-  #     name: ${VERIFICATION_VOLUME_NAME}
-  #     labels:
-  #       app: ${NAME}-persistent
-  #       template: ${NAME}-persistent-template
-  #   spec:
-  #     storageClassName: ${VERIFICATION_VOLUME_CLASS}
-  #     accessModes:
-  #       - ReadWriteOnce
-  #     resources:
-  #       requests:
-  #         storage: ${VERIFICATION_VOLUME_SIZE}
+  - kind: PersistentVolumeClaim
+    apiVersion: v1
+    metadata:
+      name: ${VERIFICATION_VOLUME_NAME}
+      labels:
+        app: ${NAME}-persistent
+        template: ${NAME}-persistent-template
+    spec:
+      storageClassName: ${VERIFICATION_VOLUME_CLASS}
+      accessModes:
+        - ReadWriteOnce
+      resources:
+        requests:
+          storage: ${VERIFICATION_VOLUME_SIZE}
   - kind: Secret
     apiVersion: v1
     metadata:
@@ -108,9 +108,9 @@ objects:
             - name: ${BACKUP_VOLUME_NAME}
               persistentVolumeClaim:
                 claimName: ${BACKUP_VOLUME_NAME}
-            # - name: ${VERIFICATION_VOLUME_NAME}
-            #   persistentVolumeClaim:
-            #     claimName: ${VERIFICATION_VOLUME_NAME}
+            - name: ${VERIFICATION_VOLUME_NAME}
+              persistentVolumeClaim:
+                claimName: ${VERIFICATION_VOLUME_NAME}
             - name: ${NAME}-config-volume
               configMap:
                 name: ${CONFIG_MAP_NAME}
@@ -188,8 +188,8 @@ objects:
               volumeMounts:
                 - name: ${BACKUP_VOLUME_NAME}
                   mountPath: ${BACKUP_DIR}
-                # - name: ${VERIFICATION_VOLUME_NAME}
-                #   mountPath: ${VERIFICATION_VOLUME_MOUNT_PATH}
+                - name: ${VERIFICATION_VOLUME_NAME}
+                  mountPath: ${VERIFICATION_VOLUME_MOUNT_PATH}
                 - name: ${NAME}-config-volume
                   mountPath: ${CONFIG_MOUNT_PATH}${CONFIG_FILE_NAME}
                   subPath: ${CONFIG_FILE_NAME}
