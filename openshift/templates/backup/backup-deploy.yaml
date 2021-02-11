@@ -3,11 +3,33 @@ apiVersion: v1
 metadata:
   name: ${NAME}-deployment-template
 objects:
+  - kind: NetworkSecurityPolicy
+    apiVersion: security.devops.gov.bc.ca/v1alpha1
+    metadata:
+      name: ${NAME}-policy
+      labels:
+        name: ${NAME}-policy
+        role: ${ROLE}
+        env: ${TAG_NAME}
+    spec:
+      description: |
+        Allow the backup container to talk to backup targets
+      source:
+        - - role=${ROLE}
+          - env=${TAG_NAME}
+          - $namespace=${NAMESPACE_NAME}-${TAG_NAME}
+
+      destination:
+        - - env=${TAG_NAME}
+          - backupTarget=target
+          - $namespace=${NAMESPACE_NAME}-${TAG_NAME}
   - kind: PersistentVolumeClaim
     apiVersion: v1
     metadata:
       name: ${BACKUP_VOLUME_NAME}
       labels:
+        env: ${TAG_NAME}
+        role: ${ROLE}
         app: ${NAME}-persistent
         template: ${NAME}-persistent-template
     spec:
@@ -17,20 +39,20 @@ objects:
       resources:
         requests:
           storage: ${BACKUP_VOLUME_SIZE}
-  - kind: PersistentVolumeClaim
-    apiVersion: v1
-    metadata:
-      name: ${VERIFICATION_VOLUME_NAME}
-      labels:
-        app: ${NAME}-persistent
-        template: ${NAME}-persistent-template
-    spec:
-      storageClassName: ${VERIFICATION_VOLUME_CLASS}
-      accessModes:
-        - ReadWriteOnce
-      resources:
-        requests:
-          storage: ${VERIFICATION_VOLUME_SIZE}
+  # - kind: PersistentVolumeClaim
+  #   apiVersion: v1
+  #   metadata:
+  #     name: ${VERIFICATION_VOLUME_NAME}
+  #     labels:
+  #       app: ${NAME}-persistent
+  #       template: ${NAME}-persistent-template
+  #   spec:
+  #     storageClassName: ${VERIFICATION_VOLUME_CLASS}
+  #     accessModes:
+  #       - ReadWriteOnce
+  #     resources:
+  #       requests:
+  #         storage: ${VERIFICATION_VOLUME_SIZE}
   - kind: Secret
     apiVersion: v1
     metadata:
@@ -52,6 +74,8 @@ objects:
     metadata:
       name: ${NAME}
       labels:
+        env: ${TAG_NAME}
+        role: ${ROLE}
         template: ${NAME}-deployment
       annotations:
         description: Defines how to deploy the ${NAME} server
@@ -76,15 +100,17 @@ objects:
         metadata:
           name: ${NAME}
           labels:
+            env: ${TAG_NAME}
+            role: ${ROLE}
             name: ${NAME}
         spec:
           volumes:
             - name: ${BACKUP_VOLUME_NAME}
               persistentVolumeClaim:
                 claimName: ${BACKUP_VOLUME_NAME}
-            - name: ${VERIFICATION_VOLUME_NAME}
-              persistentVolumeClaim:
-                claimName: ${VERIFICATION_VOLUME_NAME}
+            # - name: ${VERIFICATION_VOLUME_NAME}
+            #   persistentVolumeClaim:
+            #     claimName: ${VERIFICATION_VOLUME_NAME}
             - name: ${NAME}-config-volume
               configMap:
                 name: ${CONFIG_MAP_NAME}
@@ -118,65 +144,15 @@ objects:
                   value: ${MONGODB_AUTHENTICATION_DATABASE}
                 - name: TABLE_SCHEMA
                   value: ${TABLE_SCHEMA}
-                - name: WALLET_ESR1_USER
+                - name: ISSUER_KIT_WALLET_USER
                   valueFrom:
                     secretKeyRef:
-                      name: ${WALLET_ESR1_DB_HOST_NAME}
+                      name: ${ISSUER_KIT_WALLET_DB_HOST_NAME}
                       key: ${DATABASE_USER_KEY_NAME}
-                - name: WALLET_ESR1_PASSWORD
+                - name: ISSUER_KIT_WALLET_PASSWORD
                   valueFrom:
                     secretKeyRef:
-                      name: ${WALLET_ESR1_DB_HOST_NAME}
-                      key: ${DATABASE_PASSWORD_KEY_NAME}
-                - name: WALLET_ESR2_USER
-                  valueFrom:
-                    secretKeyRef:
-                      name: ${WALLET_ESR2_DB_HOST_NAME}
-                      key: ${DATABASE_USER_KEY_NAME}
-                - name: WALLET_ESR2_PASSWORD
-                  valueFrom:
-                    secretKeyRef:
-                      name: ${WALLET_ESR2_DB_HOST_NAME}
-                      key: ${DATABASE_PASSWORD_KEY_NAME}
-                - name: WALLET_HEALTHBC_USER
-                  valueFrom:
-                    secretKeyRef:
-                      name: ${WALLET_HEALTHBC_DB_HOST_NAME}
-                      key: ${DATABASE_USER_KEY_NAME}
-                - name: WALLET_HEALTHBC_PASSWORD
-                  valueFrom:
-                    secretKeyRef:
-                      name: ${WALLET_HEALTHBC_DB_HOST_NAME}
-                      key: ${DATABASE_PASSWORD_KEY_NAME}
-                - name: WALLET_INOCULATION_USER
-                  valueFrom:
-                    secretKeyRef:
-                      name: ${WALLET_INOCULATION_DB_HOST_NAME}
-                      key: ${DATABASE_USER_KEY_NAME}
-                - name: WALLET_INOCULATION_PASSWORD
-                  valueFrom:
-                    secretKeyRef:
-                      name: ${WALLET_INOCULATION_DB_HOST_NAME}
-                      key: ${DATABASE_PASSWORD_KEY_NAME}
-                - name: WALLET_MEDLAB_USER
-                  valueFrom:
-                    secretKeyRef:
-                      name: ${WALLET_MEDLAB_DB_HOST_NAME}
-                      key: ${DATABASE_USER_KEY_NAME}
-                - name: WALLET_MEDLAB_PASSWORD
-                  valueFrom:
-                    secretKeyRef:
-                      name: ${WALLET_MEDLAB_DB_HOST_NAME}
-                      key: ${DATABASE_PASSWORD_KEY_NAME}
-                - name: WALLET_OPENVP_USER
-                  valueFrom:
-                    secretKeyRef:
-                      name: ${WALLET_OPENVP_DB_HOST_NAME}
-                      key: ${DATABASE_USER_KEY_NAME}
-                - name: WALLET_OPENVP_PASSWORD
-                  valueFrom:
-                    secretKeyRef:
-                      name: ${WALLET_OPENVP_DB_HOST_NAME}
+                      name: ${ISSUER_KIT_WALLET_DB_HOST_NAME}
                       key: ${DATABASE_PASSWORD_KEY_NAME}
                 - name: FTP_URL
                   valueFrom:
@@ -212,8 +188,8 @@ objects:
               volumeMounts:
                 - name: ${BACKUP_VOLUME_NAME}
                   mountPath: ${BACKUP_DIR}
-                - name: ${VERIFICATION_VOLUME_NAME}
-                  mountPath: ${VERIFICATION_VOLUME_MOUNT_PATH}
+                # - name: ${VERIFICATION_VOLUME_NAME}
+                #   mountPath: ${VERIFICATION_VOLUME_MOUNT_PATH}
                 - name: ${NAME}-config-volume
                   mountPath: ${CONFIG_MOUNT_PATH}${CONFIG_FILE_NAME}
                   subPath: ${CONFIG_FILE_NAME}
@@ -224,6 +200,17 @@ parameters:
       name}' depending on your database provider
     required: true
     value: backup-postgres
+  - name: NAMESPACE_NAME
+    displayName: Namespace Name
+    description: The name of the namespace being deployed to.
+    required: true
+    value: a99fd4
+  - name: ROLE
+    displayName: Role
+    description: The role of this service within the application - used for Network
+      Policies
+    required: true
+    value: backup
   - name: SOURCE_IMAGE_NAME
     displayName: Source Image Name
     description: The name of the image to use for this resource.  Use 'backup-{database
@@ -259,42 +246,12 @@ parameters:
       separate authentication database.
     required: false
     value: ''
-  - name: WALLET_ESR1_DB_HOST_NAME
+  - name: ISSUER_KIT_WALLET_DB_HOST_NAME
     displayName: Database Deployment Name
     description: The name associated to the database deployment resources.  In particular,
       this is used to wire up the credentials associated to the database.
     required: true
-    value: wallet-esr1
-  - name: WALLET_ESR2_DB_HOST_NAME
-    displayName: Database Deployment Name
-    description: The name associated to the database deployment resources.  In particular,
-      this is used to wire up the credentials associated to the database.
-    required: true
-    value: wallet-esr2
-  - name: WALLET_HEALTHBC_DB_HOST_NAME
-    displayName: Database Deployment Name
-    description: The name associated to the database deployment resources.  In particular,
-      this is used to wire up the credentials associated to the database.
-    required: true
-    value: wallet-healthbc
-  - name: WALLET_INOCULATION_DB_HOST_NAME
-    displayName: Database Deployment Name
-    description: The name associated to the database deployment resources.  In particular,
-      this is used to wire up the credentials associated to the database.
-    required: true
-    value: wallet-inoculation
-  - name: WALLET_MEDLAB_DB_HOST_NAME
-    displayName: Database Deployment Name
-    description: The name associated to the database deployment resources.  In particular,
-      this is used to wire up the credentials associated to the database.
-    required: true
-    value: wallet-medlab
-  - name: WALLET_OPENVP_DB_HOST_NAME
-    displayName: Database Deployment Name
-    description: The name associated to the database deployment resources.  In particular,
-      this is used to wire up the credentials associated to the database.
-    required: true
-    value: wallet-openvp
+    value: issuer-kit-wallet
   - name: DATABASE_USER_KEY_NAME
     displayName: Database User Key Name
     description: The database user key name stored in database deployment resources

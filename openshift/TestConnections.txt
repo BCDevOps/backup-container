@@ -1,0 +1,6 @@
+# Uses the 'testConnection' script from https://github.com/BCDevOps/openshift-developer-tools
+# Example:
+# echo -e "backup-postgres"  | xargs -I {} testConnection -n a99fd4-dev -f TestConnections.txt -p {}
+
+google.com:80
+issuer-kit-wallet:5432
