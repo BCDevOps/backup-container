@@ -95,12 +95,12 @@ function onRestoreDatabase(){
                 `psql -h "${_hostname}" ${_portArg} -qAt -R\0 -c "SELECT quote_ident(sequence_schema) || '.' || quote_ident(sequence_name) FROM information_schema.sequences WHERE sequence_schema = '${_schema}';" ${_database}` \
                 `psql -h "${_hostname}" ${_portArg} -qAt -R\0 -c "SELECT quote_ident(table_schema) || '.' || quote_ident(table_name) FROM information_schema.views WHERE table_schema = '${_schema}';" ${_database}` ;
       do
-          psql -h "${_hostname}" ${_portArg} -c "ALTER TABLE $tbl OWNER TO ${_username}" ${_database};
+          psql -h "${_hostname}" ${_portArg} -c "ALTER TABLE $tbl OWNER TO quote_ident(${_username})" ${_database};
       done
 
       for func in `psql -h "${_hostname}" ${_portArg} -qAt -R\0 -c "SELECT quote_ident(n.nspname) || '.' || quote_ident(p.proname) || '(' || pg_catalog.pg_get_function_identity_arguments(p.oid) || ')' FROM pg_catalog.pg_proc p JOIN pg_catalog.pg_namespace n ON n.oid = p.pronamespace WHERE n.nspname = '${_schema}';" ${_database}` ;
       do
-          psql -h "${_hostname}" ${_portArg} -c "ALTER FUNCTION $func OWNER TO ${_username}" ${_database};
+          psql -h "${_hostname}" ${_portArg} -c "ALTER FUNCTION $func OWNER TO quote_ident(${_username})" ${_database};
       done
       unset IFS;
     fi
