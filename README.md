@@ -415,7 +415,9 @@ Done!
 The default `backup-container` template contains some basic Network Security Policies that are designed to be functioning out-of-the-box for most standard deployments. They provide:
 - Outbound traffic authorization towards the target destination for the Webhook URL (if specified).
 - Outbound traffic authorization towards the target destination for the FTP Server (if specified).
-- Internal traffic authorization towards target databases: for this to work, the target database deployments must be in the same namespace/environment AND must be labelled with `backup=true`. 
+- Internal traffic authorization towards target databases: for this to work, the target database deployments must be in the same namespace/environment AND must be labelled with `backup=true`.
+
+These default Network Security Policies are meant to be a "one size fits all" starter set of policies to facilitate standing up the `backup-container` in a new environment. Please consider updating/tweaking them to better fit your needs, depending on your setup.
 
 # Example Deployments
 
