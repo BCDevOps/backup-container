@@ -18,8 +18,10 @@ objects:
         Define the network parameters for accessing remote resources.
       entries:
         - ${WEBHOOK_URL_HOST}
+        - ${FTP_URL_HOST}
       servicePorts:
         - tcp/443
+        - tcp/21
 
   - kind: NetworkSecurityPolicy
     apiVersion: security.devops.gov.bc.ca/v1alpha1
@@ -109,6 +111,7 @@ objects:
       ftp-url: ${FTP_URL}
       ftp-user: ${FTP_USER}
       ftp-password: ${FTP_PASSWORD}
+      ftp-url-host: ${FTP_URL_HOST}
 
   - kind: DeploymentConfig
     apiVersion: v1
@@ -310,6 +313,11 @@ parameters:
     description: The URL of the backup FTP server
     required: false
     value: ""
+  - name: FTP_URL_HOST
+    displayName: Ftp URL Hostname
+    description: Ftp URL Hostname.  The backup-deploy.overrides.sh will parse this from the supplied FTP_URL, and fetch it from a secret for updates.
+    required: false
+    value:
   - name: FTP_USER
     displayName: FTP user name
     description: FTP user name
