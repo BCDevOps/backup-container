@@ -1,3 +1,5 @@
+#!/bin/bash
+
 _includeFile=$(type -p overrides.inc)
 if [ ! -z ${_includeFile} ]; then
   . ${_includeFile}
@@ -27,13 +29,18 @@ if createOperation; then
   readParameter "FTP_PASSWORD - Please provide the FTP password:" FTP_PASSWORD ""
 
   # Get the webhook URL
-  readParameter "WEBHOOK_URL - Please provide the webhook endpoint URL.  If left blank, the webhook integration feature will be disabled:" WEBHOOK_URL ""
+  readParameter "WEBHOOK_URL - Please provide the webhook endpoint URL.  If left blank, the webhook integration feature will be disabled:" WEBHOOK_URL "false"
+  parseHostnameParameter "WEBHOOK_URL" "WEBHOOK_URL_HOST"
 else
   printStatusMsg "Update operation detected ...\nSkipping the prompts for the FTP_URL, FTP_USER, FTP_PASSWORD, and WEBHOOK_URL secrets ...\n"
   writeParameter "FTP_URL" "prompt_skipped"
   writeParameter "FTP_USER" "prompt_skipped"
   writeParameter "FTP_PASSWORD" "prompt_skipped"
   writeParameter "WEBHOOK_URL" "prompt_skipped"
+
+  # Get WEBHOOK_URL_HOST from secret
+  printStatusMsg "Getting WEBHOOK_URL_HOST for the ExternalNetwork definition from secret ...\n"
+  writeParameter "WEBHOOK_URL_HOST" $(getSecret "${NAME}" "webhook-url-host") "false"
 fi
 
 SPECIALDEPLOYPARMS="--param-file=${_overrideParamFile}"
