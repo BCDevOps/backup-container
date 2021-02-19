@@ -410,6 +410,15 @@ Following are more detailed steps to perform a restore of a backup.
 
 Done!
 
+## Network Security Policies
+
+The default `backup-container` template contains some basic Network Security Policies that are designed to be functioning out-of-the-box for most standard deployments. They provide:
+- Outbound traffic authorization towards the target destination for the Webhook URL (if specified).
+- Outbound traffic authorization towards the target destination for the FTP Server (if specified).
+- Internal traffic authorization towards target databases: for this to work, the target database deployments must be in the same namespace/environment AND must be labelled with `backup=true`.
+
+These default Network Security Policies are meant to be a "one size fits all" starter set of policies to facilitate standing up the `backup-container` in a new environment. Please consider updating/tweaking them to better fit your needs, depending on your setup.
+
 # Example Deployments
 
 <details><summary>Example of a Postgres deployment</summary>
@@ -440,24 +449,16 @@ postgres=pawslimesurvey-postgresql:5432/pawslimesurvey
 6. Configure references to your DB credentials in [backup-deploy.json](./openshift/templates/backup/backup-deploy.json), replacing the boilerplate `DATABASE_USER` and `DATABASE_PASSWORD` environment variables.
 
 ```yaml
-{
-  "name": "EAOFIDER_POSTGRESQL_USER",
-  "valueFrom": {
-    "secretKeyRef": {
-      "name": "eaofider-postgresql",
-      "key": "${DATABASE_USER_KEY_NAME}"
-    }
-  }
-},
-{
-  "name": "EAOFIDER_POSTGRESQL_PASSWORD",
-  "valueFrom": {
-    "secretKeyRef": {
-      "name": "eaofider-postgresql",
-      "key": "${DATABASE_PASSWORD_KEY_NAME}"
-    }
-  }
-},
+- name: EAOFIDER_POSTGRESQL_USER
+  valueFrom:
+    secretKeyRef:
+      name: eaofider-postgresql
+      key: "${DATABASE_USER_KEY_NAME}"
+- name: EAOFIDER_POSTGRESQL_PASSWORD
+  valueFrom:
+    secretKeyRef:
+      name: eaofider-postgresql
+      key: "${DATABASE_PASSWORD_KEY_NAME}"
 ```
 
 Note that underscores should be used in the environment variable names.
@@ -515,25 +516,17 @@ mongo=myapp-mongodb:27017/mydb
 
 6. Configure references to your DB credentials in [backup-deploy.json](./openshift/templates/backup/backup-deploy.json), replacing the boilerplate `DATABASE_USER` and `DATABASE_PASSWORD` environment variable names. Note the hostname of the database to be backed up. This example uses a hostname of `myapp-mongodb` which maps to environement variables named `MYAPP_MONGODB_USER` and `MYAPP_MONGODB_PASSWORD`. See the [backup.conf](#backupconf) section above for more in depth instructions. This example also assumes that the name of the secret containing your database username and password is the same as the provided `DATABASE_DEPLOYMENT_NAME` parameter. If that's not the case for your service, the secret name can be overridden.
 
-```json
-{
-  "name": "MYAPP_MONGODB_USER",
-  "valueFrom": {
-    "secretKeyRef": {
-      "name": "${DATABASE_DEPLOYMENT_NAME}",
-      "key": "${DATABASE_USER_KEY_NAME}"
-    }
-  }
-},
-{
-  "name": "MYAPP_MONGODB_PASSWORD",
-  "valueFrom": {
-    "secretKeyRef": {
-      "name": "${DATABASE_DEPLOYMENT_NAME}",
-      "key": "${DATABASE_PASSWORD_KEY_NAME}"
-    }
-  }
-},
+```yaml
+- name: MYAPP_MONGODB_USER
+  valueFrom:
+    secretKeyRef:
+      name: "${DATABASE_DEPLOYMENT_NAME}"
+      key: "${DATABASE_USER_KEY_NAME}"
+- name: MYAPP_MONGODB_PASSWORD
+  valueFrom:
+    secretKeyRef:
+      name: "${DATABASE_DEPLOYMENT_NAME}"
+      key: "${DATABASE_PASSWORD_KEY_NAME}"
 ```
 
 8. Deploy the app. In this example, the namespace is `abc123-dev` and the app name is `myapp-backup`. Note that the key names within the database secret referencing database username and password are `username` and `password`, respectively. If this is not the case for your deployment, specify the correct key names as parameters `DATABASE_USER_KEY_NAME` and `DATABASE_PASSWORD_KEY_NAME`. Also note that `BACKUP_VOLUME_NAME` is from Step 2 above.
