@@ -144,15 +144,15 @@ objects:
                   value: ${MONGODB_AUTHENTICATION_DATABASE}
                 - name: TABLE_SCHEMA
                   value: ${TABLE_SCHEMA}
-                - name: ISSUER_KIT_WALLET_USER
+                - name: EMAIL_VERIFICATION_SERVICE_USER
                   valueFrom:
                     secretKeyRef:
-                      name: ${ISSUER_KIT_WALLET_DB_HOST_NAME}
+                      name: ${EMAIL_VERIFICATION_SERVICE_DB_HOST_NAME}
                       key: ${DATABASE_USER_KEY_NAME}
                 - name: ISSUER_KIT_WALLET_PASSWORD
                   valueFrom:
                     secretKeyRef:
-                      name: ${ISSUER_KIT_WALLET_DB_HOST_NAME}
+                      name: ${EMAIL_VERIFICATION_SERVICE_DB_HOST_NAME}
                       key: ${DATABASE_PASSWORD_KEY_NAME}
                 - name: FTP_URL
                   valueFrom:
@@ -246,12 +246,12 @@ parameters:
       separate authentication database.
     required: false
     value: ''
-  - name: ISSUER_KIT_WALLET_DB_HOST_NAME
+  - name: EMAIL_VERIFICATION_SERVICE_DB_HOST_NAME
     displayName: Database Deployment Name
     description: The name associated to the database deployment resources.  In particular,
       this is used to wire up the credentials associated to the database.
     required: true
-    value: issuer-kit-wallet
+    value: email-verification-service-db
   - name: DATABASE_USER_KEY_NAME
     displayName: Database User Key Name
     description: The database user key name stored in database deployment resources
