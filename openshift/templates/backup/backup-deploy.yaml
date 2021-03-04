@@ -144,12 +144,12 @@ objects:
                   value: ${MONGODB_AUTHENTICATION_DATABASE}
                 - name: TABLE_SCHEMA
                   value: ${TABLE_SCHEMA}
-                - name: EMAIL_VERIFICATION_SERVICE_USER
+                - name: EMAIL_VERIFICATION_SERVICE_WALLET_USER
                   valueFrom:
                     secretKeyRef:
                       name: ${EMAIL_VERIFICATION_SERVICE_DB_HOST_NAME}
                       key: ${DATABASE_USER_KEY_NAME}
-                - name: ISSUER_KIT_WALLET_PASSWORD
+                - name: EMAIL_VERIFICATION_SERVICE_WALLET_PASSWORD
                   valueFrom:
                     secretKeyRef:
                       name: ${EMAIL_VERIFICATION_SERVICE_DB_HOST_NAME}
