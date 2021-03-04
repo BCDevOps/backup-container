@@ -8,8 +8,6 @@ objects:
     apiVersion: v1
     metadata:
       name: ${NAME}
-      labels:
-        app: ${NAME}
   - kind: BuildConfig
     apiVersion: v1
     metadata:
@@ -33,7 +31,7 @@ objects:
           from:
             kind: DockerImage
             name: ${BASE_IMAGE_FOR_BUILD}
-          dockerfilePath: Dockerfile
+          dockerfilePath: ${DOCKER_FILE_PATH}
       output:
         to:
           kind: ImageStreamTag
@@ -41,8 +39,7 @@ objects:
 parameters:
   - name: NAME
     displayName: Name
-    description: The name assigned to all of the resources.  Use 'backup-{database
-      name}' depending on your database provider
+    description: The name assigned to all of the resources.  Use 'backup-{database name}' depending on your database provider
     required: true
     value: backup-postgres
   - name: GIT_REPO_URL
@@ -62,9 +59,7 @@ parameters:
     value: /docker
   - name: DOCKER_FILE_PATH
     displayName: Docker File
-    description: The path and file of the docker file defining the build.  Choose
-      either 'Dockerfile' for Postgres builds or 'Dockerfile_Mongo' for MongoDB builds
-      or 'Dockerfile_MSSQL' for MSSQL builds.
+    description: The path and file of the docker file defining the build.  Choose either 'Dockerfile' for Postgres builds or 'Dockerfile_Mongo' for MongoDB builds or 'Dockerfile_MSSQL' for MSSQL builds.
     required: false
     value: Dockerfile
   - name: OUTPUT_IMAGE_TAG
@@ -74,7 +69,6 @@ parameters:
     value: latest
   - name: BASE_IMAGE_FOR_BUILD
     displayName: FROM Image Tag
-    description: Base image to build from.  Docker creds or Artificatory setup may
-      be needed to alleviate docker rate-limiting
+    description: Base image to build from.  Docker creds or Artificatory setup may be needed to alleviate docker rate-limiting
     required: true
     value: docker.io/centos/postgresql-12-centos7:20200917-804ef01
