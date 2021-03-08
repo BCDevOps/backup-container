@@ -3,51 +3,51 @@ apiVersion: v1
 metadata:
   name: ${NAME}-deployment-template
 objects:
-  - kind: ExternalNetwork
-    apiVersion: security.devops.gov.bc.ca/v1alpha1
-    metadata:
-      name: ${NAME}
-      network: ${NAME}
-      labels:
-        name: ${NAME}
-        app: backup-container
-        role: backup-container
-        env: ${TAG_NAME}
-    spec:
-      description: |
-        Define the network parameters for accessing remote resources.
-      entries:
-        - ${WEBHOOK_URL_HOST}
-        - ${FTP_URL_HOST}
-      servicePorts:
-        - tcp/443
-        - tcp/21
+  # - kind: ExternalNetwork
+  #   apiVersion: security.devops.gov.bc.ca/v1alpha1
+  #   metadata:
+  #     name: ${NAME}
+  #     network: ${NAME}
+  #     labels:
+  #       name: ${NAME}
+  #       app: backup-container
+  #       role: backup-container
+  #       env: ${TAG_NAME}
+  #   spec:
+  #     description: |
+  #       Define the network parameters for accessing remote resources.
+  #     entries:
+  #       - ${WEBHOOK_URL_HOST}
+  #       - ${FTP_URL_HOST}
+  #     servicePorts:
+  #       - tcp/443
+  #       - tcp/21
 
-  - kind: NetworkSecurityPolicy
-    apiVersion: security.devops.gov.bc.ca/v1alpha1
-    metadata:
-      name: ${NAME}
-      labels:
-        name: ${NAME}
-        app: backup-container
-        role: backup-container
-        env: ${TAG_NAME}
-    spec:
-      description: |
-        Allow the backup-container pods to communicate with the target database(s). 
-        Target databases must be labeled with backup=true, env=${TAG_NAME}, 
-        and be in the same namespace as the backup-container.
-      source:
-        - - name=${NAME}
-          - role=backup-container
-          - app=backup-container
-          - env=${TAG_NAME}
-          - $namespace=${ENVIRONMENT_NAME}
-      destination:
-        - - backup=true
-          - env=${TAG_NAME}
-          - $namespace=${ENVIRONMENT_NAME}
-        - - ext:name=${NAME}
+  # - kind: NetworkSecurityPolicy
+  #   apiVersion: security.devops.gov.bc.ca/v1alpha1
+  #   metadata:
+  #     name: ${NAME}
+  #     labels:
+  #       name: ${NAME}
+  #       app: backup-container
+  #       role: backup-container
+  #       env: ${TAG_NAME}
+  #   spec:
+  #     description: |
+  #       Allow the backup-container pods to communicate with the target database(s). 
+  #       Target databases must be labeled with backup=true, env=${TAG_NAME}, 
+  #       and be in the same namespace as the backup-container.
+  #     source:
+  #       - - name=${NAME}
+  #         - role=backup-container
+  #         - app=backup-container
+  #         - env=${TAG_NAME}
+  #         - $namespace=${ENVIRONMENT_NAME}
+  #     destination:
+  #       - - backup=true
+  #         - env=${TAG_NAME}
+  #         - $namespace=${ENVIRONMENT_NAME}
+  #       - - ext:name=${NAME}
 
   - kind: PersistentVolumeClaim
     apiVersion: v1
