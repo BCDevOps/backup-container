@@ -4,8 +4,8 @@
 # Template File: ../openshift/templates/backup/backup-build.yaml
 #=========================================================
 NAME=backup-postgres
-GIT_REPO_URL=https://github.com/BCDevOps/backup-container.git
-GIT_REF=master
+GIT_REPO_URL=https://github.com/wadeking98/backup-container.git
+GIT_REF=no-roles
 SOURCE_CONTEXT_DIR=/docker
 DOCKER_FILE_PATH=Dockerfile
 OUTPUT_IMAGE_TAG=latest
