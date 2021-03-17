@@ -3,6 +3,34 @@ apiVersion: v1
 metadata:
   name: ${NAME}-deployment-template
 objects:
+  - kind: NetworkPolicy
+    apiVersion: networking.k8s.io/v1
+    metadata:
+      name: ${NAME}
+      labels:
+        name: ${NAME}
+        app: ${APP_GROUP}
+        env: ${TAG_NAME}
+    spec:
+      description: Allow the service to access the agent.
+      ingress:
+        - from:
+            - podSelector:
+                matchLabels:
+                  role: ${ROLE}
+                  app: ${APP_GROUP}
+                  env: ${TAG_NAME}
+              namespaceSelector:
+                matchLabels:
+                  name: ${NAMESPACE_NAME}
+                  environment: ${TAG_NAME}
+          ports:
+            - protocol: TCP
+              port: 5432
+      podSelector:
+        matchLabels:
+          backup: "true"
+          env: ${TAG_NAME}
   # - kind: ExternalNetwork
   #   apiVersion: security.devops.gov.bc.ca/v1alpha1
   #   metadata:
