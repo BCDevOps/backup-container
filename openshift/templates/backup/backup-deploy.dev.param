@@ -6,6 +6,9 @@
 # NAME=backup-postgres
 # SOURCE_IMAGE_NAME=backup-postgres
 # IMAGE_NAMESPACE=a99fd4-tools
+# NAMESPACE_NAME=a99fd4
+# ROLE=backup-container
+# APP_NAME=backup-postgres
 TAG_NAME=dev
 # DATABASE_SERVICE_NAME=
 # DATABASE_NAME=

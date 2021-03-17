@@ -9,7 +9,7 @@ objects:
       name: ${NAME}
       labels:
         name: ${NAME}
-        app: ${APP_GROUP}
+        app: ${APP_NAME}
         env: ${TAG_NAME}
     spec:
       description: Allow the service to access the agent.
@@ -18,7 +18,7 @@ objects:
             - podSelector:
                 matchLabels:
                   role: ${ROLE}
-                  app: ${APP_GROUP}
+                  app: ${APP_NAME}
                   env: ${TAG_NAME}
               namespaceSelector:
                 matchLabels:
@@ -38,7 +38,7 @@ objects:
   #     network: ${NAME}
   #     labels:
   #       name: ${NAME}
-  #       app: backup-container
+  #       app: ${APP_NAME}
   #       role: backup-container
   #       env: ${TAG_NAME}
   #   spec:
@@ -57,7 +57,7 @@ objects:
   #     name: ${NAME}
   #     labels:
   #       name: ${NAME}
-  #       app: backup-container
+  #       app: ${APP_NAME}
   #       role: backup-container
   #       env: ${TAG_NAME}
   #   spec:
@@ -83,7 +83,7 @@ objects:
       name: ${BACKUP_VOLUME_NAME}
       labels:
         name: ${NAME}
-        app: backup-container
+        app: ${APP_NAME}
         role: backup-container
         env: ${TAG_NAME}
     spec:
@@ -99,7 +99,7 @@ objects:
       name: ${VERIFICATION_VOLUME_NAME}
       labels:
         name: ${NAME}
-        app: backup-container
+        app: ${APP_NAME}
         role: backup-container
         env: ${TAG_NAME}
     spec:
@@ -115,7 +115,7 @@ objects:
       name: ${NAME}
       labels:
         name: ${NAME}
-        app: backup-container
+        app: ${APP_NAME}
         role: backup-container
         env: ${TAG_NAME}
     type: Opaque
@@ -129,7 +129,7 @@ objects:
       name: ${FTP_SECRET_KEY}
       labels:
         name: ${NAME}
-        app: backup-container
+        app: ${APP_NAME}
         role: backup-container
         env: ${TAG_NAME}
     type: Opaque
@@ -145,7 +145,7 @@ objects:
       name: ${NAME}
       labels:
         name: ${NAME}
-        app: backup-container
+        app: ${APP_NAME}
         role: backup-container
         env: ${TAG_NAME}
     spec:
@@ -170,7 +170,7 @@ objects:
           name: ${NAME}
           labels:
             name: ${NAME}
-            app: backup-container
+            app: ${APP_NAME}
             role: backup-container
             env: ${TAG_NAME}
         spec:
@@ -270,11 +270,21 @@ parameters:
     description: The name assigned to all of the resources.  Use 'backup-{database name}' depending on your database provider
     required: true
     value: backup-postgres
+  - name: APP_NAME
+    displayName: App NAME
+    description: Used to group components together.
+    required: true
+    value: backup-container
   - name: SOURCE_IMAGE_NAME
     displayName: Source Image Name
     description: The name of the image to use for this resource.  Use 'backup-{database name}' depending on your database provider
     required: true
     value: backup-postgres
+  - name: NAMESPACE_NAME
+    displayName: NameSpace name
+    description: name of the project namespace
+    required: true
+    value: myproject
   - name: IMAGE_NAMESPACE
     displayName: Image Namespace
     description: The namespace of the OpenShift project containing the imagestream for the application.
@@ -285,6 +295,11 @@ parameters:
     description: The TAG name for this environment, e.g., dev, test, prod
     required: true
     value: dev
+  - name: ROLE
+    displayName: App Role
+    description: used to divide componenets into specific roles
+    required: true
+    value: backup-container
   - name: DATABASE_SERVICE_NAME
     displayName: Database Service Name
     description: Used for backward compatibility only. Not needed when using the recommended 'backup.conf' configuration.  The name of the database service.
