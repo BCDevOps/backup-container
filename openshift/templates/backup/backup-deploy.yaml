@@ -10,6 +10,7 @@ objects:
       labels:
         name: ${NAME}
         app: ${APP_NAME}
+        role: ${ROLE}
         env: ${TAG_NAME}
     spec:
       description: Allow the service to access the agent.
@@ -39,7 +40,7 @@ objects:
   #     labels:
   #       name: ${NAME}
   #       app: ${APP_NAME}
-  #       role: backup-container
+  #       role: ${ROLE}
   #       env: ${TAG_NAME}
   #   spec:
   #     description: |
@@ -58,7 +59,7 @@ objects:
   #     labels:
   #       name: ${NAME}
   #       app: ${APP_NAME}
-  #       role: backup-container
+  #       role: ${ROLE}
   #       env: ${TAG_NAME}
   #   spec:
   #     description: |
@@ -84,8 +85,9 @@ objects:
       labels:
         name: ${NAME}
         app: ${APP_NAME}
-        role: backup-container
+        role: ${ROLE}
         env: ${TAG_NAME}
+        
     spec:
       storageClassName: ${BACKUP_VOLUME_CLASS}
       accessModes:
@@ -100,7 +102,7 @@ objects:
       labels:
         name: ${NAME}
         app: ${APP_NAME}
-        role: backup-container
+        role: ${ROLE}
         env: ${TAG_NAME}
     spec:
       storageClassName: ${VERIFICATION_VOLUME_CLASS}
@@ -116,7 +118,7 @@ objects:
       labels:
         name: ${NAME}
         app: ${APP_NAME}
-        role: backup-container
+        role: ${ROLE}
         env: ${TAG_NAME}
     type: Opaque
     stringData:
@@ -130,7 +132,7 @@ objects:
       labels:
         name: ${NAME}
         app: ${APP_NAME}
-        role: backup-container
+        role: ${ROLE}
         env: ${TAG_NAME}
     type: Opaque
     stringData:
@@ -146,7 +148,7 @@ objects:
       labels:
         name: ${NAME}
         app: ${APP_NAME}
-        role: backup-container
+        role: ${ROLE}
         env: ${TAG_NAME}
     spec:
       strategy:
@@ -171,7 +173,7 @@ objects:
           labels:
             name: ${NAME}
             app: ${APP_NAME}
-            role: backup-container
+            role: ${ROLE}
             env: ${TAG_NAME}
         spec:
           volumes:
