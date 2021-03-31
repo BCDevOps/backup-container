@@ -9,7 +9,7 @@
 # NAMESPACE_NAME=a99fd4
 # ROLE=backup-container
 # SVC_PORT=5432
-# APP_NAME=backup-postgres
+# APP_NAME=backup-container
 TAG_NAME=prod
 # DATABASE_SERVICE_NAME=
 # DATABASE_NAME=
@@ -44,7 +44,7 @@ TAG_NAME=prod
 # BACKUP_VOLUME_NAME=backup-postgres
 # BACKUP_VOLUME_SIZE=2Gi
 # BACKUP_VOLUME_CLASS=netapp-file-standard
-# VERIFICATION_VOLUME_NAME=backup-verification
+# VERIFICATION_VOLUME_NAME=backup-postgres-verification
 # VERIFICATION_VOLUME_SIZE=1Gi
 # VERIFICATION_VOLUME_CLASS=netapp-file-standard
 # VERIFICATION_VOLUME_MOUNT_PATH=/var/lib/pgsql/data
