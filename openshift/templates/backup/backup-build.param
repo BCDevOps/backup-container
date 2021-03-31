@@ -3,7 +3,7 @@
 # Component: .
 # Template File: ../openshift/templates/backup/backup-build.yaml
 #=========================================================
-NAME=backup-postgres
+NAME=backup
 GIT_REPO_URL=https://github.com/wadeking98/backup-container.git
 GIT_REF=no-roles
 SOURCE_CONTEXT_DIR=/docker

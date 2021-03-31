@@ -27,56 +27,11 @@ objects:
                   environment: ${TAG_NAME}
           ports:
             - protocol: TCP
-              port: 5432
+              port: ${{SVC_PORT}}
       podSelector:
         matchLabels:
           backup: "true"
           env: ${TAG_NAME}
-  # - kind: ExternalNetwork
-  #   apiVersion: security.devops.gov.bc.ca/v1alpha1
-  #   metadata:
-  #     name: ${NAME}
-  #     network: ${NAME}
-  #     labels:
-  #       name: ${NAME}
-  #       app: ${APP_NAME}
-  #       role: ${ROLE}
-  #       env: ${TAG_NAME}
-  #   spec:
-  #     description: |
-  #       Define the network parameters for accessing remote resources.
-  #     entries:
-  #       - ${WEBHOOK_URL_HOST}
-  #       - ${FTP_URL_HOST}
-  #     servicePorts:
-  #       - tcp/443
-  #       - tcp/21
-
-  # - kind: NetworkSecurityPolicy
-  #   apiVersion: security.devops.gov.bc.ca/v1alpha1
-  #   metadata:
-  #     name: ${NAME}
-  #     labels:
-  #       name: ${NAME}
-  #       app: ${APP_NAME}
-  #       role: ${ROLE}
-  #       env: ${TAG_NAME}
-  #   spec:
-  #     description: |
-  #       Allow the backup-container pods to communicate with the target database(s). 
-  #       Target databases must be labeled with backup=true, env=${TAG_NAME}, 
-  #       and be in the same namespace as the backup-container.
-  #     source:
-  #       - - name=${NAME}
-  #         - role=backup-container
-  #         - app=backup-container
-  #         - env=${TAG_NAME}
-  #         - $namespace=${ENVIRONMENT_NAME}
-  #     destination:
-  #       - - backup=true
-  #         - env=${TAG_NAME}
-  #         - $namespace=${ENVIRONMENT_NAME}
-  #       - - ext:name=${NAME}
 
   - kind: PersistentVolumeClaim
     apiVersion: v1
@@ -302,6 +257,11 @@ parameters:
     description: used to divide componenets into specific roles
     required: true
     value: backup-container
+  - name: SVC_PORT
+    displayName: database service port
+    description: used for network policies
+    required: true
+    value: "5432"
   - name: DATABASE_SERVICE_NAME
     displayName: Database Service Name
     description: Used for backward compatibility only. Not needed when using the recommended 'backup.conf' configuration.  The name of the database service.

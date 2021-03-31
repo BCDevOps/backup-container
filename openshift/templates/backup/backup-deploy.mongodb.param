@@ -3,16 +3,17 @@
 # Component: .
 # Template File: ../openshift/templates/backup/backup-deploy.yaml
 #=========================================================
-NAME=backup-postgres
-SOURCE_IMAGE_NAME=backup-postgres
+NAME=backup-mongodb
+SOURCE_IMAGE_NAME=backup
 NAMESPACE_NAME=a99fd4
 ROLE=backup-container
-APP_NAME=backup-postgres
+SVC_PORT=27017
+APP_NAME=backup-mongodb
 IMAGE_NAMESPACE=a99fd4-tools
 TAG_NAME=dev
-DATABASE_SERVICE_NAME=issuer-kit-wallet
-DATABASE_NAME=issuer-kit-wallet
-MONGODB_AUTHENTICATION_DATABASE=
+DATABASE_SERVICE_NAME=identity-kit-db-bc
+DATABASE_NAME=identity_kit_db
+MONGODB_AUTHENTICATION_DATABASE=identity_kit_db
 MSSQL_SA_PASSWORD=
 TABLE_SCHEMA=public
 BACKUP_STRATEGY=rolling
@@ -23,7 +24,7 @@ FTP_PASSWORD=
 WEBHOOK_URL=
 ENVIRONMENT_FRIENDLY_NAME=
 ENVIRONMENT_NAME=prod
-DATABASE_DEPLOYMENT_NAME=issuer-kit-wallet
+DATABASE_DEPLOYMENT_NAME=identity-kit-db-bc
 BACKUP_DIR=/backups/
 NUM_BACKUPS=
 DAILY_BACKUPS=
@@ -31,9 +32,9 @@ WEEKLY_BACKUPS=
 MONTHLY_BACKUPS=
 BACKUP_PERIOD=
 CONFIG_FILE_NAME=backup.conf
-CONFIG_MAP_NAME=backup-conf
+CONFIG_MAP_NAME=backup-mongodb-conf
 CONFIG_MOUNT_PATH=/
-BACKUP_VOLUME_NAME=backup
+BACKUP_VOLUME_NAME=backup-mongodb
 BACKUP_VOLUME_SIZE=2Gi
 BACKUP_VOLUME_CLASS=netapp-file-standard
 VERIFICATION_VOLUME_NAME=backup-verification
