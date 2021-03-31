@@ -3,10 +3,10 @@
 # Component: .
 # Template File: ../openshift/templates/backup/backup-build.yaml
 #=========================================================
-NAME=backup
+NAME=backup-mongodb
 GIT_REPO_URL=https://github.com/wadeking98/backup-container.git
 GIT_REF=no-roles
 SOURCE_CONTEXT_DIR=/docker
 DOCKER_FILE_PATH=Dockerfile
 OUTPUT_IMAGE_TAG=latest
-BASE_IMAGE_FOR_BUILD=docker-remote.artifacts.developer.gov.bc.ca/centos/postgresql-12-centos7:20200917-804ef01
+BASE_IMAGE_FOR_BUILD=registry.access.redhat.com/rhscl/mongodb-36-rhel7

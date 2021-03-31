@@ -3,13 +3,14 @@
 # Component: .
 # Template File: ../openshift/templates/backup/backup-deploy.yaml
 #=========================================================
-# NAME=backup-mongodb
-# SOURCE_IMAGE_NAME=backup
+# NAME=backup-postgres
+# SOURCE_IMAGE_NAME=backup-postgres
 # IMAGE_NAMESPACE=a99fd4-tools
 # NAMESPACE_NAME=a99fd4
 # ROLE=backup-container
-# APP_NAME=backup-mongodb
-TAG_NAME=dev
+# SVC_PORT=5432
+# APP_NAME=backup-postgres
+TAG_NAME=prod
 # DATABASE_SERVICE_NAME=
 # DATABASE_NAME=
 # MONGODB_AUTHENTICATION_DATABASE=
@@ -40,7 +41,7 @@ TAG_NAME=dev
 # CONFIG_FILE_NAME=backup.conf
 # CONFIG_MAP_NAME=backup-conf
 # CONFIG_MOUNT_PATH=/
-# BACKUP_VOLUME_NAME=backup-mongodb
+# BACKUP_VOLUME_NAME=backup-postgres
 # BACKUP_VOLUME_SIZE=2Gi
 # BACKUP_VOLUME_CLASS=netapp-file-standard
 # VERIFICATION_VOLUME_NAME=backup-verification
