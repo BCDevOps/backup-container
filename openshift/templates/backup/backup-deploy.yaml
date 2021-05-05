@@ -40,6 +40,7 @@ objects:
       labels:
         name: ${NAME}
         app: ${APP_NAME}
+        app.kubernetes.io/part-of: ${APP_NAME}
         role: ${ROLE}
         env: ${TAG_NAME}
         
@@ -57,6 +58,7 @@ objects:
       labels:
         name: ${NAME}
         app: ${APP_NAME}
+        app.kubernetes.io/part-of: ${APP_NAME}
         role: ${ROLE}
         env: ${TAG_NAME}
     spec:
@@ -73,6 +75,7 @@ objects:
       labels:
         name: ${NAME}
         app: ${APP_NAME}
+        app.kubernetes.io/part-of: ${APP_NAME}
         role: ${ROLE}
         env: ${TAG_NAME}
     type: Opaque
@@ -87,6 +90,7 @@ objects:
       labels:
         name: ${NAME}
         app: ${APP_NAME}
+        app.kubernetes.io/part-of: ${APP_NAME}
         role: ${ROLE}
         env: ${TAG_NAME}
     type: Opaque
@@ -103,8 +107,13 @@ objects:
       labels:
         name: ${NAME}
         app: ${APP_NAME}
+        app.kubernetes.io/part-of: ${APP_NAME}
         role: ${ROLE}
         env: ${TAG_NAME}
+      annotations:
+        description: Defines how to deploy the application server
+        app.openshift.io/connects-to: >-
+          [{"apiVersion":"apps.openshift.io/v1","kind":"DeploymentConfig","name":"${DATABASE_SERVICE_NAME}"}]
     spec:
       strategy:
         type: Recreate
@@ -128,6 +137,7 @@ objects:
           labels:
             name: ${NAME}
             app: ${APP_NAME}
+            app.kubernetes.io/part-of: ${APP_NAME}
             role: ${ROLE}
             env: ${TAG_NAME}
         spec:
