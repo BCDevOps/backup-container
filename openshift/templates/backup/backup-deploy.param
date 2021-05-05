@@ -3,11 +3,11 @@
 # Component: .
 # Template File: ../openshift/templates/backup/backup-deploy.yaml
 #=========================================================
-NAME=backup-postgres
+NAME=backup-esd
 SOURCE_IMAGE_NAME=backup-postgres
 NAMESPACE_NAME=a99fd4
 ROLE=backup-container
-APP_NAME=backup-container
+APP_NAME=backup
 IMAGE_NAMESPACE=a99fd4-tools
 TAG_NAME=dev
 DATABASE_SERVICE_NAME=issuer-kit-wallet
