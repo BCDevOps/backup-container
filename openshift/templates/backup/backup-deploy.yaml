@@ -3,51 +3,33 @@ apiVersion: v1
 metadata:
   name: ${NAME}-deployment-template
 objects:
-  - kind: ExternalNetwork
-    apiVersion: security.devops.gov.bc.ca/v1alpha1
-    metadata:
-      name: ${NAME}
-      network: ${NAME}
-      labels:
-        name: ${NAME}
-        app: backup-container
-        role: backup-container
-        env: ${TAG_NAME}
-    spec:
-      description: |
-        Define the network parameters for accessing remote resources.
-      entries:
-        - ${WEBHOOK_URL_HOST}
-        - ${FTP_URL_HOST}
-      servicePorts:
-        - tcp/443
-        - tcp/21
-
-  - kind: NetworkSecurityPolicy
-    apiVersion: security.devops.gov.bc.ca/v1alpha1
+  - kind: NetworkPolicy
+    apiVersion: networking.k8s.io/v1
     metadata:
       name: ${NAME}
       labels:
         name: ${NAME}
-        app: backup-container
-        role: backup-container
+        app: ${APP_NAME}
         env: ${TAG_NAME}
     spec:
       description: |
-        Allow the backup-container pods to communicate with the target database(s). 
-        Target databases must be labeled with backup=true, env=${TAG_NAME}, 
-        and be in the same namespace as the backup-container.
-      source:
-        - - name=${NAME}
-          - role=backup-container
-          - app=backup-container
-          - env=${TAG_NAME}
-          - $namespace=${ENVIRONMENT_NAME}
-      destination:
-        - - backup=true
-          - env=${TAG_NAME}
-          - $namespace=${ENVIRONMENT_NAME}
-        - - ext:name=${NAME}
+        Allow the ${NAME} to access databases in this namespace.
+      ingress:
+        - from:
+            - podSelector:
+                matchLabels:
+                  name: ${NAME}
+                  app: ${APP_NAME}
+                  role: ${ROLE}
+                  env: ${TAG_NAME}
+              namespaceSelector:
+                matchLabels:
+                  name: ${NAMESPACE_NAME}
+                  environment: ${TAG_NAME}
+      podSelector:
+        matchLabels:
+          backup: "true"
+          env: ${TAG_NAME}
 
   - kind: PersistentVolumeClaim
     apiVersion: v1
@@ -55,8 +37,8 @@ objects:
       name: ${BACKUP_VOLUME_NAME}
       labels:
         name: ${NAME}
-        app: backup-container
-        role: backup-container
+        app: ${APP_NAME}
+        role: ${ROLE}
         env: ${TAG_NAME}
     spec:
       storageClassName: ${BACKUP_VOLUME_CLASS}
@@ -72,8 +54,8 @@ objects:
       name: ${VERIFICATION_VOLUME_NAME}
       labels:
         name: ${NAME}
-        app: backup-container
-        role: backup-container
+        app: ${APP_NAME}
+        role: ${ROLE}
         env: ${TAG_NAME}
     spec:
       storageClassName: ${VERIFICATION_VOLUME_CLASS}
@@ -89,8 +71,8 @@ objects:
       name: ${NAME}
       labels:
         name: ${NAME}
-        app: backup-container
-        role: backup-container
+        app: ${APP_NAME}
+        role: ${ROLE}
         env: ${TAG_NAME}
     type: Opaque
     stringData:
@@ -103,8 +85,8 @@ objects:
       name: ${FTP_SECRET_KEY}
       labels:
         name: ${NAME}
-        app: backup-container
-        role: backup-container
+        app: ${APP_NAME}
+        role: ${ROLE}
         env: ${TAG_NAME}
     type: Opaque
     stringData:
@@ -119,8 +101,8 @@ objects:
       name: ${NAME}
       labels:
         name: ${NAME}
-        app: backup-container
-        role: backup-container
+        app: ${APP_NAME}
+        role: ${ROLE}
         env: ${TAG_NAME}
     spec:
       strategy:
@@ -144,8 +126,8 @@ objects:
           name: ${NAME}
           labels:
             name: ${NAME}
-            app: backup-container
-            role: backup-container
+            app: ${APP_NAME}
+            role: ${ROLE}
             env: ${TAG_NAME}
         spec:
           volumes:
@@ -249,11 +231,32 @@ parameters:
     description: The name of the image to use for this resource.  Use 'backup-{database name}' depending on your database provider
     required: true
     value: backup-postgres
+  - name: APP_NAME
+    displayName: App Name
+    description: Used to group resources together.  Defaults to backup-container
+    required: true
+    value: backup-container
+  - name: ROLE
+    displayName: ROLE
+    description: The role assigned to all of the resources.  Defaults to backup-container
+    required: true
+    value: backup-container
+  - name: SOURCE_IMAGE_NAME
+    displayName: Source Image Name
+    description: The name of the image to use for this resource.  Use 'backup-{database name}' depending on your database provider
+    required: true
+    value: backup-postgres
+    value: backup-container
+  - name: NAMESPACE_NAME
+    displayName: Namespace Name
+    description: The name of the namespace being deployed to..
+    required: true
+    value: devex-von-image
   - name: IMAGE_NAMESPACE
     displayName: Image Namespace
     description: The namespace of the OpenShift project containing the imagestream for the application.
     required: true
-    value: backup-container
+    value: 
   - name: TAG_NAME
     displayName: Environment TAG name
     description: The TAG name for this environment, e.g., dev, test, prod
