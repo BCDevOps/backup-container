@@ -498,7 +498,7 @@ The following outlines the deployment of a simple backup of a single MongoDB dat
 ```bash
 oc -n abc123-tools process -f ./openshift/templates/backup/backup-build.json \
   -p DOCKER_FILE_PATH=Dockerfile_Mongo
-  -p NAME=myapp-backup OUTPUT_IMAGE_TAG=v1 | oc -n abc123-tools create -f -
+  -p NAME=myapp-backup -p OUTPUT_IMAGE_TAG=v1  -p BASE_IMAGE_FOR_BUILD=registry.access.redhat.com/rhscl/mongodb-36-rhel7 | oc -n abc123-tools create -f -
 ```
 
 5. Configure `./config/backup.conf`. This defines the database(s) to backup and the schedule that backups are to follow. Additionally, this sets up backup validation (identified by `-v all` flag).
