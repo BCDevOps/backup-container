@@ -241,12 +241,6 @@ parameters:
     description: The role assigned to all of the resources.  Defaults to backup-container
     required: true
     value: backup-container
-  - name: SOURCE_IMAGE_NAME
-    displayName: Source Image Name
-    description: The name of the image to use for this resource.  Use 'backup-{database name}' depending on your database provider
-    required: true
-    value: backup-postgres
-    value: backup-container
   - name: NAMESPACE_NAME
     displayName: Namespace Name
     description: The name of the namespace being deployed to..
@@ -256,7 +250,7 @@ parameters:
     displayName: Image Namespace
     description: The namespace of the OpenShift project containing the imagestream for the application.
     required: true
-    value: 
+    value:
   - name: TAG_NAME
     displayName: Environment TAG name
     description: The TAG name for this environment, e.g., dev, test, prod
