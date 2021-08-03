@@ -6,6 +6,8 @@
 *_BuildConfig.json
 *.local.*
 *.overrides.*
+*.param
+settings*.sh
 
 # Visual Studio Code
 .vscode

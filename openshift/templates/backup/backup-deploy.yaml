@@ -10,16 +10,17 @@ objects:
       labels:
         name: ${NAME}
         app: ${APP_NAME}
-        role: ${ROLE}
         env: ${TAG_NAME}
     spec:
-      description: Allow the service to access the agent.
+      description: |
+        Allow the ${NAME} to access databases in this namespace.
       ingress:
         - from:
             - podSelector:
                 matchLabels:
-                  role: ${ROLE}
+                  name: ${NAME}
                   app: ${APP_NAME}
+                  role: ${ROLE}
                   env: ${TAG_NAME}
               namespaceSelector:
                 matchLabels:
@@ -251,12 +252,12 @@ parameters:
     displayName: NameSpace name
     description: name of the project namespace
     required: true
-    value: myproject
+    value: a99fd4
   - name: IMAGE_NAMESPACE
     displayName: Image Namespace
     description: The namespace of the OpenShift project containing the imagestream for the application.
     required: true
-    value: backup-container
+    value:
   - name: TAG_NAME
     displayName: Environment TAG name
     description: The TAG name for this environment, e.g., dev, test, prod

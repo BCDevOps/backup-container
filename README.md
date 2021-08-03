@@ -410,14 +410,12 @@ Following are more detailed steps to perform a restore of a backup.
 
 Done!
 
-## Network Security Policies
+## Network Policies
 
-The default `backup-container` template contains some basic Network Security Policies that are designed to be functioning out-of-the-box for most standard deployments. They provide:
-- Outbound traffic authorization towards the target destination for the Webhook URL (if specified).
-- Outbound traffic authorization towards the target destination for the FTP Server (if specified).
+The default `backup-container` template contains a basic Network Policy that is designed to be functioning out-of-the-box for most standard deployments. It provides:
 - Internal traffic authorization towards target databases: for this to work, the target database deployments must be in the same namespace/environment AND must be labelled with `backup=true`.
 
-These default Network Security Policies are meant to be a "one size fits all" starter set of policies to facilitate standing up the `backup-container` in a new environment. Please consider updating/tweaking them to better fit your needs, depending on your setup.
+The default Network Policy is meant to be a "one size fits all" starter policy to facilitate standing up the `backup-container` in a new environment. Please consider updating/tweaking it to better fit your needs, depending on your setup.
 
 # Example Deployments
 
@@ -500,7 +498,7 @@ The following outlines the deployment of a simple backup of a single MongoDB dat
 ```bash
 oc -n abc123-tools process -f ./openshift/templates/backup/backup-build.json \
   -p DOCKER_FILE_PATH=Dockerfile_Mongo
-  -p NAME=myapp-backup OUTPUT_IMAGE_TAG=v1 | oc -n abc123-tools create -f -
+  -p NAME=myapp-backup -p OUTPUT_IMAGE_TAG=v1  -p BASE_IMAGE_FOR_BUILD=registry.access.redhat.com/rhscl/mongodb-36-rhel7 | oc -n abc123-tools create -f -
 ```
 
 5. Configure `./config/backup.conf`. This defines the database(s) to backup and the schedule that backups are to follow. Additionally, this sets up backup validation (identified by `-v all` flag).
