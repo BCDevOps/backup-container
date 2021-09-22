@@ -38,6 +38,7 @@ _Table of Contents_
   - [Backup](#backup)
 - [Example Deployments](#example-deployments)
   - [Deploy with Helm Chart](#deploy-with-helm-chart)
+- [Prebuilt Container Images](#prebuilt-container-images)
 - [Tip and Tricks](#tip-and-tricks)
 - [Getting Help or Reporting an Issue](#getting-help-or-reporting-an-issue)
 - [How to Contribute](#how-to-contribute)
@@ -559,6 +560,15 @@ helm upgrade --install db-backup-storage bcgov/backup-storage
 ```
 
 For customizing the configuration, go to: https://github.com/bcgov/helm-charts/tree/master/backup-storage
+
+# Prebuilt Container Images
+
+Starting with v2.3.3, prebuilt container images are built and published with each release:
+
+- [bcgovimages/backup-container](https://hub.docker.com/r/bcgovimages/backup-container) (`PostgreSQL`)
+- [bcgovimages/backup-container-mongo](https://hub.docker.com/r/bcgovimages/backup-container-mongo)
+- [bcgovimages/backup-container-mssql](https://hub.docker.com/r/bcgovimages/backup-container-mssql)
+- [bcgovimages/backup-container-mariadb](https://hub.docker.com/r/bcgovimages/backup-container-mariadb)
 
 # Tip and Tricks
 
