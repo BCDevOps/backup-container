@@ -1,8 +1,8 @@
-name: Backup Container Mongo - Docker Publish
+name: Backup Container MSSQL - Docker Publish
 
 on: 
   release:
-    types: [published, edited, released]
+    types: [published, edited]
   
 
 jobs:
@@ -35,7 +35,7 @@ jobs:
       - name: Push to Docker Hub
         uses: docker/build-push-action@v2
         with:
-          context: docker
           tags: ${{ steps.meta.outputs.tags }}
-          file: Dockerfile_MSSQL
+          file: docker/Dockerfile_MSSQL
+          context: docker
           push: true
