@@ -111,6 +111,21 @@ function onStopServer(){
 
     _authDbArg=${MONGODB_AUTHENTICATION_DATABASE:+"--authenticationDatabase ${MONGODB_AUTHENTICATION_DATABASE}"}
     mongo admin ${_authDbArg} ${_portArg} -u "${_username}" -p "${_password}" --quiet --eval "db.shutdownServer()"
+
+    # Wait for server to stop ...
+    local startTime=${SECONDS}
+    printf "waiting for server to stop"
+    while onPingDbServer ${@}; do
+      printf "."
+      local duration=$(($SECONDS - $startTime))
+      if (( ${duration} >= ${DATABASE_SERVER_TIMEOUT} )); then
+        echoRed "\nThe server failed to stop within $(getElapsedTimeFromDuration ${duration})."
+        echoRed "Killing the mongod process ...\n"
+        pkill -INT mongod
+        break
+      fi
+      sleep 1
+    done
   )
 }
 
