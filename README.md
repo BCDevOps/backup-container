@@ -27,18 +27,34 @@ _Table of Contents_
 - [Backup Container Options](#backup-container-options)
   - [Backups in OpenShift](#backups-in-openshift)
   - [Storage](#storage)
+    - [Backup Storage Volume](#backup-storage-volume)
+      - [NFS Storage Backup and Retention Policy](#nfs-storage-backup-and-retention-policy)
+    - [Restore/Verification Storage Volume](#restoreverification-storage-volume)
+    - [Storage Performance](#storage-performance)
   - [Deployment / Configuration](#deployment--configuration)
+    - [backup.conf](#backupconf)
+    - [Cron Mode](#cron-mode)
+    - [Cronjob Deployment / Configuration / Constraints](#cronjob-deployment--configuration--constraints)
+    - [Resources](#resources)
   - [Multiple Databases](#multiple-databases)
   - [Backup Strategies](#backup-strategies)
+    - [Daily](#daily)
+    - [Rolling](#rolling)
   - [Using the Backup Script](#using-the-backup-script)
   - [Using Backup Verification](#using-backup-verification)
   - [Using the FTP backup](#using-the-ftp-backup)
   - [Using the Webhook Integration](#using-the-webhook-integration)
   - [Database Plugin Support](#database-plugin-support)
   - [Backup](#backup)
+    - [Immediate Backup:](#immediate-backup)
+      - [Execute a single backup cycle with the pod deployment](#execute-a-single-backup-cycle-with-the-pod-deployment)
+      - [Execute an on demand backup using the scheduled job](#execute-an-on-demand-backup-using-the-scheduled-job)
+    - [Restore](#restore)
+  - [Network Policies](#network-policies)
 - [Example Deployments](#example-deployments)
   - [Deploy with Helm Chart](#deploy-with-helm-chart)
 - [Prebuilt Container Images](#prebuilt-container-images)
+- [Postgres Base Version](#postgres-base-version)
 - [Tip and Tricks](#tip-and-tricks)
 - [Getting Help or Reporting an Issue](#getting-help-or-reporting-an-issue)
 - [How to Contribute](#how-to-contribute)
@@ -569,6 +585,12 @@ Starting with v2.3.3, prebuilt container images are built and published with eac
 - [bcgovimages/backup-container-mongo](https://hub.docker.com/r/bcgovimages/backup-container-mongo)
 - [bcgovimages/backup-container-mssql](https://hub.docker.com/r/bcgovimages/backup-container-mssql)
 - [bcgovimages/backup-container-mariadb](https://hub.docker.com/r/bcgovimages/backup-container-mariadb)
+
+# Postgres Base Version
+
+The backup container works on top of the base postgres image [here](./docker/Dockerfile)
+
+To use previous supported versions of postgres - V9 to V12, use the images from the [Prebuilt Container Images](#prebuilt-container-images)
 
 # Tip and Tricks
 
