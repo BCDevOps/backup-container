@@ -10,8 +10,6 @@ WORKDIR /
 # Load the backup scripts into the container (must be executable).
 COPY backup.* /
 
-COPY webhook-template.json /
-
 # ========================================================================================================
 # Install go-crond (from https://github.com/BCDevOps/go-crond)
 #  - Adds some additional logging enhancements on top of the upstream project; 

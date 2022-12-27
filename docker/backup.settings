@@ -30,9 +30,6 @@ export DAILY_BACKUPS=${DAILY_BACKUPS:-6}
 export WEEKLY_BACKUPS=${WEEKLY_BACKUPS:-4}
 export MONTHLY_BACKUPS=${MONTHLY_BACKUPS:-1}
 
-# Webhook defaults
-WEBHOOK_TEMPLATE=${WEBHOOK_TEMPLATE:-webhook-template.json}
-
 # Modes:
 export ONCE="once"
 export SCHEDULED="scheduled"
