@@ -77,35 +77,25 @@ function logError(){
   )
 }
 
-function getWebhookPayload(){
-  _payload=$(eval "cat <<-EOF
-$(<${WEBHOOK_TEMPLATE})
-EOF
-")
-  echo "${_payload}"
-}
-
-function formatWebhookMsg(){
-  (
-    # Escape all double quotes
-    # Escape all newlines
-    filters='s~"~\\"~g;:a;N;$!ba;s~\n~\\n~g;'
-    _value=$(echo "${1}" | sed "${filters}")
-    echo "${_value}"
-  )
-}
-
 function postMsgToWebhook(){
   (
-    if [ -z "${WEBHOOK_URL}" ] && [ -f ${WEBHOOK_TEMPLATE} ]; then
+    if [ -z "${WEBHOOK_URL}" ]; then
       return 0
     fi
 
     projectFriendlyName=${1}
     projectName=${2}
     statusCode=${3}
-    message=$(formatWebhookMsg "${4}")
-    curl -s -X POST -H 'Content-Type: application/json' --data "$(getWebhookPayload)" "${WEBHOOK_URL}" > /dev/null
+    message=$(echo -e "${4}")
+
+    curl -s \
+      -X POST \
+      -H "Content-Type: application/x-www-form-urlencoded" \
+      --data-urlencode "projectFriendlyName=${projectFriendlyName}" \
+      --data-urlencode "projectName=${projectName}" \
+      --data-urlencode "statusCode=${statusCode}" \
+      --data-urlencode "message=${message}" \
+      "${WEBHOOK_URL}" > /dev/null
   )
 }
 # =================================================================================================================
