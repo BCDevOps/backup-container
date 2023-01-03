@@ -575,7 +575,7 @@ helm repo add bcgov http://bcgov.github.io/helm-charts
 helm upgrade --install db-backup-storage bcgov/backup-storage
 ```
 
-For customizing the configuration, go to: https://github.com/bcgov/helm-charts/tree/master/backup-storage
+For customizing the configuration, go to: https://github.com/bcgov/helm-charts/tree/master/charts/backup-storage
 
 # Prebuilt Container Images
 
