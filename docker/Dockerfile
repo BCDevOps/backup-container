@@ -18,7 +18,7 @@ COPY backup.* /
 # --------------------------------------------------------------------------------------------------------
 ARG SOURCE_REPO=webdevops
 ARG GOCROND_VERSION=22.9.1
-ADD https://github.com/$SOURCE_REPO/go-crond/releases/download/$GOCROND_VERSION/go-crond-64-linux /usr/bin/go-crond
+ADD https://github.com/$SOURCE_REPO/go-crond/releases/download/$GOCROND_VERSION/go-crond.linux.amd64 /usr/bin/go-crond
 
 USER root
 
