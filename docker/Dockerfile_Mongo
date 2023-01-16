@@ -11,7 +11,7 @@ WORKDIR /
 COPY backup.* /
 
 # ========================================================================================================
-# Install go-crond (from https://github.com/BCDevOps/go-crond)
+# Install go-crond (from https://github.com/webdevops/go-crond)
 #
 # CRON Jobs in OpenShift:
 #  - https://blog.danman.eu/cron-jobs-in-openshift/
