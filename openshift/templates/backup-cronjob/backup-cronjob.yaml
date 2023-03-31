@@ -146,8 +146,9 @@ objects:
     RETENTION.DAILY_BACKUPS: "${DAILY_BACKUPS}"
     RETENTION.WEEKLY_BACKUPS: "${WEEKLY_BACKUPS}"
     RETENTION.MONTHLY_BACKUPS: "${MONTHLY_BACKUPS}"
+
 - kind: "CronJob"
-  apiVersion: "batch/v1beta1"
+  apiVersion: "batch/v1"
   metadata:
     name: "${JOB_NAME}"
     labels:
