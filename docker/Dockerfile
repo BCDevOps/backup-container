@@ -31,6 +31,9 @@ RUN chmod +x /usr/bin/go-crond
 RUN echo $TZ > /etc/timezone
 # ========================================================================================================
 
+# The column command is missing from quay.io/fedora/postgresql-14:14
+RUN dnf install -y util-linux
+
 # Important - Reset to the base image's user account.
 USER 26
 
