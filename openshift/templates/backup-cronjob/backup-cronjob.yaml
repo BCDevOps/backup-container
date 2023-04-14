@@ -1,6 +1,6 @@
 ---
 kind: "Template"
-apiVersion: "v1"
+apiVersion: "template.openshift.io/v1"
 metadata:
   name: "{$JOB_NAME}-cronjob-template"
   annotations:
@@ -27,18 +27,18 @@ parameters:
     displayName: "Source Image Name"
     description: "The name of the image to use for this resource."
     required: true
-    value: "backup-postgres"
+    value: "backup-container"
   - name: "IMAGE_REGISTRY"
     description: "The base OpenShift docker registry"
     displayName: "Docker Image Registry"
     required: true
     # Set value to "docker-registry.default.svc:5000" if using OCP3
-    value: "image-registry.openshift-image-registry.svc:5000"
+    value: "docker.io"
   - name: "IMAGE_NAMESPACE"
     displayName: "Image Namespace"
     description: "The namespace of the OpenShift project containing the imagestream for the application."
     required: true
-    value: "backup-container"
+    value: "bcgovimages"
   - name: "TAG_NAME"
     displayName: "Environment TAG name"
     description: "The TAG name for this environment, e.g., dev, test, prod"
