@@ -75,6 +75,8 @@ function logError(){
                      "ERROR" \
                      "${errorMsg}"
   )
+    postMsgToPagerDuty "${errorMsg}"
+  )
 }
 
 function postMsgToWebhook(){
@@ -96,6 +98,30 @@ function postMsgToWebhook(){
       --data-urlencode "statusCode=${statusCode}" \
       --data-urlencode "message=${message}" \
       "${WEBHOOK_URL}" > /dev/null
+  )
+}
+
+function postMsgToPagerDuty(){
+  (
+    if [ -z "${PGDUTY_SVC_KEY}" ]; then
+      return 0
+    fi
+
+    if [ -z "${PGDUTY_URL}" ]; then
+      PGDUTY_URL = "https://events.pagerduty.com/generic/2010-04-15/create_event.json"
+    fi
+
+    message=$(echo -e "${1}")
+
+    curl -s \
+      -X POST \
+      -H "Content-type: application/json" \
+      -d "{
+        \"service_key\": \"${PGDUTY_SVC_KEY}\",
+        \"event_type\": \"trigger\",
+        \"description\": \"${message}\"
+      }" \
+      "${PGDUTY_URL}" > /dev/null
   )
 }
 # =================================================================================================================
