@@ -99,24 +99,25 @@ function postMsgToWebhook(){
 function postMsgToPagerDuty(){
   (
     if [ -z "${PGDUTY_SVC_KEY}" ]; then
+      echo "Missing PagerDuty service key"
       return 0
     fi
 
     if [ -z "${PGDUTY_URL}" ]; then
-      PGDUTY_URL="https://events.pagerduty.com/generic/2010-04-15/create_event.json"
+      echo "Missing PagerDuty API url"
+      return 0
     fi
 
     message=$(echo -e "${1}")
 
-    curl -s \
-      -X POST \
+    curl -X POST \
       -H "Content-type: application/json" \
       -d "{
         \"service_key\": \"${PGDUTY_SVC_KEY}\",
         \"event_type\": \"trigger\",
         \"description\": \"${message}\"
       }" \
-      "${PGDUTY_URL}" > /dev/null
+      "${PGDUTY_URL}"
   )
 }
 # =================================================================================================================
