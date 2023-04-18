@@ -70,11 +70,6 @@ function logError(){
   (
     errorMsg="${1}"
     echoRed "[!!ERROR!!] - ${errorMsg}" >&2
-    postMsgToWebhook "${ENVIRONMENT_FRIENDLY_NAME}" \
-                     "${ENVIRONMENT_NAME}" \
-                     "ERROR" \
-                     "${errorMsg}"
-  )
     postMsgToPagerDuty "${errorMsg}"
   )
 }
@@ -108,7 +103,7 @@ function postMsgToPagerDuty(){
     fi
 
     if [ -z "${PGDUTY_URL}" ]; then
-      PGDUTY_URL = "https://events.pagerduty.com/generic/2010-04-15/create_event.json"
+      PGDUTY_URL="https://events.pagerduty.com/generic/2010-04-15/create_event.json"
     fi
 
     message=$(echo -e "${1}")
