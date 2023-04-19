@@ -108,16 +108,17 @@ function postMsgToPagerDuty(){
       return 0
     fi
 
-    message=$(echo -e "${1}")
+    message=$(echo -e "${1}" | tr '\n' ' ')
 
-    curl -X POST \
-      -H "Content-type: application/json" \
-      -d "{
-        \"service_key\": \"${PGDUTY_SVC_KEY}\",
-        \"event_type\": \"trigger\",
-        \"description\": \"${message}\"
-      }" \
-      "${PGDUTY_URL}"
+    curl -s \
+    -X POST \
+    -H "Content-type: application/json" \
+    -d "{
+      \"service_key\": \"${PGDUTY_SVC_KEY}\",
+      \"event_type\": \"trigger\",
+      \"description\": \"${message}\"
+    }" \
+    "${PGDUTY_URL}" > /dev/null
   )
 }
 # =================================================================================================================
