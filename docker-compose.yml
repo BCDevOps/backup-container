@@ -23,8 +23,15 @@ services:
 
   backup:
     build: ./docker
+    environment:
+      BACKUP_CONF: /conf/backup.conf
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: secret
+      DATABASE_USER: postgres
+      DATABASE_PASSWORD: secret
     volumes:
       - ./backups:/backups
+      - ./config/backup-dev.conf:/conf/backup.conf
       - ./docker/backup.config.utils:/backup.config.utils
       - ./docker/backup.container.utils:/backup.container.utils
       - ./docker/backup.file.utils:/backup.file.utils
