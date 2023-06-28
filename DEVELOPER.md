@@ -2,7 +2,7 @@
 
 This project contains a docker-compose.yml file suitable for development purposes. It will start a PostgreSQL database, minio (S3 compatible storage) and a backup container.
 
-Because all the bash scripts are mounted to root `/` the docker-compose file mounts them all individually. If you wish to add new files, create it then add it to the backup container mounts.
+Because all the bash scripts are mounted to root `/` the docker-compose file mounts them all individually. If you wish to add new files, create it then add it to the backup container mounts. This method allows you to edit the files on the host and have changes immediately available in the container. You may need to restart the backup process to see the changes.
 
 To start the containers run:
 
