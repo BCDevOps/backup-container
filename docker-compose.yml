@@ -1,0 +1,44 @@
+version: '3.8'
+services:
+  minio:
+    image: minio/minio
+    volumes:
+      - ./minio-data:/data
+    ports:
+      - 9000:9000
+    environment:
+      MINIO_ROOT_USER: minio
+      MINIO_ROOT_PASSWORD: minio123
+    command: server /data
+
+  postgresql:
+    image: postgres:12
+    volumes:
+      - ./pg-data:/var/lib/postgresql/data
+    ports:
+      - 5432:5432
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: secret
+
+  backup:
+    build: ./docker
+    volumes:
+      - ./backups:/backups
+      - ./docker/backup.config.utils:/backup.config.utils
+      - ./docker/backup.container.utils:/backup.container.utils
+      - ./docker/backup.file.utils:/backup.file.utils
+      - ./docker/backup.ftp:/backup.ftp
+      - ./docker/backup.logging:/backup.logging
+      - ./docker/backup.mariadb.plugin:/backup.mariadb.plugin
+      - ./docker/backup.misc.utils:/backup.misc.utils
+      - ./docker/backup.mongo.plugin:/backup.mongo.plugin
+      - ./docker/backup.mssql.plugin:/backup.mssql.plugin
+      - ./docker/backup.null.plugin:/backup.null.plugin
+      - ./docker/backup.postgres.plugin:/backup.postgres.plugin
+      - ./docker/backup.server.utils:/backup.server.utils
+      - ./docker/backup.settings:/backup.settings
+      - ./docker/backup.sh:/backup.sh
+      - ./docker/backup.usage:/backup.usage
+      - ./docker/backup.utils:/backup.utils
+
