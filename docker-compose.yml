@@ -6,10 +6,11 @@ services:
       - ./minio-data:/data
     ports:
       - 9000:9000
+      - 9001:9001
     environment:
       MINIO_ROOT_USER: minio
       MINIO_ROOT_PASSWORD: minio123
-    command: server /data
+    command: server /data --console-address ":9001"
 
   postgresql:
     image: postgres:12
@@ -48,4 +49,3 @@ services:
       - ./docker/backup.sh:/backup.sh
       - ./docker/backup.usage:/backup.usage
       - ./docker/backup.utils:/backup.utils
-
