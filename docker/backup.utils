@@ -104,7 +104,8 @@ function runBackups(){
           dbSize=$(getDbSize "${database}")
           backupSize=$(getFileSize "${backupPath}")
           logInfo "Successfully backed up ${database}.\nBackup written to ${backupPath}.\nDatabase Size: ${dbSize}\nBackup Size: ${backupSize}${elapsedTime}"
-	  s3Backup "$backupPath"
+
+          s3Backup "${backupPath}"
           ftpBackup "${filename}"
           pruneBackups "${backupDir}" "${database}"
         else
