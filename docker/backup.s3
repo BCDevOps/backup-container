@@ -1,0 +1,30 @@
+#!/bin/bash
+
+function s3Backup() {
+	local db_backup="$1"
+	local mc_bin_path=$HOME/minio-binaries/mc
+	local minio_container=backup-container-minio-1
+
+	read minio_{alias,port,bucket} <<< \
+		$(sed -n 's/^s3=\([^:]*\).\([^\/]*\).\(.*\)/\1 \2 \3/p' $BACKUP_CONF)
+
+	if [[ $minio_alias ]]; then
+		[[ ! -f $mc_bin_path ]] &&
+			curl https://dl.min.io/client/mc/release/linux-amd64/mc \
+			  --create-dirs -o $HOME/minio-binaries/mc
+
+		chmod +x $mc_bin_path
+		export PATH=$PATH:${mc_bin_path%/*}
+
+		if ! mc alias ls | grep -o "^$minio_alias" > /dev/null; then
+			minio_url="http://$minio_container:$minio_port"
+			mc alias set $minio_alias $minio_url $MINIO_USER $MINIO_PASSWORD
+		fi
+
+		if ! mc ls $minio_alias/$minio_bucket &> /dev/null; then
+			mc mb $minio_alias/$minio_bucket
+		fi
+
+		mc cp "$db_backup" $minio_alias/$minio_bucket
+	fi
+}
