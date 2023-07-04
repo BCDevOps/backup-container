@@ -26,6 +26,8 @@ services:
     build: ./docker
     environment:
       BACKUP_CONF: /conf/backup.conf
+      MINIO_USER: minio
+      MINIO_PASSWORD: minio123
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: secret
       DATABASE_USER: postgres
