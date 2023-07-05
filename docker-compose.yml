@@ -26,8 +26,10 @@ services:
     build: ./docker
     environment:
       BACKUP_CONF: /conf/backup.conf
-      MINIO_USER: minio
-      MINIO_PASSWORD: minio123
+      S3_USER: AKIATUMT6YSA4JTBDUBL
+      S3_PASSWORD: wizs22gApaJPBFAlKseZqk5URvs/2qu2zzXnMZkI
+      S3_ENDPOINT: https://s3.us-east-2.amazonaws.com
+      S3_BUCKET: coolabc543
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: secret
       DATABASE_USER: postgres
@@ -51,3 +53,4 @@ services:
       - ./docker/backup.sh:/backup.sh
       - ./docker/backup.usage:/backup.usage
       - ./docker/backup.utils:/backup.utils
+      - ./docker/backup.s3:/backup.s3
