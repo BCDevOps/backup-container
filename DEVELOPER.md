@@ -16,6 +16,8 @@ Once all 3 containers start they will create three folders that are **not** trac
 - `./minio-data` - Minio storage
 - `./backup` - Backup data
 
+NOTE: Minio needs at minimum of 1G to function properly. Make sure you have some free local space.
+
 Add this shell (bash or zsh) alias, it helps to quickly connect to a container by name:
 
 ```bash
