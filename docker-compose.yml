@@ -9,7 +9,7 @@ services:
       - 9001:9001
     environment:
       MINIO_ROOT_USER: minio
-      MINIO_ROOT_PASSWORD: minio123
+      MINIO_ROOT_PASSWORD: secret00
     command: server /data --console-address ":9001"
 
   postgresql:
@@ -21,19 +21,16 @@ services:
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: secret
-
   backup:
     build: ./docker
     environment:
-      BACKUP_CONF: /conf/backup.conf
-      S3_USER: AKIATUMT6YSA4JTBDUBL
-      S3_PASSWORD: wizs22gApaJPBFAlKseZqk5URvs/2qu2zzXnMZkI
-      S3_ENDPOINT: https://s3.us-east-2.amazonaws.com
-      S3_BUCKET: coolabc543
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: secret
       DATABASE_USER: postgres
       DATABASE_PASSWORD: secret
+      BACKUP_CONF: /conf/backup.conf
+      S3_USER: minio
+      S3_PASSWORD: secret00
+      S3_ENDPOINT: http://minio:9000
+      S3_BUCKET: backups
     volumes:
       - ./backups:/backups
       - ./config/backup-dev.conf:/conf/backup.conf
