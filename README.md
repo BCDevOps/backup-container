@@ -75,7 +75,8 @@ This backup system is a straightforward containerized solution designed to back 
 
 ### Secondary Locations
 
-- Amazon S3 (S3 Compatible)
+- OCIO backup infrastructure
+- Amazon S3 (S3 Compatible / OCIO Object Store)
 - FTP
 
 # Backup Container Options
@@ -93,7 +94,7 @@ These steps will help ensure the smooth operation of the backup system.
 
 This project provides you with a starting point for integrating backups into your OpenShift projects. The scripts and templates provided in the [openshift](./openshift) directory are compatible with the [openshift-developer-tools](https://github.com/BCDevOps/openshift-developer-tools) scripts. They help you create an OpenShift deployment or cronjob called `backup` in your projects that runs backups on databases within the project environment. You only need to integrate the scripts and templates into your project(s), the builds can be done with this repository as the source.
 
-As an alternative to using discrete `oc` ([OpenShift CLI](https://docs.openshift.com/container-platform/3.11/cli_reference/get_started_cli.html)) commands, you can integrate the backup configurations (Build and Deployment templates, override script, and config) directly into your project configuration and manage the publishing and updating of the Build and Deployment configurations using the [BCDevOps/openshift-developer-tools](https://github.com/BCDevOps/openshift-developer-tools/tree/master/bin) scripts. An example can be found in the [bcgov/orgbook-configurations](https://github.com/bcgov/orgbook-configurations) repository under the [backup templates folder](https://github.com/bcgov/orgbook-configurations/tree/master/openshift/templates/backup).
+As an alternative to using the command line interface `oc` ([OpenShift CLI](https://access.redhat.com/documentation/en-us/openshift_container_platform/4.12/html-single/cli_tools/index)), you can integrate the backup configurations (Build and Deployment templates, override script, and config) directly into your project configuration and manage the publishing and updating of the Build and Deployment configurations using the [BCDevOps/openshift-developer-tools](https://github.com/BCDevOps/openshift-developer-tools/tree/master/bin) scripts. An example can be found in the [bcgov/orgbook-configurations](https://github.com/bcgov/orgbook-configurations) repository under the [backup templates folder](https://github.com/bcgov/orgbook-configurations/tree/master/openshift/templates/backup).
 
 Simplified documentation on how to use the tools can be found [here](https://github.com/bcgov/jag-cullencommission/tree/master/openshift). All scripts support a `-c` option that allows you to perform operations on a single component of your application such as the backup container. In the orgbook-configurations example above, note the `-c backup` argument supplied.
 
@@ -118,7 +119,7 @@ If you are utilizing S3 storage or the corporate S3 compatible storage, you may 
 - `netapp-file-standard` for backup storage
 - `netapp-file-standard` for restore/verification storage
 
-To implement this, create a PVC (PersistentVolumeClaim) using the the appropriate storage class and mount it to your pod at the `/backups` mount point.
+To implement this, create a PVC using the the appropriate storage class and mount it to your pod at the `/backups` mount point. Or, if you're using the provided deployment template, update or override the `BACKUP_VOLUME_STORAGE_CLASS` parameter.
 
 For more detailed information, please visit the [DevHub](https://developer.gov.bc.ca/OCP4-Backup-and-Restore) page.
 
