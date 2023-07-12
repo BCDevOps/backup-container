@@ -77,7 +77,7 @@ This backup system is a straightforward containerized solution designed to back 
 
 - OCIO backup infrastructure
 - Amazon S3 (S3 Compatible / OCIO Object Store)
-- FTP
+- FTP Server
 
 # Backup Container Options
 
@@ -131,7 +131,7 @@ Ensure that the volume is large enough to accommodate your largest database. You
 
 ### Storage Performance
 
-Our Persistent Volume Claims (PVC) are supported by NetApp storage. It's important to note that the performance of the storage is not affected by the storage class chosen. 
+Our PVC are supported by NetApp storage. It's important to note that the performance of the storage is not affected by the storage class chosen. 
 ## Deployment / Configuration
 
 Together, the scripts and templates provided in the [openshift](./openshift) directory will automatically deploy the `backup` app as described below. The [backup-deploy.overrides.sh](./openshift/backup-deploy.overrides.sh) script generates the deployment configuration necessary for the [backup.conf](config/backup.conf) file to be mounted as a ConfigMap by the `backup` container.
