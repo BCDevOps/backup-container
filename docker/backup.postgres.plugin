@@ -27,7 +27,11 @@ function onBackupDatabase(){
     _password=$(getPassword ${_databaseSpec})
     echoGreen "Backing up '${_hostname}${_port:+:${_port}}${_database:+/${_database}}' to '${_backupFile}' ..."
 
-    PGPASSWORD=${_password} pg_dump -Fp -h "${_hostname}" ${_portArg} -U "${_username}" "${_database}" | gzip > ${_backupFile}
+    export PGPASSWORD=${_password}
+    pg_dump -Fp -h "${_hostname}" ${_portArg} -U "${_username}" "${_database}" > "${BACKUP_DIR}backup.sql"
+    pg_dumpall -h "${_hostname}" ${_portArg} -U "${_username}"  --roles-only --no-role-passwords > "${BACKUP_DIR}roles.sql"
+    tar -C ${BACKUP_DIR} -cvzf ${_backupFile} backup.sql roles.sql
+    rm "${BACKUP_DIR}roles.sql" && rm "${BACKUP_DIR}backup.sql"
     return ${PIPESTATUS[0]}
   )
 }
@@ -90,7 +94,10 @@ function onRestoreDatabase(){
 
     # Restore
     if (( ${_rtnCd} == 0 )); then
-      gunzip -c "${_fileName}" | psql ${_stopOnErrors} -x -h "${_hostname}" ${_portArg} -d "${_database}"
+      tar -xzvf "${_fileName}" -C ${BACKUP_DIR}
+      psql ${_stopOnErrors} -x -h "${_hostname}" ${_portArg} -d "${_database}" < "${BACKUP_DIR}roles.sql"
+      psql ${_stopOnErrors} -x -h "${_hostname}" ${_portArg} -d "${_database}" < "${BACKUP_DIR}backup.sql"
+      rm "${BACKUP_DIR}roles.sql" && rm "${BACKUP_DIR}backup.sql"
       # Get the status code from psql specifically.  ${?} would only provide the status of the last command, psql in this case.
       _rtnCd=${PIPESTATUS[1]}
     fi
