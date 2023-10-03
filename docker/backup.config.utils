@@ -321,6 +321,12 @@ function listSettings(){
     echo "- FTP server: ${FTP_URL}"
   fi
   
+  if [ -z "${S3_ENDPOINT}" ]; then
+    echo -e "- S3 endpoint: ${_notConfigured}"
+  else
+    echo "- S3 endpoint: ${S3_ENDPOINT}"
+  fi
+  
   if [ -z "${WEBHOOK_URL}" ]; then
     echo -e "- Webhook Endpoint: ${_notConfigured}"
   else

@@ -7,6 +7,7 @@
 . ./backup.logging              # Logging functions
 . ./backup.config.utils         # Configuration functions
 . ./backup.container.utils      # Container Utility Functions
+. ./backup.s3                   # S3 Support functions
 . ./backup.ftp                  # FTP Support functions
 . ./backup.misc.utils           # General Utility Functions
 . ./backup.file.utils           # File Utility Functions

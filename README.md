@@ -61,32 +61,40 @@ _Table of Contents_
 
 <!-- /TOC -->
 
-# Backup Container
+# Introduction
 
-[Backup Container](https://github.com/BCDevOps/backup-container) is a simple containerized backup solution for backing up one or more supported databases to a secondary location. _Code and documentation was originally pulled from the [HETS Project](https://github.com/bcgov/hets)_
+This backup system is a straightforward containerized solution designed to back up one or more supported databases to a secondary location.
+## Supported Databases & Secondary Locations
 
-## Supported Databases
+### Databases
 
-- MongoDB
 - PostgresSQL
-- MSSQL - Currently MSSQL requires that the nfs db volume be shared with the database for backups to function correctly.
+- MongoDB
 - MariaDB
+- MSSQL - Currently MSSQL requires that the nfs db volume be shared with the database for backups to function correctly.
+
+### Secondary Locations
+
+- OCIO backup infrastructure
+- Amazon S3 (S3 Compatible / OCIO Object Store)
+- FTP Server
 
 # Backup Container Options
 
-You can run the Backup Container for supported databases separately or in a mixed environment.
-For a mixed environment:
+You have the option to run the Backup Container for supported databases either separately or in a mixed environment. If you choose the mixed environment, please follow these guidelines:
 
-1. You MUST use the recommended `backup.conf` configuration.
-2. Within the `backup.conf`, you MUST specify the `DatabaseType` for each listed database.
-3. You will need to create a build and deployment config for each type of supported backup container in use.
-4. Mount the same `backup.conf` file (ConfigMap) to each deployed container.
+1. It is required to use the recommended `backup.conf` configuration.
+2. Within the `backup.conf` file, make sure to specify the `DatabaseType` for each listed database.
+3. For each type of supported backup container being used, you will need to create a build and deployment configuration.
+4. Make sure to mount the same `backup.conf` file (ConfigMap) to each deployed container.
+
+These steps will help ensure the smooth operation of the backup system.
 
 ## Backups in OpenShift
 
 This project provides you with a starting point for integrating backups into your OpenShift projects. The scripts and templates provided in the [openshift](./openshift) directory are compatible with the [openshift-developer-tools](https://github.com/BCDevOps/openshift-developer-tools) scripts. They help you create an OpenShift deployment or cronjob called `backup` in your projects that runs backups on databases within the project environment. You only need to integrate the scripts and templates into your project(s), the builds can be done with this repository as the source.
 
-As an alternative to using discrete `oc` ([OpenShift CLI](https://docs.openshift.com/container-platform/3.11/cli_reference/get_started_cli.html)) commands, you can integrate the backup configurations (Build and Deployment templates, override script, and config) directly into your project configuration and manage the publishing and updating of the Build and Deployment configurations using the [BCDevOps/openshift-developer-tools](https://github.com/BCDevOps/openshift-developer-tools/tree/master/bin) scripts. An example can be found in the [bcgov/orgbook-configurations](https://github.com/bcgov/orgbook-configurations) repository under the [backup templates folder](https://github.com/bcgov/orgbook-configurations/tree/master/openshift/templates/backup).
+As an alternative to using the command line interface `oc` ([OpenShift CLI](https://access.redhat.com/documentation/en-us/openshift_container_platform/4.12/html-single/cli_tools/index)), you can integrate the backup configurations (Build and Deployment templates, override script, and config) directly into your project configuration and manage the publishing and updating of the Build and Deployment configurations using the [BCDevOps/openshift-developer-tools](https://github.com/BCDevOps/openshift-developer-tools/tree/master/bin) scripts. An example can be found in the [bcgov/orgbook-configurations](https://github.com/bcgov/orgbook-configurations) repository under the [backup templates folder](https://github.com/bcgov/orgbook-configurations/tree/master/openshift/templates/backup).
 
 Simplified documentation on how to use the tools can be found [here](https://github.com/bcgov/jag-cullencommission/tree/master/openshift). All scripts support a `-c` option that allows you to perform operations on a single component of your application such as the backup container. In the orgbook-configurations example above, note the `-c backup` argument supplied.
 
@@ -94,40 +102,36 @@ Following are the instructions for running the backups and a restore.
 
 ## Storage
 
-_Before we get too far into the the details, we're going to take a moment to discuss the most important part of the whole process - **The Storage**._ The backup container uses two volumes, one for storing the backups and the other for restore/verification testing. The deployment template separates them intentionally.
+The backup container utilizes two volumes: one for storing the backups and another for restore/verification testing. The deployment template deliberately separates these volumes.
 
-The following sections on storage discuss the recommendations and limitations of the storage classes created specifically for the BC Government's [PathFinder](https://console.pathfinder.gov.bc.ca:8443/) environment.
+The upcoming sections on storage will provide you with recommendations and limitations regarding the storage classes.
 
 ### Backup Storage Volume
 
-The recommended storage class for the backup volume for OCP4 is `netapp-file-backup`, backed up with the standard OCIO Backup infrastructure. Quota for this storage class is 25Gi by default. If you need more please put in a request for a quota change.
+We recommend using the `netapp-file-backup` storage class for the backup Persistent Volume Claim (PVC). This storage class is supported by the standard OCIO backup infrastructure and has a default quota of 25Gi. If you require additional storage, please submit an iStore request to adjust the quota accordingly. The backup retention policy for the backup infrastructure is as follows:
 
-Simply create a PVC with the netapp-file-backup and mount it to your pod as you would any other PVC.
-
-For additional details see the [DevHub](https://developer.gov.bc.ca/OCP4-Backup-and-Restore) page.
-
-#### NFS Storage Backup and Retention Policy
-
-NFS backed storage is covered by the following backup and retention policies:
-
-- Backup
+- Backup:
   - Daily: Incremental
   - Monthly: Full
-- Retention
-  - 90 days
+- Retention: 90 days
 
-### Restore/Verification Storage Volume
+If you are utilizing S3 storage or the corporate S3 compatible storage, you may not need to use the `netapp-file-backup` storage class. These systems are already replicated and highly redundant. In such cases, we recommend using the following storage classes:
+- `netapp-file-standard` for backup storage
+- `netapp-file-standard` for restore/verification storage
 
-The default storage class for the restore/verification volume is `netapp-file-standard` (do not use `netapp-file-backup` as it is unsuitable for such transient workloads). The supplied deployment template will auto-provision this volume for you with it is published. Refer to the _Storage Performance_ section for performance considerations.
+To implement this, create a PVC using the the appropriate storage class and mount it to your pod at the `/backups` mount point. Or, if you're using the provided deployment template, update or override the `BACKUP_VOLUME_STORAGE_CLASS` parameter.
 
-This volume should be large enough to host your largest database. Set the size by updating/overriding the `VERIFICATION_VOLUME_SIZE` value within the template.
+For more detailed information, please visit the [DevHub](https://developer.gov.bc.ca/OCP4-Backup-and-Restore) page.
+
+### Restore / Verification Storage Volume
+
+The restore/verification volume should use the default storage class `netapp-file-standard`. Please avoid using `netapp-file-backup` as it is not suitable for transient workloads. The provided deployment template will automatically provision this volume when it is published.
+
+Ensure that the volume is large enough to accommodate your largest database. You can set the size by updating or overriding the `VERIFICATION_VOLUME_SIZE` parameter in the provided OpenShift template.
 
 ### Storage Performance
 
-The performance of `netapp-block-standard` for restore/verification is far superior to that of `netapp-file-standard`, however it should only be used in cases where the time it takes to verify a backup begins to encroach on the over-all timing and verification cycle. You want the verification(s) to complete before another backup and verification cycle begins and you want a bit of idle time between the end of one cycle and the beginning of another in case things take a little longer now and again.
-
-_There are currently no performance stats for the `netapp` storage types._
-
+Our PVC are supported by NetApp storage. It's important to note that the performance of the storage is not affected by the storage class chosen. 
 ## Deployment / Configuration
 
 Together, the scripts and templates provided in the [openshift](./openshift) directory will automatically deploy the `backup` app as described below. The [backup-deploy.overrides.sh](./openshift/backup-deploy.overrides.sh) script generates the deployment configuration necessary for the [backup.conf](config/backup.conf) file to be mounted as a ConfigMap by the `backup` container.
@@ -151,12 +155,16 @@ The following environment variables are defaults used by the `backup` app.
 | DATABASE_NAME              | my_postgres_db       | Used for backward compatibility only. The name of the _default_ database target; the name of the database you want to backup.                                                                                                                                                                                                                                                 |
 | DATABASE_USER              | _wired to a secret_  | The username for the database(s) hosted by the database server. The deployment configuration makes the assumption you have your database credentials stored in secrets (which you should), and the key for the username is `database-user`. The name of the secret must be provided as the `DATABASE_DEPLOYMENT_NAME` parameter to the deployment configuration template.     |
 | DATABASE_PASSWORD          | _wired to a secret_  | The password for the database(s) hosted by the database server. The deployment configuration makes the assumption you have your database credentials stored in secrets (which you should), and the key for the username is `database-password`. The name of the secret must be provided as the `DATABASE_DEPLOYMENT_NAME` parameter to the deployment configuration template. |
-| FTP_URL                    |                      | The FTP server URL. If not specified, the FTP backup feature is disabled. The default value in the deployment configuration is an empty value - not specified.                                                                                                                                                                                                                |
-| FTP_USER                   | _wired to a secret_  | The username for the FTP server. The deployment configuration creates a secret with the name specified in the FTP_SECRET_KEY parameter (default: `ftp-secret`). The key for the username is `ftp-user` and the value is an empty value by default.                                                                                                                            |
-| FTP_PASSWORD               | _wired to a secret_  | The password for the FTP server. The deployment configuration creates a secret with the name specified in the FTP_SECRET_KEY parameter (default: `ftp-secret`). The key for the password is `ftp-password` and the value is an empty value by default.                                                                                                                        |
-| WEBHOOK_URL                |                      | The URL of the webhook endpoint to use for notifications. If not specified, the webhook integration feature is disabled. The default value in the deployment configuration is an empty value - not specified.                                                                                                                                                                 |
-| ENVIRONMENT_FRIENDLY_NAME  |                      | A friendly (human readable) name of the environment. This variable is used by the webhook integration to identify the environment from which the backup notifications originate. The default value in the deployment configuration is an empty value - not specified.                                                                                                         |
-| ENVIRONMENT_NAME           |                      | A name or ID of the environment. This variable is used by the webhook integration to identify the environment from which the backup notifications originate. The default value in the deployment configuration is an empty value - not specified.                                                                                                                             |
+| FTP_URL                    |                      | The FTP server URL. If not specified, the FTP backup feature is disabled. The default value in the deployment configuration is an empty value - not specified. |
+| FTP_USER | _wired to a secret_  | The username for the FTP server. The deployment configuration creates a secret with the name specified in the FTP_SECRET_KEY parameter (default: `ftp-secret`). The key for the username is `ftp-user` and the value is an empty value by default. |
+| FTP_PASSWORD               | _wired to a secret_  | The password for the FTP server. The deployment configuration creates a secret with the name specified in the FTP_SECRET_KEY parameter (default: `ftp-secret`). The key for the password is `ftp-password` and the value is an empty value by default. |
+| S3_USER | No Default  | The username for the S3 compatible object store. This may also be referred to as the "Access key" in AWS S3. |
+| S3_PASSWORD | No Default  | The password for the S3 compatible object store. This may also be referred to as the "Secret key" in AWS. |
+| S3_ENDPOINT | None  |  The AWS endpoint to use for S3 compatible object storage. For OpenShift minio use `http://minio-service:9000` |
+| S3_BUCKET | None | The bucket where you backups will be transferd to. |
+| WEBHOOK_URL | | The URL of the webhook endpoint to use for notifications. If not specified, the webhook integration feature is disabled. The default value in the deployment configuration is an empty value - not specified. |
+| ENVIRONMENT_FRIENDLY_NAME  | | A friendly (human readable) name of the environment. This variable is used by the webhook integration to identify the environment from which the backup notifications originate. The default value in the deployment configuration is an empty value - not specified. |
+| ENVIRONMENT_NAME | | A name or ID of the environment. This variable is used by the webhook integration to identify the environment from which the backup notifications originate. The default value in the deployment configuration is an empty value - not specified. |
 
 ### backup.conf
 

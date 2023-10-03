@@ -1,0 +1,21 @@
+#!/bin/bash
+
+function s3Backup() {
+	local db_backup="$1"
+	local minio_alias=minio_s3
+	local minio_container=backup-container-minio-1
+
+	if [[ $S3_ENDPOINT ]]; then
+		if ! mc alias ls | grep -o "^$minio_alias" > /dev/null; then
+			echo "Creating $minio_alias.."
+			mc alias set $minio_alias $S3_ENDPOINT $S3_USER $S3_PASSWORD
+		fi
+
+		if ! mc ls $minio_alias/$S3_BUCKET &> /dev/null; then
+			echo "Creating $S3_BUCKET bucket.."
+			mc mb $minio_alias/$S3_BUCKET
+		fi
+
+		mc cp "$db_backup" $minio_alias/$S3_BUCKET
+	fi
+}

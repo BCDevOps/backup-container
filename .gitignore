@@ -14,5 +14,7 @@ settings*.sh
 
 # Local config
 .env
-backups
 docker/backup.conf
+backups
+minio-data
+pg-data

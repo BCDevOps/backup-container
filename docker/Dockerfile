@@ -1,5 +1,5 @@
 # This image provides a postgres installation from which to run backups
-FROM quay.io/fedora/postgresql-14:14
+FROM --platform=linux/amd64 quay.io/fedora/postgresql-14:14
 
 # Change timezone to PST for convenience
 ENV TZ=PST8PDT
@@ -22,6 +22,8 @@ ADD https://github.com/$SOURCE_REPO/go-crond/releases/download/$GOCROND_VERSION/
 
 USER root
 
+RUN curl https://dl.min.io/client/mc/release/linux-amd64/mc -o /usr/bin/mc
+RUN chmod +x /usr/bin/mc
 RUN chmod +x /usr/bin/go-crond
 # ========================================================================================================
 
