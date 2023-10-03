@@ -74,6 +74,7 @@ function logError(){
                      "${ENVIRONMENT_NAME}" \
                      "ERROR" \
                      "${errorMsg}"
+    postMsgToPagerDuty "${errorMsg}"
   )
 }
 
@@ -96,6 +97,32 @@ function postMsgToWebhook(){
       --data-urlencode "statusCode=${statusCode}" \
       --data-urlencode "message=${message}" \
       "${WEBHOOK_URL}" > /dev/null
+  )
+}
+
+function postMsgToPagerDuty(){
+  (
+    if [ -z "${PGDUTY_SVC_KEY}" ]; then
+      echo "Missing PagerDuty service key"
+      return 0
+    fi
+
+    if [ -z "${PGDUTY_URL}" ]; then
+      echo "Missing PagerDuty API url"
+      return 0
+    fi
+
+    message=$(echo -e "${1}" | tr '\n' ' ')
+
+    curl -s \
+    -X POST \
+    -H "Content-type: application/json" \
+    -d "{
+      \"service_key\": \"${PGDUTY_SVC_KEY}\",
+      \"event_type\": \"trigger\",
+      \"description\": \"${message}\"
+    }" \
+    "${PGDUTY_URL}" > /dev/null
   )
 }
 # =================================================================================================================
