@@ -31,7 +31,7 @@ if [[ ${?} != 0 ]]; then
   . ./backup.${CONTAINER_TYPE}.plugin > /dev/null 2>&1
 fi
 
-while getopts nclr:v:f:1spha: FLAG; do
+while getopts nclr:v:f:1spha:I FLAG; do
   case $FLAG in
     n)
       # Allow null database plugin ...
@@ -71,6 +71,9 @@ while getopts nclr:v:f:1spha: FLAG; do
       ;;
     a)
       export _adminPassword=${OPTARG}
+      ;;
+    I)
+      export IGNORE_ERRORS=1
       ;;
     h)
       usage

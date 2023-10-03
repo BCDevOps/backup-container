@@ -61,6 +61,10 @@ function onRestoreDatabase(){
     echo -e "Restoring '${_fileName}' to '${_hostname}${_port:+:${_port}}${_database:+/${_database}}' ...\n" >&2
 
     export PGPASSWORD=${_adminPassword}
+    _stopOnErrors="-v ON_ERROR_STOP=1"
+    if ignoreErrors; then
+      _stopOnErrors="-v ON_ERROR_STOP=0"
+    fi
     _rtnCd=0
 
     # Drop
@@ -86,7 +90,7 @@ function onRestoreDatabase(){
 
     # Restore
     if (( ${_rtnCd} == 0 )); then
-      gunzip -c "${_fileName}" | psql -v ON_ERROR_STOP=1 -x -h "${_hostname}" ${_portArg} -d "${_database}"
+      gunzip -c "${_fileName}" | psql ${_stopOnErrors} -x -h "${_hostname}" ${_portArg} -d "${_database}"
       # Get the status code from psql specifically.  ${?} would only provide the status of the last command, psql in this case.
       _rtnCd=${PIPESTATUS[1]}
     fi
