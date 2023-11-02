@@ -20,9 +20,14 @@ ARG SOURCE_REPO=webdevops
 ARG GOCROND_VERSION=23.2.0
 ADD https://github.com/$SOURCE_REPO/go-crond/releases/download/$GOCROND_VERSION/go-crond.linux.amd64 /usr/bin/go-crond
 
+COPY mongod.conf /etc/mongod.conf
+
 USER root
 
 RUN chmod +x /usr/bin/go-crond
+RUN ln -s /usr/bin/mongosh /usr/bin/mongo
+RUN chown 1005420000:1005420000 /data/db
+RUN chown 1005420000:1005420000 /var/lib/mongo
 # ========================================================================================================
 
 # ========================================================================================================
