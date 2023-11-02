@@ -84,10 +84,10 @@ function onStartServer(){
 
     # Start a local MongoDb instance
     MONGODB_DATABASE=$(getDatabaseName "${_databaseSpec}") \
-    MONGODB_USER=$(getUsername "${_databaseSpec}") \
+    MONGO_INITDB_ROOT_USERNAME=$(getUsername "${_databaseSpec}") \
     MONGODB_PASSWORD=$(getPassword "${_databaseSpec}") \
-    MONGODB_ADMIN_PASSWORD=$(getPassword "${_databaseSpec}") \
-    run-mongod >/dev/null 2>&1 &
+    MONGO_INITDB_ROOT_PASSWORD=$(getPassword "${_databaseSpec}") \
+    mongod --config /etc/mongod.conf >/dev/null 2>&1 &
   )
 }
 
