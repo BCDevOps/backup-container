@@ -1,5 +1,5 @@
 # This image provides a mongo installation from which to run backups
-FROM registry.access.redhat.com/rhscl/mongodb-36-rhel7
+FROM mongodb/mongodb-community-server:6.0.6-ubi8
 
 # Change timezone to PST for convenience
 ENV TZ=PST8PDT
@@ -32,7 +32,7 @@ RUN echo $TZ > /etc/timezone
 # ========================================================================================================
 
 # Important - Reset to the base image's user account.
-USER 26
+USER 998
 
 # Set the default CMD.
 CMD sh /backup.sh
