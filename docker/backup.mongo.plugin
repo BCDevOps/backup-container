@@ -69,6 +69,52 @@ function onRestoreDatabase(){
   )
 }
 
+function onDatabaseInit() {
+    local OPTIND
+    local unset flags
+    while getopts : FLAG; do
+      case $FLAG in
+        ? ) flags+="-${OPTARG} ";;
+      esac
+    done
+    shift $((OPTIND-1))
+
+  # Retrieve database details
+  local _databaseSpec=${1}
+  local _database=$(getDatabaseName "${_databaseSpec}")
+  local _username=$(getUsername "${_databaseSpec}")
+  local _password=$(getPassword "${_databaseSpec}")
+
+  # Check if the database already exists
+  if mongosh --quiet --eval "db.getMongo().getDBNames().indexOf('$_database') >= 0"; then
+    echoYellow "Database '$_database' already exists, skipping initialization."
+    return 0
+  fi
+
+  # Initialize the database by creating the user with the roles
+  mongosh "$_database" --eval "
+    db.createUser({
+      user: '$_username',
+      pwd: '$_password',
+      roles: [
+        { role: 'dbOwner', db: '$_database' },
+        { role: 'readWrite', db: '$_database' },
+        { role: 'clusterAdmin', db: 'admin' }
+      ]
+    });
+  "
+
+  # Check the exit status of the createUser command
+  if [ $? -eq 0 ]; then
+    echoGreen "Database '$_database' initialized successfully."
+    return 0
+  else
+    echoRed "Failed to initialize database '$_database'."
+    return 1
+  fi
+}
+
+
 function onStartServer(){
   (
     local OPTIND
@@ -83,11 +129,10 @@ function onStartServer(){
     _databaseSpec=${1}
 
     # Start a local MongoDb instance
-    MONGODB_DATABASE=$(getDatabaseName "${_databaseSpec}") \
-    MONGO_INITDB_ROOT_USERNAME=$(getUsername "${_databaseSpec}") \
-    MONGODB_PASSWORD=$(getPassword "${_databaseSpec}") \
-    MONGO_INITDB_ROOT_PASSWORD=$(getPassword "${_databaseSpec}") \
-    mongod --config /etc/mongod.conf >/dev/null 2>&1 &
+    mongod > /dev/null 2>&1 &
+
+    # Initialize database if necessary
+    onDatabaseInit "${_databaseSpec}"
   )
 }
 
