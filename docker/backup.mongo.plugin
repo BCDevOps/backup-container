@@ -3,7 +3,7 @@
 # Mongo Backup and Restore Functions:
 # - Dynamically loaded as a plug-in
 # -----------------------------------------------------------------------------------------------------------------
-export serverDataDirectory="/var/lib/mongodb/data"
+export serverDataDirectory="/data/db"
 
 function onBackupDatabase(){
   (
@@ -106,11 +106,11 @@ function onStopServer(){
 
     _port=$(getPort ${_databaseSpec})
     _portArg=${_port:+"--port ${_port}"}
-    _username=admin
+    _username="$(getUsername "${_databaseSpec}")"
     _password=$(getPassword ${_databaseSpec})
 
     _authDbArg=${MONGODB_AUTHENTICATION_DATABASE:+"--authenticationDatabase ${MONGODB_AUTHENTICATION_DATABASE}"}
-    mongo admin ${_authDbArg} ${_portArg} -u "${_username}" -p "${_password}" --quiet --eval "db.shutdownServer()"
+    mongosh --authenticationDatabase admin ${_portArg} -u "${_username}" -p "${_password}" --eval "db.shutdownServer()"
 
     # Wait for server to stop ...
     local startTime=${SECONDS}
