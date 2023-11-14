@@ -20,14 +20,18 @@ ARG SOURCE_REPO=webdevops
 ARG GOCROND_VERSION=23.2.0
 ADD https://github.com/$SOURCE_REPO/go-crond/releases/download/$GOCROND_VERSION/go-crond.linux.amd64 /usr/bin/go-crond
 
-COPY mongod.conf /etc/mongod.conf
+# COPY backup.conf /conf/backup.conf
 
+# COPY mongod.conf /etc/mongod.conf
+# RUN mv /etc/mongod.conf.orig /etc/mongod.conf
+# RUN mkdir -p /var/lib/mongo/data
 USER root
 
 RUN chmod +x /usr/bin/go-crond
-RUN ln -s /usr/bin/mongosh /usr/bin/mongo
+COPY vc-authn-oidc-mongodb-headless-vcauthn_2023-11-02_10-54-08.sql.gz /backups/daily/2023-11-02/vc-authn-oidc-mongodb-headless-vcauthn_2023-11-02_10-54-08.sql.gz
 RUN chown 1005420000:1005420000 /data/db
-RUN chown 1005420000:1005420000 /var/lib/mongo
+# RUN chown 1005420000:1005420000 /var/lib/mongo
+# RUN chown 1005420000:1005420000 /var/log/mongodb
 # ========================================================================================================
 
 # ========================================================================================================
@@ -37,7 +41,7 @@ RUN echo $TZ > /etc/timezone
 # ========================================================================================================
 
 # Important - Reset to the base image's user account.
-USER 998
+USER 999
 
 # Set the default CMD.
-CMD sh /backup.sh
+CMD bash /backup.sh
