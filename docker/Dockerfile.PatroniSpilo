@@ -1,5 +1,4 @@
-FROM registry.opensource.zalan.do/acid/spilo-12:1.6-p3
-LABEL maintainer="Matthieu Foucault <matthieu@button.is>"
+FROM registry.opensource.zalan.do/acid/spilo-15:2.1-p9
 
 # ========================================================================================================
 # Install go-crond (from https://github.com/BCDevOps/go-crond)
@@ -27,9 +26,10 @@ RUN chmod +x /usr/bin/go-crond
 # Perform operations that require root privilages here ...
 # --------------------------------------------------------------------------------------------------------
 # Set permissions for OpenShift
-RUN chmod 664 /etc/passwd \
- && apt-get update && apt-get install -y gettext-base bsdmainutils \
- && echo $TZ > /etc/timezone
+# RUN chmod 664 /etc/passwd \
+#  && apt-get update && apt-get install -y gettext-base bsdmainutils \
+#  && echo $TZ > /etc/timezone
+RUN echo $TZ > /etc/timezone
 # ========================================================================================================
 
 # Important - Reset to the base image's user account.
