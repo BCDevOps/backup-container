@@ -206,18 +206,12 @@ function onPingDbServer(){
     _dbAddressArg=${_hostname}${_port:+:${_port}}${_database:+/${_database}}
     _authDbArg=${MONGODB_AUTHENTICATION_DATABASE:+"--authenticationDatabase ${MONGODB_AUTHENTICATION_DATABASE}"}
 
-    mongosh ${_dbAddressArg} ${_authDbArg} -u "${_username}" -p "${_password}" --eval='db.runCommand("ping").ok'
-    echo $?
-
     mongosh ${_dbAddressArg} ${_authDbArg} -u "${_username}" -p "${_password}" --eval='db.runCommand("ping").ok' >/dev/null 2>&1
     local mongoshExitCode=$?
-    echoMagenta ${mongoshExitCode}
     
     if (( ${mongoshExitCode} != 0 )); then
-      echo "I think its dead. returning 1"
       return 1
     else
-      echo "I think its still alive, returning 0"
       return 0
     fi
   )
