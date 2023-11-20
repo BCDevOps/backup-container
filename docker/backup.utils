@@ -262,7 +262,7 @@ function verifyBackup(){
     fi
 
     # Stop the database server and clean up ...
-    stopServer "${_databaseSpec}"
+    stopServer -l "${_databaseSpec}"
     cleanUp
 
     local endTime=$(date +%s%N)
