@@ -128,8 +128,10 @@ function onStartServer(){
 
     _databaseSpec=${1}
 
+    _hostname=$(getHostname ${flags} ${_databaseSpec})
+
     # Start a local MongoDb instance
-    mongod --bind_ip 127.0.0.1 > /dev/null 2>&1 &
+    mongod --bind_ip $_hostname > /dev/null 2>&1 &
 
     # Initialize database if necessary
     onDatabaseInit "${_databaseSpec}"
@@ -149,10 +151,9 @@ function onStopServer(){
 
     _databaseSpec=${1}
 
-    _port=$(getPort ${_databaseSpec})
-    _database=$(getDatabaseName "${_databaseSpec}")
+    _hostname=$(getHostname ${flags} ${_databaseSpec})
 
-    mongosh 127.0.0.1/admin --quiet --eval "db.shutdownServer()" > /dev/null 2>&1
+    mongosh ${_hostname}/admin --quiet --eval "db.shutdownServer()" > /dev/null 2>&1
 
     # Wait for server to stop ...
     local startTime=$(date +%s%N)

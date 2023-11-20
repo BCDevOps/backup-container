@@ -39,7 +39,7 @@ RUN echo $TZ > /etc/timezone
 # ========================================================================================================
 
 # Important - Reset to the base image's user account.
-USER 998
+USER $uid
 
 # Set the default CMD.
 CMD bash /backup.sh
