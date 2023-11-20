@@ -51,4 +51,5 @@ export CONTAINER_TYPE="$(getContainerType)"
 
 # Other:
 export DATABASE_SERVER_TIMEOUT=${DATABASE_SERVER_TIMEOUT:-120}
+export DATABASE_SERVER_TIMEOUT_NS=$((DATABASE_SERVER_TIMEOUT * 1000000000))
 # ======================================================================================
