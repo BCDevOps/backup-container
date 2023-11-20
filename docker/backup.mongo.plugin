@@ -92,7 +92,7 @@ function onDatabaseInit() {
   fi
 
   # Initialize the database by creating the user with the roles
-  mongosh "$_database" --eval "
+  mongosh "$_database" --quiet --eval "
     db.createUser({
       user: '$_username',
       pwd: '$_password',
@@ -152,15 +152,16 @@ function onStopServer(){
     _port=$(getPort ${_databaseSpec})
     _database=$(getDatabaseName "${_databaseSpec}")
 
-    mongosh 127.0.0.1/admin --eval "db.shutdownServer()"
+    mongosh 127.0.0.1/admin --quiet --eval "db.shutdownServer()" > /dev/null 2>&1
 
     # Wait for server to stop ...
-    local startTime=${SECONDS}
+    local startTime=$(date +%s%N)
+
     printf "waiting for server to stop"
-    while onPingDbServer ${@}; do
+    while onPingDbServer -l ${@}; do
       printf "."
-      local duration=$(($SECONDS - $startTime))
-      if (( ${duration} >= ${DATABASE_SERVER_TIMEOUT} )); then
+      local duration_ns=$(($(date +%s%N) - $startTime))
+      if (( ${duration_ns} >= ${DATABASE_SERVER_TIMEOUT_NS} )); then
         echoRed "\nThe server failed to stop within $(getElapsedTimeFromDuration ${duration})."
         echoRed "Killing the mongod process ...\n"
         pkill -INT mongod
@@ -206,7 +207,7 @@ function onPingDbServer(){
     _dbAddressArg=${_hostname}${_port:+:${_port}}${_database:+/${_database}}
     _authDbArg=${MONGODB_AUTHENTICATION_DATABASE:+"--authenticationDatabase ${MONGODB_AUTHENTICATION_DATABASE}"}
 
-    mongosh ${_dbAddressArg} ${_authDbArg} -u "${_username}" -p "${_password}" --eval='db.runCommand("ping").ok' >/dev/null 2>&1
+    mongosh ${_dbAddressArg} ${_authDbArg} -u "${_username}" -p "${_password}" --quiet --eval='db.runCommand("ping").ok' > /dev/null 2>&1
     local mongoshExitCode=$?
     
     if (( ${mongoshExitCode} != 0 )); then
