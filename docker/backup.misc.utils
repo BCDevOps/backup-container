@@ -38,10 +38,16 @@ function getElapsedTime(){
 }
 
 function getElapsedTimeFromDuration(){
-  (
-    local duration=${1}
-    local elapsedTime="$(($duration/3600))h:$(($duration%3600/60))m:$(($duration%60))s"
+    local duration_ns=${1}
+
+    local hours=$((duration_ns / 3600000000000))
+    local minutes=$(( (duration_ns % 3600000000000) / 60000000000 ))
+    local seconds=$(( (duration_ns % 60000000000) / 1000000000 ))
+    local milliseconds=$(( (duration_ns % 1000000000) / 1000000 ))
+    local microseconds=$(( (duration_ns % 1000000) / 1000 ))
+    local nanoseconds=$(( duration_ns % 1000 ))
+
+    local elapsedTime="${hours}h:${minutes}m:${seconds}s:${milliseconds}ms:${microseconds}µs:${nanoseconds}ns"
     echo ${elapsedTime}
-  )
 }
 # ======================================================================================

@@ -1,5 +1,8 @@
 # This image provides a mongo installation from which to run backups
-FROM registry.access.redhat.com/rhscl/mongodb-36-rhel7
+FROM mongodb/mongodb-community-server:6.0.6-ubi8
+
+ARG uid=998
+ARG user=mongod
 
 # Change timezone to PST for convenience
 ENV TZ=PST8PDT
@@ -23,6 +26,10 @@ ADD https://github.com/$SOURCE_REPO/go-crond/releases/download/$GOCROND_VERSION/
 USER root
 
 RUN chmod +x /usr/bin/go-crond
+RUN chown -R $user:root /data/db && \
+    chmod -R ug+rw /data/db
+
+RUN usermod -a -G 0 $user
 # ========================================================================================================
 
 # ========================================================================================================
@@ -32,7 +39,7 @@ RUN echo $TZ > /etc/timezone
 # ========================================================================================================
 
 # Important - Reset to the base image's user account.
-USER 26
+USER $uid
 
 # Set the default CMD.
-CMD sh /backup.sh
+CMD bash /backup.sh

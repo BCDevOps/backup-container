@@ -68,11 +68,11 @@ function restoreDatabase(){
       echo -e "\n"
     fi
 
-    local startTime=${SECONDS}
+    local startTime=$(date +%s%N)
     onRestoreDatabase ${flags} "${_databaseSpec}" "${_fileName}" "${_adminPassword}"
     _rtnCd=${?}
 
-    local endTime=${SECONDS}
+    local endTime=$(date +%s%N)
     if (( ${_rtnCd} == 0 )); then
       echoGreen "\nRestore complete - Elapsed time: $(getElapsedTime ${startTime} ${endTime})\n"
     else
@@ -92,11 +92,11 @@ function runBackups(){
 
     for database in ${databases}; do
       if isForContainerType ${database}; then
-        local startTime=${SECONDS}
+        local startTime=$(date +%s%N)
         filename=$(generateFilename "${backupDir}" "${database}")
         backupDatabase "${database}" "${filename}"
         rtnCd=${?}
-        local endTime=${SECONDS}
+        local endTime=$(date +%s%N)
         local elapsedTime="\n\nElapsed time: $(getElapsedTime ${startTime} ${endTime}) - Status Code: ${rtnCd}"
 
         if (( ${rtnCd} == 0 )); then
@@ -124,13 +124,13 @@ function startServer(){
     onStartServer ${@}
 
     # Wait for server to start ...
-    local startTime=${SECONDS}
+    local startTime=$(date +%s%N)
     rtnCd=0
     printf "waiting for server to start"
     while ! pingDbServer ${@}; do
       printf "."
-      local duration=$(($SECONDS - $startTime))
-      if (( ${duration} >= ${DATABASE_SERVER_TIMEOUT} )); then
+      local duration_ns=$(($(date +%s%N) - $startTime))
+      if (( ${duration_ns} >= ${DATABASE_SERVER_TIMEOUT_NS} )); then
         echoRed "\nThe server failed to start within $(getElapsedTimeFromDuration ${duration}).\n"
         rtnCd=1
         break
@@ -231,7 +231,7 @@ function verifyBackup(){
     # Make sure things have been cleaned up before we start ...
     cleanUp
 
-    local startTime=${SECONDS}
+    local startTime=$(date +%s%N)
     startServer -l "${_databaseSpec}"
     rtnCd=${?}
 
@@ -262,10 +262,10 @@ function verifyBackup(){
     fi
 
     # Stop the database server and clean up ...
-    stopServer "${_databaseSpec}"
+    stopServer -l "${_databaseSpec}"
     cleanUp
 
-    local endTime=${SECONDS}
+    local endTime=$(date +%s%N)
     local elapsedTime="\n\nElapsed time: $(getElapsedTime ${startTime} ${endTime}) - Status Code: ${rtnCd}"
 
     if (( ${rtnCd} == 0 )); then

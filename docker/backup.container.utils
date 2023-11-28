@@ -14,7 +14,7 @@ function isPostgres(){
 
 function isMongo(){
   (
-    if isInstalled "mongo"; then
+    if isInstalled "mongosh"; then
       return 0
     else
       return 1
