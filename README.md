@@ -457,11 +457,11 @@ The following outlines the deployment of a simple backup of three PostgreSQL dat
 Create the image.
 
 ```bash
-oc -n 599f0a-tools process -f ./openshift/templates/backup/backup-build.json \
+oc -n 599f0a-tools process -f ./openshift/templates/backup/backup-build.yaml \
   -p NAME=nrmsurveys-bkup OUTPUT_IMAGE_TAG=v1 | oc -n 599f0a-tools create -f -
 ```
 
-3. Configure (./config/backup.conf) (listing your databas(s, and setting your cron schedule).
+3. Configure (./config/backup.conf) (listing your database(s), and setting your cron schedule).
 
 ```bash
 postgres=eaofider-postgresql:5432/eaofider
@@ -471,7 +471,7 @@ postgres=pawslimesurvey-postgresql:5432/pawslimesurvey
 0 4 * * * default ./backup.sh -s -v all
 ```
 
-6. Configure references to your DB credentials in [backup-deploy.json](./openshift/templates/backup/backup-deploy.json), replacing the boilerplate `DATABASE_USER` and `DATABASE_PASSWORD` environment variables.
+4. Configure references to your DB credentials in [backup-deploy.yaml](./openshift/templates/backup/backup-deploy.yaml), replacing the boilerplate `DATABASE_USER` and `DATABASE_PASSWORD` environment variables.
 
 ```yaml
 - name: EAOFIDER_POSTGRESQL_USER
@@ -488,15 +488,15 @@ postgres=pawslimesurvey-postgresql:5432/pawslimesurvey
 
 Note that underscores should be used in the environment variable names.
 
-7. Create your customized `./openshift/backup-deploy.overrides.param` parameter file, if required.
+5. Create your customized `./openshift/backup-deploy.overrides.param` parameter file, if required.
 
-8. Deploy the app; here the example namespace is `599f0a-dev` and the app name is `nrmsurveys-bkup`:
+6. Deploy the app; here the example namespace is `599f0a-dev` and the app name is `nrmsurveys-bkup`:
 
 ```bash
-oc -n 599f0a-dev create configmap backup-conf --from-file=./backup-container/config/backup.conf
+oc -n 599f0a-dev create configmap backup-conf --from-file=./config/backup.conf
 oc -n 599f0a-dev label configmap backup-conf app=nrmsurveys-bkup
 
-oc -n 599f0a-dev process -f ./openshift/templates/backup/backup-deploy.json \
+oc -n 599f0a-dev process -f ./openshift/templates/backup/backup-deploy.yaml \
   -p NAME=nrmsurveys-bkup \
   -p IMAGE_NAMESPACE=599f0a-tools \
   -p SOURCE_IMAGE_NAME=nrmsurveys-bkup \
@@ -506,10 +506,16 @@ oc -n 599f0a-dev process -f ./openshift/templates/backup/backup-deploy.json \
   -p ENVIRONMENT_FRIENDLY_NAME='NRM Survey DB Backups' | oc -n 599f0a-dev create -f -
 ```
 
-To clean up
+To clean up the deployment
 
 ```bash
-oc -n 599f0a-dev delete pvc/nrmsurveys-bkup-pvc pvc/backup-verification secret/nrmsurveys-bkup secret/ftp-secret dc/nrmsurveys-bkup
+oc -n 599f0a-dev delete pvc/nrmsurveys-bkup-pvc pvc/backup-verification secret/nrmsurveys-bkup secret/ftp-secret dc/nrmsurveys-bkup networkpolicy/nrmsurveys-bkup configmap/backup-conf
+```
+
+To clean up the image stream and build configuration
+
+```bash
+oc -n 599f0a-dev delete buildconfig/nrmsurveys-bkup imagestream/nrmsurveys-bkup 
 ```
 
 </details>
@@ -523,12 +529,12 @@ The following outlines the deployment of a simple backup of a single MongoDB dat
 3. Determine the OpenShift namespace for the image (e.g. `abc123-dev`), the app name (e.g. `myapp-backup`), and the image tag (e.g. `v1`). Then build the image in your `-tools` namespace.
 
 ```bash
-oc -n abc123-tools process -f ./openshift/templates/backup/backup-build.json \
+oc -n abc123-tools process -f ./openshift/templates/backup/backup-build.yaml \
   -p DOCKER_FILE_PATH=Dockerfile_Mongo
   -p NAME=myapp-backup -p OUTPUT_IMAGE_TAG=v1  -p BASE_IMAGE_FOR_BUILD=registry.access.redhat.com/rhscl/mongodb-36-rhel7 | oc -n abc123-tools create -f -
 ```
 
-5. Configure `./config/backup.conf`. This defines the database(s) to backup and the schedule that backups are to follow. Additionally, this sets up backup validation (identified by `-v all` flag).
+4. Configure `./config/backup.conf`. This defines the database(s) to backup and the schedule that backups are to follow. Additionally, this sets up backup validation (identified by `-v all` flag).
 
 ```bash
 # Database(s)
@@ -539,7 +545,7 @@ mongo=myapp-mongodb:27017/mydb
 0 4 * * * default ./backup.sh -s -v all
 ```
 
-6. Configure references to your DB credentials in [backup-deploy.json](./openshift/templates/backup/backup-deploy.json), replacing the boilerplate `DATABASE_USER` and `DATABASE_PASSWORD` environment variable names. Note the hostname of the database to be backed up. This example uses a hostname of `myapp-mongodb` which maps to environement variables named `MYAPP_MONGODB_USER` and `MYAPP_MONGODB_PASSWORD`. See the [backup.conf](#backupconf) section above for more in depth instructions. This example also assumes that the name of the secret containing your database username and password is the same as the provided `DATABASE_DEPLOYMENT_NAME` parameter. If that's not the case for your service, the secret name can be overridden.
+5. Configure references to your DB credentials in [backup-deploy.yaml](./openshift/templates/backup/backup-deploy.yaml), replacing the boilerplate `DATABASE_USER` and `DATABASE_PASSWORD` environment variable names. Note the hostname of the database to be backed up. This example uses a hostname of `myapp-mongodb` which maps to environement variables named `MYAPP_MONGODB_USER` and `MYAPP_MONGODB_PASSWORD`. See the [backup.conf](#backupconf) section above for more in depth instructions. This example also assumes that the name of the secret containing your database username and password is the same as the provided `DATABASE_DEPLOYMENT_NAME` parameter. If that's not the case for your service, the secret name can be overridden.
 
 ```yaml
 - name: MYAPP_MONGODB_USER
@@ -554,13 +560,13 @@ mongo=myapp-mongodb:27017/mydb
       key: "${DATABASE_PASSWORD_KEY_NAME}"
 ```
 
-8. Deploy the app. In this example, the namespace is `abc123-dev` and the app name is `myapp-backup`. Note that the key names within the database secret referencing database username and password are `username` and `password`, respectively. If this is not the case for your deployment, specify the correct key names as parameters `DATABASE_USER_KEY_NAME` and `DATABASE_PASSWORD_KEY_NAME`. Also note that `BACKUP_VOLUME_NAME` is from Step 2 above.
+6. Deploy the app. In this example, the namespace is `abc123-dev` and the app name is `myapp-backup`. Note that the key names within the database secret referencing database username and password are `username` and `password`, respectively. If this is not the case for your deployment, specify the correct key names as parameters `DATABASE_USER_KEY_NAME` and `DATABASE_PASSWORD_KEY_NAME`. Also note that `BACKUP_VOLUME_NAME` is from Step 2 above.
 
 ```bash
 oc -n abc123-dev create configmap backup-conf --from-file=./config/backup.conf
 oc -n abc123-dev label configmap backup-conf app=myapp-backup
 
-oc -n abc123-dev process -f ./openshift/templates/backup/backup-deploy.json \
+oc -n abc123-dev process -f ./openshift/templates/backup/backup-deploy.yaml \
   -p NAME=myapp-backup \
   -p IMAGE_NAMESPACE=abc123-tools \
   -p SOURCE_IMAGE_NAME=myapp-backup \
