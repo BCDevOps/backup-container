@@ -71,4 +71,4 @@ parameters:
     displayName: FROM Image Tag
     description: Base image to build from.  Docker creds or Artificatory setup may be needed to alleviate docker rate-limiting
     required: true
-    value: docker.io/centos/postgresql-12-centos7:20200917-804ef01
+    value: quay.io/fedora/postgresql-14:14
