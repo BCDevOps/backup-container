@@ -1,0 +1,56 @@
+#!/bin/bash
+
+
+# =============================================================================
+# Usage:
+# -----------------------------------------------------------------------------
+usage() {
+    cat << EOF
+$0
+
+Alters the privileges for a user.
+
+Usage: $0 USER PRIVILEGE
+EOF
+    exit 1
+}
+
+if [ "$#" -ne 2 ]; then
+    echo "Passed $# parameters. Expected 2."
+    usage
+fi
+
+privilege=$2
+user=$1
+
+_psql() {
+    PGOPTIONS='--client-min-messages=warning' psql -qtA --set ON_ERROR_STOP=1 "$@" 2>&1
+}
+
+read -r -d '' alter_user_query<<EOF
+alter role $user $privilege;
+EOF
+
+coordinator_out=$(_psql -c "$alter_user_query")
+if [[ $coordinator_out == ERROR* ]]; then
+    echo "$coordinator_out"
+    exit 1
+fi
+
+if [ "$(_psql -c "select count(*) from pg_extension where extname = 'citus';")" == "1" ]; then
+    # Alter user on the workers
+    read -r -d '' alter_user_query_workers<<EOF
+    select nodename, success, result from run_command_on_workers('${alter_user_query//\'/\'\'}');
+EOF
+    mapfile -t alter_user_workers_out <<< "$(_psql <<< "$alter_user_query_workers")"
+    for worker_out in "${alter_user_workers_out[@]}"
+    do
+        IFS='|' read -ra worker_out_fields <<< "$worker_out"
+        if [ "${worker_out_fields[1]}" == "f" ]; then
+            echo "Error on worker ${worker_out_fields[0]}: ${worker_out_fields[2]}"
+            exit 1
+        fi
+    done
+fi
+
+exit 0

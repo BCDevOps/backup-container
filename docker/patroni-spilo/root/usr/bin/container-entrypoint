@@ -1,0 +1,6 @@
+#!/bin/bash
+
+source "${CONTAINER_SCRIPTS_PATH}/common.sh"
+generate_passwd_file
+
+exec "$@"

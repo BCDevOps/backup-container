@@ -1,0 +1,195 @@
+#!/bin/bash
+
+
+# =============================================================================
+# Usage:
+# -----------------------------------------------------------------------------
+usage() {
+  cat << EOF
+$0
+
+Creates a database and a user with the given password.
+Grants all privileges on the database to the created user.
+
+Usage: $0 --user USER --db DATABASE --password PASSWORD [--enable-citus] [--owner | --privileges PRIVILEGES --schemas SCHEMAS]
+
+Options:
+  -u, --user USER            the name of the user to create
+  -p, --password PASSWORD    the password for the new user
+  -d, --db DATABASE          the name of the database the user will have access to. If it does not exist, the database will be created
+  --owner                    set the newly created user as the database owner
+  --privileges PRIVILEGES    if they are not an owner, specifies a comma-separated list of privileges the user will have
+  --schemas SCHEMAS          if they are not an owner, specifies a comma-separated list of schemas where the privileges mentions above will be applied
+  --enable-citus             enables the Citus extension in the database, and creates the database and user in the Citus workers
+  -h, --help                 prints this help message
+EOF
+}
+
+user_is_owner=false
+enable_citus=false
+while [[ "$1" =~ ^- && ! "$1" == "--" ]]; do case $1 in
+  -u | --user )
+    shift
+    user=$1
+    ;;
+  -d | --db )
+    shift
+    db=$1
+    ;;
+  -p | --password )
+    shift
+    password=$1
+    ;;
+  --owner )
+    user_is_owner=true
+    ;;
+  --enable-citus )
+    enable_citus=true
+    ;;
+  --privileges )
+    shift
+    privileges="$1"
+    ;;
+  --schemas )
+    shift
+    IFS=',' read -r -a schemas <<< "$1"
+    ;;
+  -h | --help )
+    usage
+    exit 0
+    ;;
+esac; shift; done
+
+if [ -z  "$user" ]; then
+  echo "The --user parameter is required."
+  usage
+  exit 1
+fi
+
+if [ -z  "$password" ]; then
+  echo "The --password parameter is required."
+  usage
+  exit 1
+fi
+
+if [ -z  "$db" ]; then
+  echo "The --db parameter is required."
+  usage
+  exit 1
+fi
+
+_psql() {
+  PGOPTIONS='--client-min-messages=warning' psql -qtA --set ON_ERROR_STOP=1 "$@" 2>&1
+}
+
+
+create_db_query="create database $db;"
+
+read -r -d '' create_user_query<<EOF
+create user $user;
+revoke all on database $db from public;
+revoke all on database postgres from $user;
+EOF
+
+set_password_query="alter user $user with encrypted password '$password';"
+
+set_user_privileges=''
+if $user_is_owner; then
+  create_user_query+="grant all on database $db to $user; alter database $db owner to $user;"
+else
+  create_user_query+="grant connect on database $db to $user;"
+  for schema in "${schemas[@]}"
+  do
+    set_user_privileges+="grant usage on schema $schema to $user;"
+    set_user_privileges+="grant $privileges on all tables in schema $schema to $user;"
+    set_user_privileges+="alter default privileges in schema $schema grant ${privileges[*]} on tables to $user;"
+  done
+fi
+
+# Create DB on the coordinator
+coordinator_out=$(_psql -c "$create_db_query")
+if [ "$coordinator_out" == "ERROR:  database \"$db\" already exists" ]; then
+  echo "Database \"$db\" already exists on coordinator node"
+elif [[ $coordinator_out == ERROR* ]]; then
+  echo "$coordinator_out"
+  exit 1
+fi
+
+
+coordinator_out=$(_psql -d "$db" <<< "$create_user_query")
+if [ "$coordinator_out" == "ERROR:  role \"$user\" already exists" ]; then
+  echo "User \"$user\" already exists on coordinator node"
+elif [[ $coordinator_out == ERROR* ]]; then
+  echo "$coordinator_out"
+  exit 1
+fi
+
+_psql -d "$db" <<< "$set_password_query"
+
+# set the user schema privileges
+if [ -n "$set_user_privileges" ]; then
+  _psql -d "$db" <<< "$set_user_privileges"
+fi
+
+if $enable_citus; then
+  get_workers_query() {
+    echo "select nodename, success, result from run_command_on_workers(\$cmd\$$1\$cmd\$);"
+  }
+
+  create_db_query_workers=$(get_workers_query "$create_db_query")
+  create_user_query_workers=$(get_workers_query "$create_user_query")
+  set_password_query_workers=$(get_workers_query "$set_password_query")
+  set_user_privileges_query_workers=$(get_workers_query "$set_user_privileges")
+
+  # Create DB on the workers
+  mapfile -t create_db_workers_out<<<"$(_psql <<< "$create_db_query_workers")"
+  for worker_out in "${create_db_workers_out[@]}"
+  do
+    IFS='|' read -r -a worker_out_fields <<< "$worker_out"
+    if [ "${worker_out_fields[1]}" == "f" ]; then
+      if [ "${worker_out_fields[2]}" == "ERROR:  database \"$db\" already exists" ]; then
+        echo "Database \"$db\" already exists on worker node ${worker_out_fields[0]}"
+      else
+        echo "Error on worker ${worker_out_fields[0]}: ${worker_out_fields[2]}"
+        exit 1
+      fi
+    fi
+  done
+
+
+  mapfile -t create_user_workers_out <<< "$(_psql -d "$db" <<< "$create_user_query_workers")"
+  # Create user on the workers
+  for worker_out in "${create_user_workers_out[@]}"
+  do
+    IFS='|' read -ra worker_out_fields <<< "$worker_out"
+    if [ "${worker_out_fields[1]}" == "f" ]; then
+      if [ "${worker_out_fields[2]}" == "ERROR:  role \"$user\" already exists" ]; then
+        echo "User \"$user\" already exists on worker node ${worker_out_fields[0]}"
+      else
+        echo "Error on worker ${worker_out_fields[0]}: ${worker_out_fields[2]}"
+        exit 1
+      fi
+    fi
+  done
+
+
+  if ! _psql -d "$db" <<< "$set_password_query_workers"; then
+    echo "An error occured while setting passwords on the workers";
+  fi
+
+
+  if [ -n "$set_user_privileges" ]; then
+    _psql -d "$db" <<< "$set_user_privileges_query_workers"
+  fi
+
+  _psql -d "$db" -c "create extension if not exists citus;"
+
+  # Register the workers in the newly created DB
+  read -ra worker_nodes<<<"$(_psql -c 'select node_name from master_get_active_worker_nodes();')"
+  for worker_node in "${worker_nodes[@]}"
+  do
+    _psql -d "$db" -c "select master_add_node('$worker_node', 5432);" > /dev/null
+  done
+fi
+
+exit 0
