@@ -85,6 +85,17 @@ function onRestoreDatabase(){
       echo
     fi
 
+    # Drop Patroni-specific schemas
+    if (( ${_rtnCd} == 0 )); then
+      psql -h "${_hostname}" ${_portArg} -a -d ${_database} <<EOF
+DROP SCHEMA IF EXISTS metric_helpers CASCADE;
+DROP SCHEMA IF EXISTS user_management CASCADE;
+EOF
+
+      _rtnCd=${?}
+      echo
+    fi
+
     # Grant User Access
     if (( ${_rtnCd} == 0 )); then
       psql -h "${_hostname}" ${_portArg} -ac "GRANT ALL ON DATABASE \"${_database}\" TO \"${_username}\";"
