@@ -73,3 +73,27 @@ spec:
               memory: '0'
 ...
 ```
+
+## Patroni Verification and Restore Throws errors
+
+If you are using the postgres restoration process to restor patroni you will get some errors in the form: 
+
+```
+DETAIL:  Could not open extension control file "/usr/share/pgsql/extension/pg_stat_kcache.control": No such file or directory.
+HINT:  The extension must first be installed on the system where PostgreSQL is running.
+ERROR:  extension "pg_stat_kcache" does not exist
+ERROR:  extension "set_user" is not available
+DETAIL:  Could not open extension control file "/usr/share/pgsql/extension/set_user.control": No such file or directory.
+HINT:  The extension must first be installed on the system where PostgreSQL is running.
+ERROR:  extension "set_user" does not exist
+```
+
+These extensions are not supported on the Fedora operating system. Which is used as the base image for the backup container, `quay.io/fedora/postgresql-15:15`.  Adding the `-I` flag to the verify and restore process allows the container to restore your database in a patroni cluster.  
+
+```
+./backup.sh -I -v all
+./backup.sh -I -r <<service>>:<<port>>/<<db_name>>
+```
+
+Note: Due to the ignore errors flad you will have to be more diligent that the backup process is working as expected with your database implementation.
+
