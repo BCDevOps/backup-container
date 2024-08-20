@@ -25,6 +25,11 @@ ADD https://github.com/$SOURCE_REPO/go-crond/releases/download/$GOCROND_VERSION/
 
 USER root
 
+# Add Tini
+ENV TINI_VERSION v0.19.0
+ADD https://github.com/krallin/tini/releases/download/${TINI_VERSION}/tini /tini
+RUN chmod +x /tini
+
 RUN chmod +x /usr/bin/go-crond
 RUN chown -R $user:root /data/db && \
     chmod -R ug+rw /data/db
@@ -41,5 +46,7 @@ RUN echo $TZ > /etc/timezone
 # Important - Reset to the base image's user account.
 USER $uid
 
+# Overwrite entrypoint with dubm-init
+ENTRYPOINT ["/tini", "--"]
 # Set the default CMD.
 CMD bash /backup.sh
