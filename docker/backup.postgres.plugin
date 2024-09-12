@@ -3,7 +3,7 @@
 # Postgres Backup and Restore Functions:
 # - Dynamically loaded as a plug-in
 # -----------------------------------------------------------------------------------------------------------------
-export serverDataDirectory="/var/lib/pgsql/data"
+export serverDataDirectory=${PGDATA:-'/var/lib/pgsql/data/userdata'}
 
 function onBackupDatabase(){
   (
@@ -155,7 +155,7 @@ function onStopServer(){
     _databaseSpec=${1}
 
     # Stop the local PostgreSql instance
-    pg_ctl stop -D ${serverDataDirectory}/userdata
+    pg_ctl stop -D ${serverDataDirectory}
   )
 }
 
