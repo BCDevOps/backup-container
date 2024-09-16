@@ -95,8 +95,8 @@ objects:
       ftp-password: ${FTP_PASSWORD}
       ftp-url-host: ${FTP_URL_HOST}
 
-  - kind: DeploymentConfig
-    apiVersion: v1
+  - kind: Deployment
+    apiVersion: apps/v1
     metadata:
       name: ${NAME}
       labels:
@@ -107,20 +107,10 @@ objects:
     spec:
       strategy:
         type: Recreate
-      triggers:
-        - type: ConfigChange
-        - type: ImageChange
-          imageChangeParams:
-            automatic: true
-            containerNames:
-              - ${NAME}
-            from:
-              kind: ImageStreamTag
-              namespace: ${IMAGE_NAMESPACE}
-              name: ${SOURCE_IMAGE_NAME}:${TAG_NAME}
       replicas: 1
       selector:
-        name: ${NAME}
+        matchLabels:
+          name: ${NAME}
       template:
         metadata:
           name: ${NAME}
