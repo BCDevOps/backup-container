@@ -135,7 +135,7 @@ objects:
                     path: ${CONFIG_FILE_NAME}
           containers:
             - name: ${NAME}
-              image: ""
+              image: "${IMAGE_REGISTRY}/${IMAGE_NAMESPACE}/${SOURCE_IMAGE_NAME}:${IMAGE_TAG}"
               ports: []
               env:
                 - name: BACKUP_STRATEGY
@@ -220,7 +220,7 @@ parameters:
     displayName: Source Image Name
     description: The name of the image to use for this resource.  Use 'backup-{database name}' depending on your database provider
     required: true
-    value: backup-postgres
+    value: backup-container
   - name: APP_NAME
     displayName: App Name
     description: Used to group resources together.  Defaults to backup-container
@@ -239,8 +239,17 @@ parameters:
   - name: IMAGE_NAMESPACE
     displayName: Image Namespace
     description: The namespace of the OpenShift project containing the imagestream for the application.
+    value: bcgovimages
+  - name: "IMAGE_REGISTRY"
+    description: "The base OpenShift docker registry"
+    displayName: "Docker Image Registry"
     required: true
-    value:
+    # Set value to "docker-registry.default.svc:5000" if using OCP3
+    value: "docker.io"
+  - name: IMAGE_TAG
+    displayName: 
+    description: Image tag name, e.g. latest
+    value: latest
   - name: TAG_NAME
     displayName: Environment TAG name
     description: The TAG name for this environment, e.g., dev, test, prod
